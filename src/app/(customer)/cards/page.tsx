@@ -39,78 +39,121 @@ export default function CardsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <Spinner size="lg" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-bg)' }}>
+        {/* Skeleton: title + 3 card rows */}
+        <div className="w-full max-w-md px-4 space-y-4">
+          <div className="skeleton h-8 w-48 mb-6" />
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="skeleton h-24 w-full rounded-2xl" />
+          ))}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4">
+    <div className="min-h-screen p-4 page-enter" style={{ background: 'var(--color-bg)' }}>
       <div className="max-w-md mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-black text-white">MY LOYALTY CARDS</h1>
-            <p className="text-zinc-400 text-sm">Tap a business to view your card</p>
+            <h1
+              className="text-3xl text-white"
+              style={{ fontFamily: 'var(--font-display)', letterSpacing: '0.02em' }}
+            >
+              MY LOYALTY CARDS
+            </h1>
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+              Tap a business to view your card
+            </p>
           </div>
           <button
             onClick={() => {
               localStorage.removeItem('customer_session')
               router.push('/')
             }}
-            className="text-xs text-zinc-500 hover:text-zinc-300"
+            className="btn btn-ghost text-xs"
+            style={{ color: 'var(--color-text-dim)' }}
           >
             Logout
           </button>
         </div>
 
         {cards.length === 0 ? (
-          <div className="text-center py-12 text-zinc-500">
-            <p className="text-4xl mb-3">💳</p>
-            <p className="font-medium text-white">No loyalty cards yet</p>
+          <div className="text-center py-12 page-enter" style={{ color: 'var(--color-text-muted)' }}>
+            <p className="text-5xl mb-4">💳</p>
+            <p className="font-semibold text-base" style={{ color: 'var(--color-text)' }}>
+              No loyalty cards yet
+            </p>
             <p className="text-sm mt-1">Scan a business QR code to get started</p>
-            <Link href="/" className="mt-4 inline-block text-yellow-400 hover:underline text-sm">
+            <Link
+              href="/"
+              className="mt-4 inline-block text-sm font-medium hover:underline"
+              style={{ color: 'var(--color-gold)' }}
+            >
               Discover businesses →
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="stagger-children space-y-3">
             {cards.map((card) => {
               const { business, card_stamps, cards_completed, cards_redeemed } = card
               const redeemable = cards_completed > (cards_redeemed ?? 0)
               const progress = (card_stamps / business.stamps_required) * 100
+              const segCount = business.stamps_required
 
               return (
                 <Link
                   key={card.business_id}
                   href={`/card/${card.business_id}`}
-                  className="block bg-zinc-900 rounded-2xl p-4 border border-zinc-800 hover:border-zinc-600 transition-colors"
+                  className="card-interactive block rounded-2xl p-4 border"
+                  style={{
+                    background: 'var(--color-surface)',
+                    borderColor: 'var(--color-border)',
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-3xl">{business.emoji}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-white truncate">{business.name}</p>
-                      <p className="text-xs text-zinc-400">
+                      <p className="font-bold truncate" style={{ color: 'var(--color-text)' }}>
+                        {business.name}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                         Free {business.reward} after {business.stamps_required} stamps
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xl font-black text-yellow-400">
+                      <p
+                        className="text-2xl"
+                        style={{ fontFamily: 'var(--font-display)', color: 'var(--color-gold)' }}
+                      >
                         {card_stamps}/{business.stamps_required}
                       </p>
                       {cards_completed > 0 && (
-                        <p className="text-xs text-green-400">{cards_completed}x redeemed</p>
+                        <p className="text-xs" style={{ color: 'var(--color-green)' }}>
+                          {cards_completed}x redeemed
+                        </p>
                       )}
                     </div>
                   </div>
-                  <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-yellow-400 rounded-full transition-all duration-500"
-                      style={{ width: `${progress}%` }}
-                    />
+
+                  {/* Segmented progress bar */}
+                  <div className="mt-3 flex gap-[2px]">
+                    {Array.from({ length: segCount }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-1.5 flex-1 rounded-full progress-fill"
+                        style={{
+                          background: i < card_stamps ? 'var(--color-gold)' : 'var(--color-elevated)',
+                          transitionDelay: `${i * 30}ms`,
+                        }}
+                      />
+                    ))}
                   </div>
+
                   {redeemable && (
-                    <p className="text-xs text-yellow-400 font-semibold mt-1.5">🎁 Ready to redeem!</p>
+                    <p className="text-xs font-semibold mt-2" style={{ color: 'var(--color-gold)' }}>
+                      🎁 Ready to redeem!
+                    </p>
                   )}
                 </Link>
               )
@@ -120,7 +163,11 @@ export default function CardsPage() {
 
         <Link
           href="/"
-          className="mt-6 flex items-center justify-center gap-2 border-2 border-dashed border-zinc-700 rounded-2xl p-5 text-zinc-400 hover:border-zinc-500 hover:text-zinc-300 transition-colors"
+          className="btn mt-6 flex items-center justify-center gap-2 border-2 border-dashed rounded-2xl p-5 transition-colors"
+          style={{
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-muted)',
+          }}
         >
           <span className="text-xl">+</span>
           <span className="font-medium">Scan a new business</span>

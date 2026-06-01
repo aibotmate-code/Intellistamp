@@ -1,0 +1,261 @@
+/* ── Button press feedback ── */
+.btn {
+  transition:
+    transform var(--dur-instant) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+.btn:active           { transform: scale(0.97); }
+.btn-primary:active   { transform: scale(0.96); }
+.btn-ghost:hover      { transform: translateY(-1px); }
+.btn-ghost:active     { transform: translateY(0) scale(0.98); }
+
+/* ── Page transitions ── */
+.page-enter {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: pageEnter var(--dur-enter) var(--ease-out) forwards;
+}
+@keyframes pageEnter {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Stagger children ── */
+.stagger-children > * {
+  opacity: 0;
+  transform: translateY(6px);
+  animation: fadeUp var(--dur-normal) var(--ease-out) forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay:   0ms; }
+.stagger-children > *:nth-child(2) { animation-delay:  40ms; }
+.stagger-children > *:nth-child(3) { animation-delay:  80ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 160ms; }
+.stagger-children > *:nth-child(n+6) { animation-delay: 200ms; }
+
+@keyframes fadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Card hover lift ── */
+.card-interactive {
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .card-interactive:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-border-strong);
+  }
+}
+.card-interactive:active { transform: translateY(0); }
+
+/* ── Slide in from bottom (modals, sheets) ── */
+.slide-up-enter {
+  animation: slideUp var(--dur-enter) var(--ease-drawer) forwards;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.slide-up-exit {
+  animation: slideDown var(--dur-exit) var(--ease-in-out) forwards;
+}
+@keyframes slideDown {
+  to { transform: translateY(100%); opacity: 0; }
+}
+
+/* ── Scale in (celebrations, badges) ── */
+.scale-in {
+  animation: scaleIn var(--dur-slow) var(--ease-spring) forwards;
+}
+@keyframes scaleIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+/* ── Pulse dot (live indicator) ── */
+.pulse-live {
+  animation: pulseLive 2s ease-in-out infinite;
+}
+@keyframes pulseLive {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* ── Shimmer skeleton loader ── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    var(--color-elevated) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: var(--radius-md);
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* ── Token refresh flash ── */
+.token-refresh {
+  animation: tokenFlash 0.3s var(--ease-out);
+}
+@keyframes tokenFlash {
+  0%   { opacity: 0.4; transform: translateY(-4px); }
+  100% { opacity: 1;   transform: translateY(0); }
+}
+
+/* ── Stamp dot fill ── */
+.stamp-dot-fill {
+  animation: stampFill 0.4s var(--ease-spring) forwards;
+}
+@keyframes stampFill {
+  0%   { transform: scale(0.7);  opacity: 0; }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+/* ── Stamp dot ripple ── */
+.stamp-dot-ripple {
+  animation: stampRipple 0.3s var(--ease-out) forwards;
+}
+@keyframes stampRipple {
+  0%   { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(2);   opacity: 0; }
+}
+
+/* ── Card complete — all dots pulse ── */
+.stamp-dot-pulse {
+  animation: stampPulse 0.2s ease-in-out;
+}
+@keyframes stampPulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* ── Glow pulse (claim reward button) ── */
+.glow-pulse {
+  animation: glowPulse 1.8s ease-in-out infinite alternate;
+}
+@keyframes glowPulse {
+  from { box-shadow: 0 0  8px oklch(0.72 0.18 55 / 0.3); }
+  to   { box-shadow: 0 0 24px oklch(0.72 0.18 55 / 0.7); }
+}
+
+/* ── Number count up ── */
+.count-up {
+  animation: countUp 0.5s var(--ease-out) forwards;
+}
+@keyframes countUp {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+/* ── Toast notification ── */
+.toast {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity var(--dur-normal) var(--ease-out),
+    transform var(--dur-normal) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+}
+.toast.exiting {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+  transition-duration: var(--dur-exit);
+}
+
+/* ── Progress bar fill ── */
+.progress-fill {
+  transition: width 0.6s var(--ease-out);
+}
+
+/* ── Toggle switch ── */
+.toggle-slider {
+  transition: background-color var(--dur-fast) ease;
+}
+.toggle-slider::before {
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+
+/* ── Input focus ring ── */
+.input-field {
+  transition:
+    border-color var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease;
+}
+.input-field:focus {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 3px oklch(0.72 0.18 55 / 0.15);
+  outline: none;
+}
+
+/* ── Tab indicator ── */
+.tab-active-indicator {
+  transition: transform var(--dur-normal) var(--ease-out);
+}
+
+/* ── Celebration confetti burst ── */
+.celebrate {
+  animation: celebrate 0.6s var(--ease-spring) forwards;
+}
+@keyframes celebrate {
+  0%   { transform: scale(0.5) rotate(-5deg); opacity: 0; }
+  70%  { transform: scale(1.1) rotate(2deg);  opacity: 1; }
+  100% { transform: scale(1)   rotate(0deg);  opacity: 1; }
+}
+
+/* ── Milestone banner slide down ── */
+.milestone-banner-enter {
+  animation: milestoneBannerIn var(--dur-enter) var(--ease-drawer) forwards;
+}
+@keyframes milestoneBannerIn {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+.milestone-banner-exit {
+  animation: milestoneBannerOut var(--dur-exit) var(--ease-in-out) forwards;
+}
+@keyframes milestoneBannerOut {
+  to { transform: translateY(-100%); opacity: 0; }
+}
+
+/* ── Claim button slide up ── */
+.claim-btn-enter {
+  animation: claimBtnIn 300ms var(--ease-spring) forwards;
+}
+@keyframes claimBtnIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Particle burst (redemption screen) ── */
+@keyframes radiate {
+  from { transform: translate(0, 0); opacity: 1; }
+  to   { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+}
+.particle {
+  animation: radiate 0.8s var(--ease-out) forwards;
+}
+
+/* ── Respect reduced motion — always ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
