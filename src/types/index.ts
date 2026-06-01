@@ -1,6 +1,7 @@
 export type Plan = 'free' | 'pro'
 export type StampType = 'regular' | 'bonus_review'
 export type CampaignAudience = 'all' | 'inactive' | 'near_reward'
+export type ConflictPriority = 'stamp' | 'milestone'
 
 export interface Business {
   id: string
@@ -17,6 +18,9 @@ export interface Business {
   plan: Plan
   owner_phone?: string
   created_at: string
+  conflict_priority: ConflictPriority
+  stamps_required_updated_at?: string
+  milestones?: Milestone[]
 }
 
 export interface Customer {
@@ -66,4 +70,35 @@ export interface StampCardState {
   can_stamp: boolean
   cooldown_remaining_hours?: number
   redeemable: boolean
+}
+
+export interface Milestone {
+  id: string
+  business_id: string
+  visit_number: number
+  badge: string
+  reward: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface MilestoneClaim {
+  id: string
+  customer_id: string
+  business_id: string
+  milestone_id: string
+  claimed_at: string
+}
+
+export interface MilestoneWithStatus extends Milestone {
+  earned: boolean
+  visits_remaining: number
+}
+
+export interface RewardResult {
+  type: 'stamp' | 'milestone'
+  reward?: string
+  milestone?: Milestone
+  deferred_milestone?: Milestone
+  deferred_stamp?: boolean
 }
