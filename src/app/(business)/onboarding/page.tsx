@@ -117,7 +117,10 @@ export default function OnboardingPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Failed to create business')
+        const msg = data._debug
+          ? `${data.error} [${data._code ?? ''}] ${data._debug}`
+          : (data.error || 'Failed to create business')
+        setError(msg)
         return
       }
       localStorage.setItem('business_session', JSON.stringify({
