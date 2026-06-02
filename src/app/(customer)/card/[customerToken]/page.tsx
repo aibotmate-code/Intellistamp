@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { startTransition, use, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Button from '@/components/ui/Button'
@@ -21,6 +21,9 @@ interface PageParams {
   params: Promise<{ customerToken: string }>
 }
 
+// Key used by scan page to pass the last stamp's reward_result across navigation
+const REWARD_KEY = 'intellistamp_pending_reward'
+
 export default function CardPage({ params }: PageParams) {
   const { customerToken } = use(params)
   const searchParams = useSearchParams()
@@ -31,7 +34,7 @@ export default function CardPage({ params }: PageParams) {
   const [business, setBusiness] = useState<Business | null>(null)
   const [cardState, setCardState] = useState<CardState | null>(null)
   const [milestones, setMilestones] = useState<MilestoneWithStatus[]>([])
-  const [rewardResult] = useState<RewardResult | null>(null)
+  const [rewardResult, setRewardResult] = useState<RewardResult | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -40,6 +43,18 @@ export default function CardPage({ params }: PageParams) {
       return
     }
 
+    // Read & clear any pending reward result left by the scan page
+    try {
+      const raw = sessionStorage.getItem(REWARD_KEY)
+      if (raw) {
+        startTransition(() => setRewardResult(JSON.parse(raw) as RewardResult))
+        sessionStorage.removeItem(REWARD_KEY)
+      }
+    } catch {
+      sessionStorage.removeItem(REWARD_KEY)
+    }
+
+    // Parallel: customer+card state  AND  active milestones list
     Promise.all([
       fetch(`/api/customer/by-token?token=${customerToken}&bizId=${bizId}`).then((r) => r.json()),
       fetch(`/api/milestones/${bizId}`).then((r) => r.json()),
@@ -52,14 +67,17 @@ export default function CardPage({ params }: PageParams) {
         if (tokenData.business) setBusiness(tokenData.business as Business)
         if (tokenData.card_state) setCardState(tokenData.card_state)
 
-        // Fetch milestone status once we have the customer id
-        if (tokenData.customer && milestonesData.milestones?.length) {
-          fetch(`/api/milestones/customer/${tokenData.customer.id}/${bizId}`)
-            .then((r) => r.json())
-            .then((msData) => {
-              if (msData.milestones) setMilestones(msData.milestones)
-            })
-            .catch(() => {})
+        // Fetch per-customer milestone status (earned / visits_remaining)
+        if (tokenData.customer?.id) {
+          const hasMilestones = (milestonesData.milestones?.length ?? 0) > 0
+          if (hasMilestones) {
+            fetch(`/api/milestones/customer/${tokenData.customer.id}/${bizId}`)
+              .then((r) => r.json())
+              .then((msData) => {
+                if (msData.milestones) setMilestones(msData.milestones)
+              })
+              .catch(() => {})
+          }
         }
       })
       .catch(() => setError('Failed to load card data'))

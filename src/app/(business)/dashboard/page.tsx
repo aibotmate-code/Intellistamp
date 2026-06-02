@@ -6,16 +6,17 @@ import dynamic from 'next/dynamic'
 import StatsCard from '@/components/business/StatsCard'
 import CustomerTable from '@/components/business/CustomerTable'
 import FeatureToggles from '@/components/business/FeatureToggles'
+import RewardsTab from '@/components/business/RewardsTab'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
 import Alert from '@/components/ui/Alert'
 import Input from '@/components/ui/Input'
-import type { Business, Customer, BusinessCustomer } from '@/types'
+import type { Business, Customer, BusinessCustomer, Milestone } from '@/types'
 
 const QRDisplay = dynamic(() => import('@/components/business/QRDisplay'), { ssr: false })
 const KioskMode = dynamic(() => import('@/components/business/KioskMode'), { ssr: false })
 
-type Tab = 'qr' | 'customers' | 'campaigns' | 'settings'
+type Tab = 'qr' | 'customers' | 'rewards' | 'campaigns' | 'settings'
 
 interface CustomerRow extends BusinessCustomer {
   customer: Customer
@@ -41,6 +42,10 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('qr')
   const [kioskMode, setKioskMode] = useState(false)
   const [error, setError] = useState('')
+
+  // Rewards tab state
+  const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [milestonesLoaded, setMilestonesLoaded] = useState(false)
 
   // Staff validator state
   const [staffToken, setStaffToken] = useState('')
@@ -91,6 +96,18 @@ export default function DashboardPage() {
     startTransition(() => { fetchData() })
   }, [fetchData])
 
+  // Lazy-load milestones when Rewards tab is first opened
+  useEffect(() => {
+    if (activeTab !== 'rewards' || milestonesLoaded || !data) return
+    fetch(`/api/milestones/${data.business.id}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.milestones) setMilestones(json.milestones)
+      })
+      .catch(() => {})
+      .finally(() => setMilestonesLoaded(true))
+  }, [activeTab, milestonesLoaded, data])
+
   const handleSaveToggles = async (updates: Partial<Business>) => {
     if (!data) return
     try {
@@ -105,18 +122,41 @@ export default function DashboardPage() {
     }
   }
 
+  const handleRewardsSave = (updatedBusiness: Business, updatedMilestones: Milestone[]) => {
+    setData((prev) => prev ? { ...prev, business: updatedBusiness } : prev)
+    setMilestones(updatedMilestones)
+  }
+
+  const handleExport = async () => {
+    if (!data) return
+    try {
+      const res = await fetch(`/api/business/export-customers?bizId=${data.business.id}`)
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const date = new Date().toISOString().split('T')[0]
+      a.href = url
+      a.download = `${data.business.slug || data.business.id.slice(0, 8)}-customers-${date}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // silent fail — no external state to show
+    }
+  }
+
   const handleStaffStamp = async () => {
     if (!data) return
     setStaffLoading(true)
     setStaffResult(null)
     try {
-      // We need a customer_id — for staff validator, we'd normally look up by token
-      // For simplicity, this flow requires customer to be in the system
       const res = await fetch('/api/stamp/issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customer_id: staffToken, // In real impl, staffToken maps to customer
+          customer_id: staffToken,
           business_id: data.business.id,
           token: staffToken,
           staff_pin: staffPin,
@@ -274,12 +314,13 @@ export default function DashboardPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-zinc-800 mb-6 overflow-x-auto">
-          {[
-            { id: 'qr' as Tab, label: 'QR Stamper' },
+          {([
+            { id: 'qr' as Tab,        label: 'QR Stamper' },
             { id: 'customers' as Tab, label: `Customers (${customers.length})` },
+            { id: 'rewards' as Tab,   label: 'Rewards' },
             { id: 'campaigns' as Tab, label: 'Campaigns' },
-            { id: 'settings' as Tab, label: 'Settings' },
-          ].map((tab) => (
+            { id: 'settings' as Tab,  label: 'Settings' },
+          ] as const).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -369,7 +410,26 @@ export default function DashboardPage() {
 
         {/* Tab: Customers */}
         {activeTab === 'customers' && (
-          <CustomerTable customers={customers} stampsRequired={business.stamps_required} />
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-zinc-400">
+                {customers.length} customer{customers.length !== 1 ? 's' : ''} enrolled
+              </p>
+              <Button size="sm" variant="secondary" onClick={handleExport}>
+                ⬇ Export Customers
+              </Button>
+            </div>
+            <CustomerTable customers={customers} stampsRequired={business.stamps_required} />
+          </div>
+        )}
+
+        {/* Tab: Rewards */}
+        {activeTab === 'rewards' && (
+          <RewardsTab
+            business={business}
+            milestones={milestones}
+            onSave={handleRewardsSave}
+          />
         )}
 
         {/* Tab: Campaigns */}
