@@ -123,28 +123,26 @@ export default function ScanPage() {
     }
     setLoadingIdentify(true)
     try {
-      const res = await fetch('/api/customer/identify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      })
+      const res = await fetch(`/api/customer/profile?phone=${encodeURIComponent(phone)}`)
+      if (res.status === 404) {
+        // New customer — collect name before creating
+        setFlowState('name')
+        return
+      }
       const data = await res.json()
       if (!res.ok) {
         setPhoneError(data.error || 'Something went wrong')
         return
       }
+      const c = data.customer
       localStorage.setItem('customer_session', JSON.stringify({
-        id: data.customer.id,
-        phone: data.customer.phone,
-        customer_token: data.customer.customer_token,
-        name: data.customer.name,
+        id: c.id,
+        phone: c.phone,
+        customer_token: c.customer_token,
+        name: c.name,
       }))
-      setCustomer(data.customer)
-      if (data.isNew) {
-        setFlowState('name')
-      } else {
-        setFlowState('stamping')
-      }
+      setCustomer(c)
+      setFlowState('stamping')
     } catch {
       setPhoneError('Network error. Please try again.')
     } finally {
@@ -158,22 +156,26 @@ export default function ScanPage() {
       setNameError('Please enter your name')
       return
     }
-    if (!customer) return
     setLoadingIdentify(true)
     try {
-      const res = await fetch('/api/customer/profile', {
-        method: 'PATCH',
+      const res = await fetch('/api/customer/identify', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer_id: customer.id, name: name.trim() }),
+        body: JSON.stringify({ phone, name: name.trim() }),
       })
       const data = await res.json()
       if (!res.ok) {
         setNameError(data.error || 'Something went wrong')
         return
       }
-      const updated = { ...customer, name: name.trim() }
-      localStorage.setItem('customer_session', JSON.stringify(updated))
-      setCustomer(updated)
+      const c = data.customer
+      localStorage.setItem('customer_session', JSON.stringify({
+        id: c.id,
+        phone: c.phone,
+        customer_token: c.customer_token,
+        name: c.name,
+      }))
+      setCustomer(c)
       setFlowState('stamping')
     } catch {
       setNameError('Network error. Please try again.')
