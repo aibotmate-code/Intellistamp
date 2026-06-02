@@ -159,9 +159,19 @@ export async function POST(req: NextRequest) {
       reward_result = { type: 'milestone', milestone: unclaimed_milestone }
     }
 
+    // Get review_claimed status for GMB prompt
+    const { data: bcRow } = await supabase
+      .from('business_customers')
+      .select('review_claimed')
+      .eq('business_id', business_id)
+      .eq('customer_id', customer.id)
+      .maybeSingle()
+
     return NextResponse.json({
       success: true,
+      customer_id: customer.id,
       customer_token: customer.customer_token,
+      review_claimed: bcRow?.review_claimed ?? false,
       card_state: {
         total_stamps: total,
         card_stamps: stampComplete ? business.stamps_required : cardStamps,

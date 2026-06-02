@@ -11,9 +11,10 @@ export async function GET(req: NextRequest) {
     const bizId = searchParams.get('bizId')
     const ownerPhone = searchParams.get('ownerPhone')
     const slug = searchParams.get('slug')
+    const ownerId = searchParams.get('ownerId')
 
-    if (!bizId && !ownerPhone && !slug) {
-      return NextResponse.json({ error: 'bizId, ownerPhone, or slug required' }, { status: 400 })
+    if (!bizId && !ownerPhone && !slug && !ownerId) {
+      return NextResponse.json({ error: 'bizId, ownerPhone, ownerId, or slug required' }, { status: 400 })
     }
 
     let query = supabase.from('businesses').select('*')
@@ -21,6 +22,8 @@ export async function GET(req: NextRequest) {
       query = query.eq('id', bizId)
     } else if (slug) {
       query = query.eq('slug', slug)
+    } else if (ownerId) {
+      query = query.eq('owner_id', ownerId)
     } else {
       query = query.eq('owner_phone', ownerPhone!)
     }

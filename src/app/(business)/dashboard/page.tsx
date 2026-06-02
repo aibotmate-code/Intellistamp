@@ -3,6 +3,7 @@
 import { startTransition, useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import StatsCard from '@/components/business/StatsCard'
 import CustomerTable from '@/components/business/CustomerTable'
 import FeatureToggles from '@/components/business/FeatureToggles'
@@ -63,21 +64,21 @@ export default function DashboardPage() {
   const [editModalOpen, setEditModalOpen] = useState(false)
 
   const fetchData = useCallback(async () => {
-    const ownerPhone = (() => {
-      try {
-        const s = localStorage.getItem('business_session')
-        return s ? JSON.parse(s).ownerPhone : null
-      } catch { return null }
-    })()
-    if (!ownerPhone) {
-      router.push('/onboarding')
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      router.push('/login')
       return
     }
     try {
-      const res = await fetch(`/api/business/get?ownerPhone=${ownerPhone}`)
+      const res = await fetch(`/api/business/get?ownerId=${session.user.id}`)
       const json = await res.json()
       if (!res.ok) {
         setError(json.error || 'Failed to load dashboard')
+        setLoading(false)
         return
       }
       setData({
@@ -207,9 +208,14 @@ export default function DashboardPage() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('business_session')
-    router.push('/')
+  const handleLogout = async () => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
   }
 
   if (loading) {

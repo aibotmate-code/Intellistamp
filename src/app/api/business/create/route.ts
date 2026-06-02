@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import { businessCreateSchema } from '@/lib/validators'
 
 export async function POST(req: NextRequest) {
-  console.log('ENV CHECK:', {
-    hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    serviceKeyPrefix: process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 20),
-    nodeEnv: process.env.NODE_ENV,
-  })
-
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('SUPABASE_SERVICE_ROLE_KEY is not set')
     return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
   }
+
+  // Get the authenticated user from the session cookie
+  const cookieStore = await cookies()
+  const authClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll() { /* read-only in this handler */ },
+      },
+    }
+  )
+  const { data: { session } } = await authClient.auth.getSession()
+  const ownerId = session?.user.id ?? null
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +31,6 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-
     if (typeof body.owner_phone === 'string') {
       body.owner_phone = body.owner_phone.replace(/^\+91/, '')
     }
@@ -36,13 +44,6 @@ export async function POST(req: NextRequest) {
     }
 
     const data = result.data
-
-    // DB connectivity check before attempting write
-    const { error: testError } = await supabase
-      .from('businesses')
-      .select('count')
-      .limit(1)
-    console.log('DB CONNECTION TEST:', { testError: testError ?? null })
 
     let slug = data.name
       .toLowerCase()
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
         whatsapp_enabled: false,
         plan: 'free',
         slug,
+        ...(ownerId ? { owner_id: ownerId } : {}),
       })
       .select()
       .single()

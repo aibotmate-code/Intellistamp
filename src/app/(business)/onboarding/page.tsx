@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
@@ -49,6 +50,21 @@ const CHECKLIST_ITEMS = [
 export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
+
+  // Redirect to dashboard if user already has a business
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return
+      fetch(`/api/business/get?ownerId=${session.user.id}`)
+        .then((r) => r.json())
+        .then((data) => { if (data.business) router.replace('/dashboard') })
+        .catch(() => {})
+    })
+  }, [router])
   const [form, setForm] = useState<FormData>(initialForm)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   const [loading, setLoading] = useState(false)
@@ -123,10 +139,6 @@ export default function OnboardingPage() {
         setError(msg)
         return
       }
-      localStorage.setItem('business_session', JSON.stringify({
-        ownerPhone: form.owner_phone,
-        bizId: data.business.id,
-      }))
       setBizId(data.business.id)
       setStep(4)
     } catch {

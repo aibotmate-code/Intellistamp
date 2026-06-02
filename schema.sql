@@ -21,6 +21,7 @@ create table if not exists businesses (
   owner_phone text,
   slug text not null default '' unique,
   conflict_priority text not null default 'stamp',
+  owner_id uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
 
@@ -56,6 +57,7 @@ create table if not exists stamps (
   stamped_at timestamptz not null default now()
 );
 
+create index if not exists businesses_owner_idx on businesses(owner_id);
 create index if not exists stamps_customer_business_idx on stamps(customer_id, business_id);
 create index if not exists stamps_stamped_at_idx on stamps(stamped_at desc);
 

@@ -1,6 +1,22 @@
 import Link from 'next/link'
+import { createServerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
-export default function Home() {
+export default async function Home() {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll() { /* read-only */ },
+      },
+    }
+  )
+  const { data: { session } } = await supabase.auth.getSession()
+  const businessHref = session ? '/dashboard' : '/login'
+
   return (
     <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6">
       <div className="text-center max-w-md w-full">
@@ -10,7 +26,7 @@ export default function Home() {
 
         <div className="flex flex-col gap-3">
           <Link
-            href="/onboarding"
+            href={businessHref}
             className="w-full bg-yellow-400 text-black font-bold py-4 px-6 rounded-xl text-lg hover:bg-yellow-300 transition-colors"
           >
             🏪 I&apos;m a Business Owner
