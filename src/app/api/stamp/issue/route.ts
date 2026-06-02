@@ -117,29 +117,26 @@ export async function POST(req: NextRequest) {
 
     // --- Milestone resolution ---
 
-    // Check if a milestone is hit at this exact visit count
-    const { data: milestoneHit } = await supabase
-      .from('milestones')
-      .select('*')
-      .eq('business_id', business_id)
-      .eq('visit_number', total)
-      .eq('is_active', true)
-      .single()
-
-    // If milestone found, verify it hasn't already been claimed
-    let unclaimed_milestone: typeof milestoneHit | null = null
-    if (milestoneHit) {
-      const { data: existingClaim } = await supabase
+    // Find the lowest-visit unclaimed milestone at or below this visit count.
+    // Using lte (not eq) means deferred milestones from a previous conflict also fire here.
+    const [{ data: eligibleMilestones }, { data: priorClaims }] = await Promise.all([
+      supabase
+        .from('milestones')
+        .select('*')
+        .eq('business_id', business_id)
+        .lte('visit_number', total)
+        .eq('is_active', true)
+        .order('visit_number', { ascending: true }),
+      supabase
         .from('milestone_claims')
-        .select('id')
+        .select('milestone_id')
         .eq('customer_id', customer_id)
-        .eq('milestone_id', milestoneHit.id)
-        .single()
+        .eq('business_id', business_id),
+    ])
 
-      if (!existingClaim) {
-        unclaimed_milestone = milestoneHit
-      }
-    }
+    const claimedMilestoneIds = new Set((priorClaims ?? []).map((c) => c.milestone_id))
+    const unclaimed_milestone =
+      (eligibleMilestones ?? []).find((m) => !claimedMilestoneIds.has(m.id)) ?? null
 
     let reward_result: RewardResult | null = null
 

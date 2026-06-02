@@ -46,21 +46,23 @@ export async function GET(req: NextRequest) {
     const stampsRequired = business?.stamps_required ?? 10
     const cardStamps = total % stampsRequired
     const cardsCompleted = Math.floor(total / stampsRequired)
+    const stampComplete = cardStamps === 0 && total > 0
 
-    const { count: redeemedCount } = await supabase
-      .from('stamps')
-      .select('*', { count: 'exact', head: true })
+    // cards_redeemed lives in business_customers, not in the stamps table
+    const { data: bcRow } = await supabase
+      .from('business_customers')
+      .select('cards_redeemed')
       .eq('customer_id', customer.id)
       .eq('business_id', bizId)
-      .eq('type', 'redeemed' as never)
+      .single()
 
-    const cardsRedeemed = redeemedCount ?? 0
+    const cardsRedeemed = (bcRow as { cards_redeemed?: number } | null)?.cards_redeemed ?? 0
 
     return NextResponse.json({
       customer,
       card_state: {
         total_stamps: total,
-        card_stamps: cardStamps,
+        card_stamps: stampComplete ? stampsRequired : cardStamps,
         cards_completed: cardsCompleted,
         cards_redeemed: cardsRedeemed,
         redeemable: cardsCompleted > cardsRedeemed,

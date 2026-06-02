@@ -4,14 +4,14 @@ import type { MilestoneWithStatus } from '@/types'
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { customerId: string; bizId: string } }
+  { params }: { params: Promise<{ customerId: string; bizId: string }> }
 ) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
   try {
-    const { customerId, bizId } = params
+    const { customerId, bizId } = await params
 
     // Get active milestones for this business
     const { data: milestones, error: milestoneError } = await supabase

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import type { RewardResult } from '@/types'
 
 const kioskStampSchema = z.object({
   business_id: z.string().uuid(),
@@ -118,6 +119,46 @@ export async function POST(req: NextRequest) {
     const cardsCompleted = Math.floor(total / business.stamps_required)
     const stampComplete = cardStamps === 0 && total > 0
 
+    // Milestone resolution — same logic as stamp/issue
+    const [{ data: eligibleMilestones }, { data: priorClaims }] = await Promise.all([
+      supabase
+        .from('milestones')
+        .select('*')
+        .eq('business_id', business_id)
+        .lte('visit_number', total)
+        .eq('is_active', true)
+        .order('visit_number', { ascending: true }),
+      supabase
+        .from('milestone_claims')
+        .select('milestone_id')
+        .eq('customer_id', customer.id)
+        .eq('business_id', business_id),
+    ])
+
+    const claimedMilestoneIds = new Set((priorClaims ?? []).map((c) => c.milestone_id))
+    const unclaimed_milestone =
+      (eligibleMilestones ?? []).find((m) => !claimedMilestoneIds.has(m.id)) ?? null
+
+    let reward_result: RewardResult | null = null
+
+    if (stampComplete && unclaimed_milestone) {
+      if (business.conflict_priority === 'stamp') {
+        reward_result = { type: 'stamp', reward: business.reward, deferred_milestone: unclaimed_milestone }
+      } else {
+        await supabase.from('milestone_claims').insert({
+          customer_id: customer.id, business_id, milestone_id: unclaimed_milestone.id,
+        })
+        reward_result = { type: 'milestone', milestone: unclaimed_milestone, deferred_stamp: true }
+      }
+    } else if (stampComplete) {
+      reward_result = { type: 'stamp', reward: business.reward }
+    } else if (unclaimed_milestone) {
+      await supabase.from('milestone_claims').insert({
+        customer_id: customer.id, business_id, milestone_id: unclaimed_milestone.id,
+      })
+      reward_result = { type: 'milestone', milestone: unclaimed_milestone }
+    }
+
     return NextResponse.json({
       success: true,
       customer_token: customer.customer_token,
@@ -127,6 +168,7 @@ export async function POST(req: NextRequest) {
         cards_completed: cardsCompleted,
         redeemable: stampComplete,
       },
+      reward_result,
     })
   } catch {
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
