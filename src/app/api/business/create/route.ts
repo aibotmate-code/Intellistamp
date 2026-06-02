@@ -42,13 +42,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to create business. Please try again.' }, { status: 500 })
     }
 
-    // Generate slug: name → lowercase-hyphenated + first 4 chars of uuid (no dashes)
-    const slugBase = data.name
+    // Generate URL-safe slug from name; append random suffix on conflict
+    let slug = data.name
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
       .replace(/^-+|-+$/g, '')
-    const shortId = newBusiness.id.replace(/-/g, '').slice(0, 4)
-    const slug = `${slugBase}-${shortId}`
+    if (!slug) slug = 'business'
+
+    const { data: existing } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('slug', slug)
+      .neq('id', newBusiness.id)
+      .maybeSingle()
+
+    if (existing) {
+      slug = `${slug}-${crypto.randomUUID().slice(0, 4)}`
+    }
 
     const { data: business, error: slugError } = await supabase
       .from('businesses')

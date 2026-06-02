@@ -95,6 +95,11 @@ export default function ScanPage() {
       }
       setCardState(data.card_state)
       setNewStampIndex(data.card_state.card_stamps - 1)
+      if (data.reward_result) {
+        try {
+          sessionStorage.setItem('intellistamp_pending_reward', JSON.stringify(data.reward_result))
+        } catch { /* sessionStorage unavailable */ }
+      }
       setFlowState('success')
       showToast('Stamp added! 🎉')
     } catch {

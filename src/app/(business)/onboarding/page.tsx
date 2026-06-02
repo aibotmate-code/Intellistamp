@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -21,6 +21,12 @@ interface FormData {
   security_mode: 'basic' | 'smart' | 'strict'
 }
 
+interface MilestoneInput {
+  visit_number: number
+  badge: string
+  reward: string
+}
+
 const initialForm: FormData = {
   name: '',
   category: '',
@@ -33,6 +39,13 @@ const initialForm: FormData = {
   security_mode: 'smart',
 }
 
+const CHECKLIST_ITEMS = [
+  '✅ Loyalty card created',
+  '✅ QR code ready',
+  '✅ Kiosk mode available',
+  '✅ Customers can earn stamps',
+]
+
 export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -40,6 +53,16 @@ export default function OnboardingPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Step 4 — milestone setup
+  const [bizId, setBizId] = useState<string | null>(null)
+  const [milestones, setMilestones] = useState<MilestoneInput[]>([])
+  const [milestonesLoading, setMilestonesLoading] = useState(false)
+  const [milestonesError, setMilestonesError] = useState('')
+
+  // Step 5 — ready screen animations
+  const [visibleChecks, setVisibleChecks] = useState([false, false, false, false])
+  const [showPulse, setShowPulse] = useState(false)
 
   const set = (key: keyof FormData, value: string | number) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -101,6 +124,7 @@ export default function OnboardingPage() {
         ownerPhone: form.owner_phone,
         bizId: data.business.id,
       }))
+      setBizId(data.business.id)
       setStep(4)
     } catch {
       setError('Network error. Please try again.')
@@ -109,33 +133,102 @@ export default function OnboardingPage() {
     }
   }
 
+  const addMilestone = () =>
+    setMilestones((prev) => {
+      const visitNumber = prev.length === 0 ? 15 : prev[prev.length - 1].visit_number + 15
+      return [...prev, { visit_number: visitNumber, badge: '🎯', reward: '' }]
+    })
+
+  const removeMilestone = (index: number) =>
+    setMilestones((prev) => prev.filter((_, i) => i !== index))
+
+  const updateMilestone = (index: number, key: keyof MilestoneInput, value: string | number) =>
+    setMilestones((prev) => prev.map((m, i) => i === index ? { ...m, [key]: value } : m))
+
+  const handleMilestoneContinue = async () => {
+    if (milestones.length === 0) {
+      setStep(5)
+      return
+    }
+    if (!bizId) return
+    setMilestonesLoading(true)
+    setMilestonesError('')
+    try {
+      const res = await fetch('/api/milestones/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_id: bizId,
+          conflict_priority: 'stamp',
+          milestones: milestones.map((m) => ({ ...m, is_active: true })),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMilestonesError(data.error || 'Failed to save milestones')
+        return
+      }
+      setStep(5)
+    } catch {
+      setMilestonesError('Network error. Please try again.')
+    } finally {
+      setMilestonesLoading(false)
+    }
+  }
+
+  // Stagger checklist items + trigger pulse on ready screen
+  useEffect(() => {
+    if (step !== 5) return
+    const timers: ReturnType<typeof setTimeout>[] = []
+    ;[0, 1, 2, 3].forEach((i) => {
+      timers.push(
+        setTimeout(() => {
+          setVisibleChecks((prev) => {
+            const next = [...prev]
+            next[i] = true
+            return next
+          })
+        }, 200 + i * 100)
+      )
+    })
+    timers.push(setTimeout(() => setShowPulse(true), 200 + 4 * 100 + 200))
+    return () => timers.forEach(clearTimeout)
+  }, [step])
+
   return (
     <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center">
+      <style>{`
+        @keyframes _ob_scaleIn { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes _ob_fadeUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes _ob_pulseOnce { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(250,204,21,0.15); } }
+        ._ob_emoji { animation: _ob_scaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+        ._ob_check { animation: _ob_fadeUp 0.3s ease both; }
+        ._ob_pulse { animation: _ob_pulseOnce 0.6s ease both; }
+      `}</style>
+
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="text-4xl mb-2">🏷️</div>
           <h1 className="text-2xl font-black text-white">IntelliStamp</h1>
-          <p className="text-zinc-400 text-sm">Set up your loyalty card in 3 steps</p>
+          <p className="text-zinc-400 text-sm">Set up your loyalty card in 5 steps</p>
         </div>
 
-        {/* Step indicator */}
-        {step < 4 && (
-          <div className="flex items-center justify-center gap-2 mb-8">
-            {[1, 2, 3].map((s) => (
-              <div key={s} className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                  s < step ? 'bg-yellow-400 text-black' :
-                  s === step ? 'bg-yellow-400 text-black' :
-                  'bg-zinc-800 text-zinc-500'
-                }`}>
-                  {s < step ? '✓' : s}
-                </div>
-                {s < 3 && <div className={`w-12 h-0.5 ${s < step ? 'bg-yellow-400' : 'bg-zinc-800'}`} />}
+        {/* Step indicator — always visible */}
+        <div className="flex items-center justify-center gap-1.5 mb-8">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <div key={s} className="flex items-center gap-1.5">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                s < step ? 'bg-yellow-400 text-black' :
+                s === step ? 'bg-yellow-400 text-black' :
+                'bg-zinc-800 text-zinc-500'
+              }`}>
+                {s < step ? '✓' : s}
               </div>
-            ))}
-          </div>
-        )}
+              {s < 5 && <div className={`w-7 h-0.5 ${s < step ? 'bg-yellow-400' : 'bg-zinc-800'}`} />}
+            </div>
+          ))}
+        </div>
 
         {/* Step 1 — Business Details */}
         {step === 1 && (
@@ -346,21 +439,133 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 4 — Ready */}
+        {/* Step 4 — Milestone Rewards (optional) */}
         {step === 4 && (
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 text-center space-y-4">
-            <div className="text-5xl mb-2">✅</div>
-            <h2 className="text-xl font-black text-white">Your stamp card is ready!</h2>
-            <div className="text-5xl">{form.emoji}</div>
-            <p className="text-xl font-bold text-white">{form.name}</p>
+          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-5">
+            <div>
+              <h2
+                className="text-3xl text-white tracking-wide"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                ADD MILESTONE REWARDS
+              </h2>
+              <p className="text-sm text-zinc-400 mt-1">
+                Reward customers for reaching visit milestones.
+                <br />
+                You can always add these later from Settings.
+              </p>
+            </div>
 
-            <Button onClick={() => router.push('/dashboard')} className="w-full" size="lg">
-              Enter Dashboard →
+            {milestones.length > 0 && (
+              <div className="space-y-3">
+                {milestones.map((m, i) => (
+                  <div key={i} className="bg-zinc-800 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-zinc-300">Milestone {i + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeMilestone(i)}
+                        className="text-xs text-zinc-500 hover:text-red-400 transition-colors"
+                      >
+                        ✕ Remove
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-zinc-400 mb-1">At visit #</label>
+                        <input
+                          type="number"
+                          value={m.visit_number}
+                          min={1}
+                          onChange={(e) => updateMilestone(i, 'visit_number', parseInt(e.target.value) || 1)}
+                          className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-yellow-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-400 mb-1">Badge emoji</label>
+                        <input
+                          type="text"
+                          value={m.badge}
+                          maxLength={4}
+                          onChange={(e) => updateMilestone(i, 'badge', e.target.value)}
+                          className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-yellow-400"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-zinc-400 mb-1">Reward description</label>
+                      <input
+                        type="text"
+                        value={m.reward}
+                        placeholder="e.g. Free birthday drink"
+                        maxLength={100}
+                        onChange={(e) => updateMilestone(i, 'reward', e.target.value)}
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-yellow-400"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={addMilestone}
+              className="w-full py-3 rounded-xl border-2 border-dashed border-zinc-700 text-zinc-400 text-sm font-medium hover:border-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              + Add Milestone
+            </button>
+
+            {milestonesError && <Alert type="error" message={milestonesError} />}
+
+            <Button
+              onClick={handleMilestoneContinue}
+              loading={milestonesLoading}
+              className="w-full"
+            >
+              CONTINUE →
             </Button>
 
-            <p className="text-xs text-zinc-500 mt-4">
-              Tip: Open your dashboard on your counter device and tap Kiosk Mode for customers to scan
-            </p>
+            <button
+              type="button"
+              onClick={() => setStep(5)}
+              className="w-full text-center text-sm text-zinc-500 hover:text-zinc-300 transition-colors py-1"
+            >
+              Skip — set up later
+            </button>
+          </div>
+        )}
+
+        {/* Step 5 — Ready */}
+        {step === 5 && (
+          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 text-center space-y-6">
+            <div className="text-6xl _ob_emoji">{form.emoji}</div>
+
+            <h2
+              className="text-white tracking-wide"
+              style={{ fontFamily: 'var(--font-display)', fontSize: '2rem' }}
+            >
+              {form.name} IS READY!
+            </h2>
+
+            <div className="space-y-3 text-left">
+              {CHECKLIST_ITEMS.map((item, i) => (
+                <div
+                  key={i}
+                  className={`text-white font-medium ${visibleChecks[i] ? '_ob_check' : 'opacity-0'}`}
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
+
+            <Button
+              onClick={() => router.push('/dashboard')}
+              className={`w-full ${showPulse ? '_ob_pulse' : ''}`}
+              size="lg"
+            >
+              OPEN DASHBOARD →
+            </Button>
           </div>
         )}
       </div>
