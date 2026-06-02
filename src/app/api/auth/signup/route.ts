@@ -1,0 +1,41 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+
+const schema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+})
+
+export async function POST(req: NextRequest) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  try {
+    const body = await req.json()
+    const result = schema.safeParse(body)
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
+    }
+
+    const { email, password } = result.data
+
+    // Create user with email pre-confirmed — no verification email required
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    })
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    return NextResponse.json({ success: true, userId: data.user.id })
+  } catch {
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+  }
+}

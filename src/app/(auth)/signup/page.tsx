@@ -22,12 +22,23 @@ export default function SignupPage() {
     if (password !== confirm) { setError('Passwords do not match'); return }
     setLoading(true)
     try {
+      // Create user server-side with email pre-confirmed (no verification email)
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Signup failed'); return }
+
+      // Sign in immediately to establish the session cookie
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       )
-      const { error: authError } = await supabase.auth.signUp({ email, password })
-      if (authError) { setError(authError.message); return }
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      if (signInError) { setError(signInError.message); return }
+
       router.push('/onboarding')
       router.refresh()
     } catch {
