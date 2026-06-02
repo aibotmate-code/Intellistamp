@@ -78,7 +78,11 @@ export async function POST(req: NextRequest) {
 
     if (error || !business) {
       console.error('Business insert error:', error)
-      return NextResponse.json({ error: 'Failed to create business. Please try again.' }, { status: 500 })
+      return NextResponse.json({
+        error: 'Failed to create business. Please try again.',
+        _debug: error?.message ?? 'no business returned',
+        _code: error?.code,
+      }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, business })
