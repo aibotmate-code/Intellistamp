@@ -10,7 +10,7 @@ import StampCard from '@/components/customer/StampCard'
 import { generateToken } from '@/lib/token'
 import type { Business, StampCardState } from '@/types'
 
-type FlowState = 'loading' | 'login' | 'otp' | 'stamping' | 'success' | 'error' | 'cooldown'
+type FlowState = 'loading' | 'login' | 'name' | 'stamping' | 'success' | 'error' | 'cooldown'
 
 export default function ScanPage() {
   const { bizId } = useParams<{ bizId: string }>()
@@ -23,11 +23,10 @@ export default function ScanPage() {
   const [newStampIndex, setNewStampIndex] = useState<number | undefined>()
 
   const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState('')
+  const [name, setName] = useState('')
   const [phoneError, setPhoneError] = useState('')
-  const [otpError, setOtpError] = useState('')
-  const [loadingOtp, setLoadingOtp] = useState(false)
-  const [loadingVerify, setLoadingVerify] = useState(false)
+  const [nameError, setNameError] = useState('')
+  const [loadingIdentify, setLoadingIdentify] = useState(false)
   const [loadingStamp, setLoadingStamp] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [toast, setToast] = useState('')
@@ -49,7 +48,7 @@ export default function ScanPage() {
       .catch(() => setFlowState('error'))
   }, [bizId])
 
-  // Check session
+  // Check existing session
   useEffect(() => {
     if (!business) return
     const stored = localStorage.getItem('customer_session')
@@ -110,69 +109,76 @@ export default function ScanPage() {
     }
   }, [bizId, business, customer])
 
-  // Auto-stamp when customer is set and flow is stamping
   useEffect(() => {
     if (flowState === 'stamping' && customer && business) {
       startTransition(() => { void doStamp() })
     }
   }, [flowState, customer, business, doStamp])
 
-  const handleSendOtp = async () => {
+  const handleContinue = async () => {
     setPhoneError('')
     if (!/^[6-9]\d{9}$/.test(phone)) {
       setPhoneError('Enter a valid 10-digit Indian mobile number')
       return
     }
-    setLoadingOtp(true)
+    setLoadingIdentify(true)
     try {
-      const res = await fetch('/api/auth/verify', {
+      const res = await fetch('/api/customer/identify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
       })
       const data = await res.json()
       if (!res.ok) {
-        setPhoneError(data.error)
+        setPhoneError(data.error || 'Something went wrong')
         return
       }
-      if (data.otp) showToast(`Dev OTP: ${data.otp}`)
-      setFlowState('otp')
+      localStorage.setItem('customer_session', JSON.stringify({
+        id: data.customer.id,
+        phone: data.customer.phone,
+        customer_token: data.customer.customer_token,
+        name: data.customer.name,
+      }))
+      setCustomer(data.customer)
+      if (data.isNew) {
+        setFlowState('name')
+      } else {
+        setFlowState('stamping')
+      }
     } catch {
       setPhoneError('Network error. Please try again.')
     } finally {
-      setLoadingOtp(false)
+      setLoadingIdentify(false)
     }
   }
 
-  const handleVerifyOtp = async () => {
-    setOtpError('')
-    if (otp.length !== 4) {
-      setOtpError('Enter the 4-digit OTP')
+  const handleJoin = async () => {
+    setNameError('')
+    if (!name.trim()) {
+      setNameError('Please enter your name')
       return
     }
-    setLoadingVerify(true)
+    if (!customer) return
+    setLoadingIdentify(true)
     try {
-      const res = await fetch('/api/auth/verify', {
-        method: 'POST',
+      const res = await fetch('/api/customer/profile', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp }),
+        body: JSON.stringify({ customer_id: customer.id, name: name.trim() }),
       })
       const data = await res.json()
       if (!res.ok) {
-        setOtpError(data.error)
+        setNameError(data.error || 'Something went wrong')
         return
       }
-      localStorage.setItem('customer_session', JSON.stringify({ id: data.customer.id, phone: data.customer.phone, customer_token: data.customer.customer_token }))
-      setCustomer(data.customer)
-      if (data.isNewCustomer) {
-        router.push(`/profile?bizId=${bizId}&token=${data.customer.customer_token}`)
-        return
-      }
+      const updated = { ...customer, name: name.trim() }
+      localStorage.setItem('customer_session', JSON.stringify(updated))
+      setCustomer(updated)
       setFlowState('stamping')
     } catch {
-      setOtpError('Network error. Please try again.')
+      setNameError('Network error. Please try again.')
     } finally {
-      setLoadingVerify(false)
+      setLoadingIdentify(false)
     }
   }
 
@@ -217,27 +223,26 @@ export default function ScanPage() {
               inputMode="numeric"
               maxLength={10}
             />
-            <Button onClick={handleSendOtp} loading={loadingOtp} className="w-full">
-              Get OTP →
+            <Button onClick={handleContinue} loading={loadingIdentify} className="w-full">
+              Continue →
             </Button>
           </div>
         )}
 
-        {flowState === 'otp' && (
+        {flowState === 'name' && (
           <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
-            <h2 className="text-lg font-bold text-white">Enter OTP</h2>
-            <p className="text-sm text-zinc-400">Sent to +91 {phone}</p>
+            <h2 className="text-lg font-bold text-white">Welcome! What&apos;s your name?</h2>
+            <p className="text-sm text-zinc-400">First time here — just your name and you&apos;re in.</p>
             <Input
-              label="4-digit OTP"
-              placeholder="1234"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              error={otpError}
-              inputMode="numeric"
-              maxLength={4}
+              label="Your Name"
+              placeholder="Rahul"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              error={nameError}
+              autoFocus
             />
-            <Button onClick={handleVerifyOtp} loading={loadingVerify} className="w-full">
-              Verify OTP →
+            <Button onClick={handleJoin} loading={loadingIdentify} className="w-full">
+              Join & Get Stamp →
             </Button>
             <button
               onClick={() => setFlowState('login')}
