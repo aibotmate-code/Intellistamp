@@ -41,7 +41,6 @@ export async function GET(req: NextRequest) {
 
     const totalStamps = stampsResult.count ?? 0
     const totalCustomers = customersResult.count ?? 0
-    const rewardsRedeemed = Math.floor(totalStamps / business.stamps_required)
 
     // Get customers with stamp info
     const { data: bcData, error: bcError } = await supabase
@@ -68,6 +67,11 @@ export async function GET(req: NextRequest) {
       }
       stampsByCustomer.get(stamp.customer_id)!.push(stamp)
     }
+
+    const rewardsRedeemed = (bcData ?? []).reduce(
+      (sum, bc) => sum + ((bc as { cards_redeemed?: number }).cards_redeemed ?? 0),
+      0
+    )
 
     const customers = (bcData ?? []).map((bc) => {
       const customerStamps = stampsByCustomer.get(bc.customer_id) ?? []

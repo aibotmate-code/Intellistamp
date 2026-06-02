@@ -19,6 +19,8 @@ create table if not exists businesses (
   whatsapp_enabled boolean not null default false,
   plan text not null default 'free',
   owner_phone text,
+  slug text not null default '' unique,
+  conflict_priority text not null default 'stamp',
   created_at timestamptz not null default now()
 );
 
@@ -30,6 +32,7 @@ create table if not exists customers (
   birthday_month text,
   birthday_day integer,
   whatsapp_optin boolean not null default true,
+  customer_token uuid not null default uuid_generate_v4() unique,
   created_at timestamptz not null default now()
 );
 
@@ -55,6 +58,31 @@ create table if not exists stamps (
 
 create index if not exists stamps_customer_business_idx on stamps(customer_id, business_id);
 create index if not exists stamps_stamped_at_idx on stamps(stamped_at desc);
+
+-- MILESTONES
+create table if not exists milestones (
+  id uuid primary key default uuid_generate_v4(),
+  business_id uuid not null references businesses(id) on delete cascade,
+  visit_number integer not null,
+  badge text not null,
+  reward text not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists milestones_business_id_idx on milestones(business_id);
+
+-- MILESTONE_CLAIMS
+create table if not exists milestone_claims (
+  id uuid primary key default uuid_generate_v4(),
+  customer_id uuid not null references customers(id) on delete cascade,
+  business_id uuid not null references businesses(id) on delete cascade,
+  milestone_id uuid not null references milestones(id) on delete cascade,
+  claimed_at timestamptz not null default now(),
+  unique(customer_id, milestone_id)
+);
+
+create index if not exists milestone_claims_customer_milestone_idx on milestone_claims(customer_id, milestone_id);
 
 -- CAMPAIGNS
 create table if not exists campaigns (
@@ -84,8 +112,10 @@ alter table stamps enable row level security;
 alter table business_customers enable row level security;
 alter table campaigns enable row level security;
 alter table otp_store enable row level security;
+alter table milestones enable row level security;
+alter table milestone_claims enable row level security;
 
--- RLS Policies (allow all for now)
+-- RLS Policies — service role key bypasses these; anon key blocked by default
 do $$ begin
   if not exists (select 1 from pg_policies where tablename='businesses' and policyname='Allow all') then
     create policy "Allow all" on businesses for all using (true);
@@ -104,5 +134,11 @@ do $$ begin
   end if;
   if not exists (select 1 from pg_policies where tablename='otp_store' and policyname='Allow all') then
     create policy "Allow all" on otp_store for all using (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename='milestones' and policyname='Allow all') then
+    create policy "Allow all" on milestones for all using (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename='milestone_claims' and policyname='Allow all') then
+    create policy "Allow all" on milestone_claims for all using (true);
   end if;
 end $$;
