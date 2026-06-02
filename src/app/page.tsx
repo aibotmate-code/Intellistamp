@@ -40,7 +40,7 @@ export default async function Home() {
         </div>
 
         <p className="text-zinc-600 text-xs mt-8">
-          Powered by IntelliStamp · stamp.intellicallabs.com
+          IntelliStamp is a product of IntelliCal Labs
         </p>
       </div>
     </main>

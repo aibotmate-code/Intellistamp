@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('qr')
   const [kioskMode, setKioskMode] = useState(false)
   const [error, setError] = useState('')
+  const [ownerEmail, setOwnerEmail] = useState('')
 
   // Rewards tab state
   const [milestones, setMilestones] = useState<Milestone[]>([])
@@ -73,10 +74,15 @@ export default function DashboardPage() {
       router.push('/login')
       return
     }
+    setOwnerEmail(session.user.email ?? '')
     try {
       const res = await fetch(`/api/business/get?ownerId=${session.user.id}`)
       const json = await res.json()
       if (!res.ok) {
+        if (res.status === 404) {
+          router.push('/onboarding')
+          return
+        }
         setError(json.error || 'Failed to load dashboard')
         setLoading(false)
         return
@@ -276,6 +282,9 @@ export default function DashboardPage() {
             <span className="font-black text-white">IntelliStamp</span>
             <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-medium">Business</span>
           </div>
+          {ownerEmail && (
+            <span className="hidden sm:block text-xs text-zinc-500">{ownerEmail}</span>
+          )}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"

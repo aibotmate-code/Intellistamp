@@ -124,8 +124,12 @@ grant all privileges on all sequences in schema public to anon, authenticated, s
 
 -- RLS Policies — service role key bypasses these; anon key blocked by default
 do $$ begin
-  if not exists (select 1 from pg_policies where tablename='businesses' and policyname='Allow all') then
-    create policy "Allow all" on businesses for all using (true);
+  -- Businesses: owner-only access via anon key (service role always bypasses)
+  if exists (select 1 from pg_policies where tablename='businesses' and policyname='Allow all') then
+    drop policy "Allow all" on businesses;
+  end if;
+  if not exists (select 1 from pg_policies where tablename='businesses' and policyname='Owner access only') then
+    create policy "Owner access only" on businesses for all using (owner_id = auth.uid());
   end if;
   if not exists (select 1 from pg_policies where tablename='customers' and policyname='Allow all') then
     create policy "Allow all" on customers for all using (true);
