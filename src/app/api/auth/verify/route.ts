@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     }
 
     const response = NextResponse.json({ success: true, customer, isNewCustomer })
-    response.cookies.set('customer_session', JSON.stringify({ id: customer.id, phone: customer.phone }), {
+    response.cookies.set('customer_session', JSON.stringify({ id: customer.id, phone: customer.phone, customer_token: customer.customer_token }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 30, // 30 days

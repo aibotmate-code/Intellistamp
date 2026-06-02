@@ -18,7 +18,7 @@ export default function ScanPage() {
 
   const [flowState, setFlowState] = useState<FlowState>('loading')
   const [business, setBusiness] = useState<Business | null>(null)
-  const [customer, setCustomer] = useState<{ id: string; phone: string; name?: string } | null>(null)
+  const [customer, setCustomer] = useState<{ id: string; phone: string; customer_token?: string; name?: string } | null>(null)
   const [cardState, setCardState] = useState<StampCardState | null>(null)
   const [newStampIndex, setNewStampIndex] = useState<number | undefined>()
 
@@ -157,10 +157,10 @@ export default function ScanPage() {
         setOtpError(data.error)
         return
       }
-      localStorage.setItem('customer_session', JSON.stringify({ id: data.customer.id, phone: data.customer.phone }))
+      localStorage.setItem('customer_session', JSON.stringify({ id: data.customer.id, phone: data.customer.phone, customer_token: data.customer.customer_token }))
       setCustomer(data.customer)
       if (data.isNewCustomer) {
-        router.push(`/profile?bizId=${bizId}`)
+        router.push(`/profile?bizId=${bizId}&token=${data.customer.customer_token}`)
         return
       }
       setFlowState('stamping')
@@ -253,10 +253,16 @@ export default function ScanPage() {
               reward={business.reward}
               newStampIndex={newStampIndex}
               redeemable={cardState.redeemable}
-              onClaim={() => router.push(`/card/${bizId}`)}
+              onClaim={() => {
+                const token = customer?.customer_token
+                if (token) router.push(`/card/${token}?biz=${bizId}`)
+              }}
             />
             <Button
-              onClick={() => router.push(`/card/${bizId}`)}
+              onClick={() => {
+                const token = customer?.customer_token
+                if (token) router.push(`/card/${token}?biz=${bizId}`)
+              }}
               variant="outline"
               className="w-full"
             >

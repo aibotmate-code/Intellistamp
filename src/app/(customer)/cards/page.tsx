@@ -18,6 +18,7 @@ interface CardItem {
 export default function CardsPage() {
   const router = useRouter()
   const [cards, setCards] = useState<CardItem[]>([])
+  const [customerToken, setCustomerToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,12 +27,22 @@ export default function CardsPage() {
       router.push('/')
       return
     }
-    const session = JSON.parse(stored)
+    const session = JSON.parse(stored) as { id: string; phone: string; customer_token?: string }
 
     fetch(`/api/customer/profile?customerId=${session.id}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.cards) setCards(data.cards)
+        if (data.customer?.customer_token) {
+          setCustomerToken(data.customer.customer_token)
+          // Refresh stored session with token if missing
+          if (!session.customer_token) {
+            localStorage.setItem('customer_session', JSON.stringify({
+              ...session,
+              customer_token: data.customer.customer_token,
+            }))
+          }
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -104,7 +115,7 @@ export default function CardsPage() {
               return (
                 <Link
                   key={card.business_id}
-                  href={`/card/${card.business_id}`}
+                  href={customerToken ? `/card/${customerToken}?biz=${card.business_id}` : '#'}
                   className="card-interactive block rounded-2xl p-4 border"
                   style={{
                     background: 'var(--color-surface)',

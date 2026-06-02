@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
     const data = result.data
 
-    const { data: business, error } = await supabase
+    const { data: newBusiness, error } = await supabase
       .from('businesses')
       .insert({
         name: data.name,
@@ -38,8 +38,27 @@ export async function POST(req: NextRequest) {
       .select()
       .single()
 
-    if (error) {
+    if (error || !newBusiness) {
       return NextResponse.json({ error: 'Failed to create business. Please try again.' }, { status: 500 })
+    }
+
+    // Generate slug: name → lowercase-hyphenated + first 4 chars of uuid (no dashes)
+    const slugBase = data.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    const shortId = newBusiness.id.replace(/-/g, '').slice(0, 4)
+    const slug = `${slugBase}-${shortId}`
+
+    const { data: business, error: slugError } = await supabase
+      .from('businesses')
+      .update({ slug })
+      .eq('id', newBusiness.id)
+      .select()
+      .single()
+
+    if (slugError || !business) {
+      return NextResponse.json({ error: 'Failed to finalize business setup.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, business })

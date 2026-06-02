@@ -8,6 +8,7 @@ export interface Business {
   name: string
   emoji: string
   category: string
+  slug: string
   stamps_required: number
   reward: string
   staff_pin: string
@@ -26,6 +27,7 @@ export interface Business {
 export interface Customer {
   id: string
   phone: string
+  customer_token: string
   name?: string
   birthday_month?: string
   birthday_day?: number
