@@ -3,13 +3,18 @@ import { createClient } from '@supabase/supabase-js'
 import { businessCreateSchema } from '@/lib/validators'
 
 export async function POST(req: NextRequest) {
-  // Cause 2: guard against missing env var before any DB call
+  console.log('ENV CHECK:', {
+    hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    serviceKeyPrefix: process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 20),
+    nodeEnv: process.env.NODE_ENV,
+  })
+
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error('SUPABASE_SERVICE_ROLE_KEY is not set')
     return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
   }
 
-  // Cause 3: confirmed — always uses service role key
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -18,7 +23,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
-    // Cause 4: normalise +91 prefix before validation so both formats are accepted
     if (typeof body.owner_phone === 'string') {
       body.owner_phone = body.owner_phone.replace(/^\+91/, '')
     }
@@ -33,8 +37,13 @@ export async function POST(req: NextRequest) {
 
     const data = result.data
 
-    // Cause 1: generate slug BEFORE insert so the row never lands with slug=''
-    // which would immediately break the UNIQUE constraint on any second business.
+    // DB connectivity check before attempting write
+    const { error: testError } = await supabase
+      .from('businesses')
+      .select('count')
+      .limit(1)
+    console.log('DB CONNECTION TEST:', { testError: testError ?? null })
+
     let slug = data.name
       .toLowerCase()
       .trim()
@@ -44,7 +53,6 @@ export async function POST(req: NextRequest) {
       .replace(/^-+|-+$/g, '')
     if (!slug) slug = 'business'
 
-    // Cause 5: conflict check before insert, not after
     const { data: existing } = await supabase
       .from('businesses')
       .select('id')
@@ -55,7 +63,6 @@ export async function POST(req: NextRequest) {
       slug = `${slug}-${crypto.randomUUID().slice(0, 4)}`
     }
 
-    // Single insert — slug is included, no separate UPDATE step needed
     const { data: business, error } = await supabase
       .from('businesses')
       .insert({
