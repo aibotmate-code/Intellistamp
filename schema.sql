@@ -116,9 +116,9 @@ alter table milestones enable row level security;
 alter table milestone_claims enable row level security;
 
 -- Table-level grants — required even with RLS policies
-grant usage on schema public to anon, authenticated;
-grant all privileges on all tables in schema public to anon, authenticated;
-grant all privileges on all sequences in schema public to anon, authenticated;
+grant usage on schema public to anon, authenticated, service_role;
+grant all privileges on all tables in schema public to anon, authenticated, service_role;
+grant all privileges on all sequences in schema public to anon, authenticated, service_role;
 
 -- RLS Policies — service role key bypasses these; anon key blocked by default
 do $$ begin
