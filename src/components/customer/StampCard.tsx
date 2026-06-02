@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { startTransition, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { MilestoneWithStatus, RewardResult } from '@/types'
 
@@ -66,7 +66,7 @@ function MilestoneBanner({
   const [visible, setVisible] = useState(false)
   const [exiting, setExiting] = useState(false)
   const onDismissRef = useRef(onDismiss)
-  onDismissRef.current = onDismiss
+  useEffect(() => { onDismissRef.current = onDismiss })
 
   const handleDismiss = () => {
     setExiting(true)
@@ -80,7 +80,6 @@ function MilestoneBanner({
       cancelAnimationFrame(raf)
       clearTimeout(timer)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const badge = rewardResult.milestone?.badge ?? ''
@@ -304,9 +303,10 @@ export default function StampCard({
 
   useEffect(() => {
     if (redeemable && newStampIndex === undefined) {
-      setShowClaim(true)
+      startTransition(() => setShowClaim(true))
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Derived
   const sortedMilestones = milestones

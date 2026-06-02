@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { otpVerifySchema } from '@/lib/validators'
+import { phoneSchema, otpVerifySchema } from '@/lib/validators'
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
@@ -18,14 +18,58 @@ export async function POST(req: NextRequest) {
   )
   try {
     const body = await req.json()
+
+    // ── Send OTP (phone only) ────────────────────────────────────────────────
+    if (!body.otp) {
+      const result = phoneSchema.safeParse(body)
+      if (!result.success) {
+        return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
+      }
+      const { phone } = result.data
+
+      const { data: recentOtp } = await supabase
+        .from('otp_store')
+        .select('created_at')
+        .eq('phone', phone)
+        .eq('used', false)
+        .gte('created_at', new Date(Date.now() - 60000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (recentOtp && recentOtp.length > 0) {
+        return NextResponse.json(
+          { error: 'Please wait 60 seconds before requesting another OTP' },
+          { status: 429 }
+        )
+      }
+
+      await supabase.from('otp_store').delete().eq('phone', phone).eq('used', false)
+
+      const otp = Math.floor(1000 + Math.random() * 9000).toString()
+
+      const { error: insertError } = await supabase.from('otp_store').insert({
+        phone,
+        otp,
+        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      })
+
+      if (insertError) {
+        return NextResponse.json({ error: 'Failed to send OTP. Please try again.' }, { status: 500 })
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        return NextResponse.json({ success: true, otp })
+      }
+      return NextResponse.json({ success: true, message: 'OTP sent to your number' })
+    }
+
+    // ── Verify OTP (phone + otp) ─────────────────────────────────────────────
     const result = otpVerifySchema.safeParse(body)
     if (!result.success) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
-
     const { phone, otp } = result.data
 
-    // Find latest unused, non-expired OTP
     const { data: otpRecord, error: otpError } = await supabase
       .from('otp_store')
       .select('*')
@@ -44,10 +88,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid OTP' }, { status: 400 })
     }
 
-    // Mark OTP as used
     await supabase.from('otp_store').update({ used: true }).eq('id', otpRecord.id)
 
-    // Find or create customer
     const { data: existingCustomer } = await supabase
       .from('customers')
       .select('*')
@@ -67,20 +109,22 @@ export async function POST(req: NextRequest) {
       if (createError || !newCustomer) {
         return NextResponse.json({ error: 'Failed to create account. Please try again.' }, { status: 500 })
       }
-
       customer = newCustomer
       isNewCustomer = true
     }
 
     const response = NextResponse.json({ success: true, customer, isNewCustomer })
-    response.cookies.set('customer_session', JSON.stringify({ id: customer.id, phone: customer.phone, customer_token: customer.customer_token }), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: '/',
-      sameSite: 'lax',
-    })
-
+    response.cookies.set(
+      'customer_session',
+      JSON.stringify({ id: customer.id, phone: customer.phone, customer_token: customer.customer_token }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 30,
+        path: '/',
+        sameSite: 'lax',
+      }
+    )
     return response
   } catch {
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { startTransition, useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import StatsCard from '@/components/business/StatsCard'
@@ -31,6 +31,8 @@ interface DashboardData {
   stats: { total_customers: number; total_stamps: number; rewards_redeemed: number }
   customers: CustomerRow[]
 }
+
+const PAGE_LOAD_TS = Date.now()
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -86,7 +88,7 @@ export default function DashboardPage() {
   }, [router])
 
   useEffect(() => {
-    fetchData()
+    startTransition(() => { fetchData() })
   }, [fetchData])
 
   const handleSaveToggles = async (updates: Partial<Business>) => {
@@ -198,8 +200,7 @@ export default function DashboardPage() {
   }).length
   const inactiveCount = customers.filter((c) => {
     if (!c.last_stamp) return true
-    const diffDays = (Date.now() - new Date(c.last_stamp).getTime()) / (1000 * 60 * 60 * 24)
-    return diffDays >= 30
+    return new Date(c.last_stamp).getTime() < PAGE_LOAD_TS - 30 * 24 * 60 * 60 * 1000
   }).length
 
   const audienceCounts = {

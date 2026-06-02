@@ -2,9 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 import type { Business } from '@/types'
+
+function getSessionToken(): { customerId: string | null; customerToken: string | null } {
+  try {
+    const s = localStorage.getItem('customer_session')
+    if (!s) return { customerId: null, customerToken: null }
+    const parsed = JSON.parse(s)
+    return { customerId: parsed.id ?? null, customerToken: parsed.customer_token ?? null }
+  } catch {
+    return { customerId: null, customerToken: null }
+  }
+}
 
 export default function ReviewPage() {
   const { bizId } = useParams<{ bizId: string }>()
@@ -15,12 +25,12 @@ export default function ReviewPage() {
   const [claimLoading, setClaimLoading] = useState(false)
   const [claimed, setClaimed] = useState(false)
 
-  const customerId = (() => {
-    try {
-      const s = localStorage.getItem('customer_session')
-      return s ? JSON.parse(s).id : null
-    } catch { return null }
-  })()
+  const { customerId, customerToken } = getSessionToken()
+
+  const toCard = () => {
+    if (customerToken) router.push(`/card/${customerToken}?biz=${bizId}`)
+    else router.push('/cards')
+  }
 
   useEffect(() => {
     if (!customerId) {
@@ -31,25 +41,23 @@ export default function ReviewPage() {
       .then((r) => r.json())
       .then((data) => {
         if (!data.business?.gmb_link) {
-          router.push(`/card/${bizId}`)
+          toCard()
           return
         }
         setBusiness(data.business)
 
-        // Check if already claimed
         fetch(`/api/customer/profile?customerId=${customerId}`)
           .then((r) => r.json())
           .then((custData) => {
             const enrollment = custData.cards?.find(
               (c: { business_id: string; review_claimed: boolean }) => c.business_id === bizId
             )
-            if (enrollment?.review_claimed) {
-              router.push(`/card/${bizId}`)
-            }
+            if (enrollment?.review_claimed) toCard()
           })
       })
-      .catch(() => router.push(`/card/${bizId}`))
+      .catch(() => toCard())
       .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bizId, customerId, router])
 
   const handleGmbClick = () => {
@@ -77,7 +85,7 @@ export default function ReviewPage() {
       const data = await res.json()
       if (data.success) {
         setClaimed(true)
-        setTimeout(() => router.push(`/card/${bizId}`), 1500)
+        setTimeout(() => toCard(), 1500)
       }
     } catch {
       // ignore
@@ -97,7 +105,6 @@ export default function ReviewPage() {
   return (
     <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center">
       <div className="w-full max-w-md space-y-6">
-        {/* Step dots */}
         <div className="flex justify-center gap-2">
           {[1, 2, 3].map((s) => (
             <div key={s} className="w-3 h-3 rounded-full bg-yellow-400" />
@@ -151,7 +158,7 @@ export default function ReviewPage() {
         </div>
 
         <button
-          onClick={() => router.push(`/card/${bizId}`)}
+          onClick={toCard}
           className="text-sm text-zinc-500 hover:text-zinc-300 w-full text-center"
         >
           Skip — go to my cards

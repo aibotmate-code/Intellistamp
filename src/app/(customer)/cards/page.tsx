@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Spinner from '@/components/ui/Spinner'
 import type { Business } from '@/types'
 
 interface CardItem {
@@ -109,7 +108,6 @@ export default function CardsPage() {
             {cards.map((card) => {
               const { business, card_stamps, cards_completed, cards_redeemed } = card
               const redeemable = cards_completed > (cards_redeemed ?? 0)
-              const progress = (card_stamps / business.stamps_required) * 100
               const segCount = business.stamps_required
 
               return (

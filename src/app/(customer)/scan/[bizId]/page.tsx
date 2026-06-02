@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { startTransition, useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -53,28 +53,21 @@ export default function ScanPage() {
   useEffect(() => {
     if (!business) return
     const stored = localStorage.getItem('customer_session')
-    if (stored) {
-      try {
-        const session = JSON.parse(stored)
-        setCustomer(session)
-        setFlowState('stamping')
-      } catch {
+    startTransition(() => {
+      if (stored) {
+        try {
+          setCustomer(JSON.parse(stored))
+          setFlowState('stamping')
+        } catch {
+          setFlowState('login')
+        }
+      } else {
         setFlowState('login')
       }
-    } else {
-      setFlowState('login')
-    }
+    })
   }, [business])
 
-  // Auto-stamp when customer is set and flow is stamping
-  useEffect(() => {
-    if (flowState === 'stamping' && customer && business) {
-      doStamp()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flowState, customer])
-
-  const doStamp = async () => {
+  const doStamp = useCallback(async () => {
     if (!customer || !business) return
     setLoadingStamp(true)
     try {
@@ -110,7 +103,14 @@ export default function ScanPage() {
     } finally {
       setLoadingStamp(false)
     }
-  }
+  }, [bizId, business, customer])
+
+  // Auto-stamp when customer is set and flow is stamping
+  useEffect(() => {
+    if (flowState === 'stamping' && customer && business) {
+      startTransition(() => { void doStamp() })
+    }
+  }, [flowState, customer, business, doStamp])
 
   const handleSendOtp = async () => {
     setPhoneError('')
@@ -120,7 +120,7 @@ export default function ScanPage() {
     }
     setLoadingOtp(true)
     try {
-      const res = await fetch('/api/auth/otp', {
+      const res = await fetch('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),

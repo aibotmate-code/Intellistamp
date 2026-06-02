@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       if (diffMs < fourHours) {
         const hoursLeft = Math.ceil((fourHours - diffMs) / (60 * 60 * 1000))
         return NextResponse.json(
-          { error: `You already stamped recently. Next stamp available in ${hoursLeft}h.` },
+          { error: `You already stamped recently. Next stamp available in ${hoursLeft}h.`, cooldown_hours: hoursLeft },
           { status: 429 }
         )
       }
@@ -179,11 +179,11 @@ export async function POST(req: NextRequest) {
       stamp,
       card_state: {
         total_stamps: total,
-        card_stamps: cardStamps,
+        card_stamps: stampComplete ? business.stamps_required : cardStamps,
         cards_completed: cardsCompleted,
         can_stamp: false,
         cooldown_remaining_hours: 4,
-        redeemable: total > 0 && cardStamps === 0,
+        redeemable: stampComplete,
       },
       reward_result,
     })

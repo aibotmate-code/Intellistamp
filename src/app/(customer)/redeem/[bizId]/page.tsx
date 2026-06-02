@@ -14,6 +14,17 @@ export default function RedeemPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const toCard = () => {
+    try {
+      const s = localStorage.getItem('customer_session')
+      const token = s ? JSON.parse(s).customer_token : null
+      if (token) router.push(`/card/${token}?biz=${bizId}`)
+      else router.push('/cards')
+    } catch {
+      router.push('/cards')
+    }
+  }
+
   useEffect(() => {
     const stored = localStorage.getItem('customer_session')
     if (!stored) {
@@ -56,7 +67,7 @@ export default function RedeemPage() {
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-red-400 mb-4">{error}</p>
-          <Button onClick={() => router.push(`/card/${bizId}`)}>Back to Card</Button>
+          <Button onClick={toCard}>Back to Card</Button>
         </div>
       </div>
     )
