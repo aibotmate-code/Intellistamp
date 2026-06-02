@@ -244,6 +244,7 @@ export default function RewardsTab({
             visit_number: m.visit_number,
             badge: m.badge.trim(),
             reward: m.reward.trim(),
+            is_active: true,
           })),
         }),
       })
