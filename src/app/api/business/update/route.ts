@@ -12,6 +12,7 @@ const schema = z.object({
   dynamic_qr_enabled: z.boolean().optional(),
   staff_pin_enabled: z.boolean().optional(),
   whatsapp_enabled: z.boolean().optional(),
+  gmb_link: z.string().url('Enter a valid URL').optional().or(z.literal('')),
 })
 
 export async function PATCH(req: NextRequest) {

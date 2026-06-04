@@ -61,8 +61,12 @@ export default function DashboardPage() {
   const [campaignLoading, setCampaignLoading] = useState(false)
   const [campaignResult, setCampaignResult] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
 
-  // Settings edit state
+  // GMB link edit state
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [gmbInput, setGmbInput] = useState('')
+  const [gmbSaving, setGmbSaving] = useState(false)
+  const [gmbError, setGmbError] = useState('')
+  const [gmbSaved, setGmbSaved] = useState(false)
 
   const fetchData = useCallback(async () => {
     const supabase = createBrowserClient(
@@ -535,12 +539,7 @@ export default function DashboardPage() {
           <div className="max-w-2xl space-y-6">
             {/* Business Info */}
             <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-white">Business Info</h3>
-                <Button variant="secondary" size="sm" onClick={() => setEditModalOpen(true)}>
-                  Edit
-                </Button>
-              </div>
+              <h3 className="font-bold text-white mb-4">Business Info</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-zinc-400">Name</span>
@@ -562,11 +561,31 @@ export default function DashboardPage() {
                   <span className="text-zinc-400">Staff PIN</span>
                   <span className="text-white">••••</span>
                 </div>
-                {business.gmb_link && (
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">GMB Link</span>
-                    <span className="text-green-400 text-xs">Set ✓</span>
+              </div>
+
+              {/* Google Review Link */}
+              <div className="mt-5 pt-5 border-t border-zinc-800">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-medium text-white">Google Review Link</p>
+                    <p className="text-xs text-zinc-500">Customers get a bonus stamp for leaving a review</p>
                   </div>
+                  <button
+                    onClick={() => {
+                      setGmbInput(business.gmb_link ?? '')
+                      setGmbError('')
+                      setGmbSaved(false)
+                      setEditModalOpen(true)
+                    }}
+                    className="text-xs text-yellow-400 hover:text-yellow-300"
+                  >
+                    {business.gmb_link ? 'Edit' : 'Set up →'}
+                  </button>
+                </div>
+                {business.gmb_link ? (
+                  <p className="text-xs text-green-400">✓ Set — review prompt active in kiosk</p>
+                ) : (
+                  <p className="text-xs text-zinc-600">Not set — review prompt hidden in kiosk</p>
                 )}
               </div>
             </div>
@@ -576,17 +595,63 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Edit Modal */}
+      {/* GMB Link Modal */}
       {editModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 w-full max-w-sm">
-            <h3 className="font-bold text-white mb-4">Edit Business Info</h3>
-            <p className="text-sm text-zinc-400 mb-4">
-              Contact support to update business details after creation.
+          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 w-full max-w-sm space-y-4">
+            <h3 className="font-bold text-white">Google Review Link</h3>
+            <p className="text-sm text-zinc-400">
+              Paste your Google Maps review link. Customers in kiosk mode will be offered a bonus stamp for leaving a review.
             </p>
-            <Button onClick={() => setEditModalOpen(false)} variant="secondary" className="w-full">
-              Close
-            </Button>
+            <Input
+              label="Google Review URL"
+              placeholder="https://g.page/r/..."
+              value={gmbInput}
+              onChange={(e) => { setGmbInput(e.target.value); setGmbError(''); setGmbSaved(false) }}
+            />
+            {gmbError && <p className="text-sm text-red-400">{gmbError}</p>}
+            {gmbSaved && <p className="text-sm text-green-400">✓ Saved successfully</p>}
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={() => setEditModalOpen(false)}
+              >
+                {gmbSaved ? 'Close' : 'Cancel'}
+              </Button>
+              <Button
+                className="flex-1"
+                loading={gmbSaving}
+                onClick={async () => {
+                  if (gmbInput && !/^https?:\/\/.+/.test(gmbInput)) {
+                    setGmbError('Enter a valid URL starting with https://')
+                    return
+                  }
+                  setGmbSaving(true)
+                  setGmbError('')
+                  try {
+                    const res = await fetch('/api/business/update', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: data!.business.id, gmb_link: gmbInput || '' }),
+                    })
+                    if (res.ok) {
+                      const json = await res.json()
+                      setData((prev) => prev ? { ...prev, business: json.business } : prev)
+                      setGmbSaved(true)
+                    } else {
+                      setGmbError('Failed to save. Try again.')
+                    }
+                  } catch {
+                    setGmbError('Network error.')
+                  } finally {
+                    setGmbSaving(false)
+                  }
+                }}
+              >
+                Save
+              </Button>
+            </div>
           </div>
         </div>
       )}

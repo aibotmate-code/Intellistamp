@@ -246,10 +246,10 @@ export default function CardsPage() {
         )}
 
         <Link
-          href="/"
+          href="/scanner"
           className="mt-6 flex items-center justify-center gap-2 border-2 border-dashed border-zinc-800 rounded-2xl p-5 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400 transition-colors"
         >
-          <span className="text-xl">+</span>
+          <span className="text-xl">📷</span>
           <span className="font-medium">Scan a new business</span>
         </Link>
       </div>
