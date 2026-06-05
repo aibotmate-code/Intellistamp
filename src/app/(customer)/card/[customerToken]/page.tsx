@@ -127,7 +127,7 @@ export default function CardPage({ params }: PageParams) {
             )}
 
             <Button
-              onClick={() => router.push(`/scan/${bizId}`)}
+              onClick={() => router.push('/scanner')}
               variant="outline"
               className="w-full"
             >
@@ -150,7 +150,7 @@ export default function CardPage({ params }: PageParams) {
             <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
               No card found for this business.
             </p>
-            <Button onClick={() => router.push(`/scan/${bizId}`)} className="mt-4">
+            <Button onClick={() => router.push('/scanner')} className="mt-4">
               Scan to enroll
             </Button>
           </div>
