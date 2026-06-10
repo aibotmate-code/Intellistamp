@@ -42,10 +42,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    // Validate token
+    // Validate token — 401 because the token IS the authorization credential
     if (business.dynamic_qr_enabled) {
       if (!validateToken(business_id, token)) {
-        return NextResponse.json({ error: 'Invalid or expired token. Please scan the QR again.' }, { status: 400 })
+        return NextResponse.json({ error: 'Invalid or expired token. Please scan the QR again.' }, { status: 401 })
       }
     }
 

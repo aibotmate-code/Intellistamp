@@ -44,6 +44,16 @@ export function formatPhone(phone: string): string {
   return `+91 ${phone.slice(0, 5)} ${phone.slice(5)}`
 }
 
+export function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 export function timeSince(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const hours = Math.floor(diff / (1000 * 60 * 60))

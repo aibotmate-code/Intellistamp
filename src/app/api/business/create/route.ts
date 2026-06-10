@@ -22,7 +22,10 @@ export async function POST(req: NextRequest) {
     }
   )
   const { data: { session } } = await authClient.auth.getSession()
-  const ownerId = session?.user.id ?? null
+  if (!session) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+  const ownerId = session.user.id
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
