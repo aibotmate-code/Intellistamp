@@ -192,6 +192,20 @@ describe('POST /api/stamp/issue', () => {
     expect(res.status).toBe(200)
   })
 
+  test('replay attack — same token same customer → 409', async () => {
+    mockQueue.push({ data: mockBusiness, error: null })            // business
+    mockQueue.push({ data: null, error: { code: 'PGRST116' } })   // no recent stamp
+    mockQueue.push({ data: null, error: null })                    // upsert
+    mockQueue.push({ data: null, error: { code: '23505' } })      // stamp INSERT → unique violation
+
+    const token = generateToken(BIZ_ID, 0)
+    const req = makeRequest({ customer_id: CUST_ID, business_id: BIZ_ID, token })
+    const res = await POST(req)
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error).toContain('already used')
+  })
+
   test('cross-business stamp attempt → 401 error', async () => {
     // Token generated for BIZ_ID but request sent for a different business
     const OTHER_BIZ = '99999999-9999-4999-a999-999999999999'

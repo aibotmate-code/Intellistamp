@@ -41,6 +41,7 @@ export interface Stamp {
   business_id: string
   type: StampType
   stamped_at: string
+  stamp_token?: string | null
 }
 
 export interface BusinessCustomer {

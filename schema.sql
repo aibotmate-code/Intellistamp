@@ -54,12 +54,23 @@ create table if not exists stamps (
   customer_id uuid not null references customers(id) on delete cascade,
   business_id uuid not null references businesses(id) on delete cascade,
   type text not null default 'regular',
-  stamped_at timestamptz not null default now()
+  stamped_at timestamptz not null default now(),
+  stamp_token text
 );
 
 create index if not exists businesses_owner_idx on businesses(owner_id);
 create index if not exists stamps_customer_business_idx on stamps(customer_id, business_id);
 create index if not exists stamps_stamped_at_idx on stamps(stamped_at desc);
+-- Partial unique index: same customer cannot use the same QR token twice (replay protection)
+create unique index if not exists stamps_token_dedup_idx
+  on stamps(business_id, customer_id, stamp_token)
+  where stamp_token is not null;
+
+-- Migration for existing deployments (idempotent):
+alter table stamps add column if not exists stamp_token text;
+create unique index if not exists stamps_token_dedup_idx
+  on stamps(business_id, customer_id, stamp_token)
+  where stamp_token is not null;
 
 -- MILESTONES
 create table if not exists milestones (

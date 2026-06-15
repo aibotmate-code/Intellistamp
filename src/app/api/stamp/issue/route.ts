@@ -83,14 +83,25 @@ export async function POST(req: NextRequest) {
       .from('business_customers')
       .upsert({ business_id, customer_id }, { onConflict: 'business_id,customer_id' })
 
-    // Insert stamp
+    // Insert stamp — stamp_token stored for dynamic QR; unique per (business,customer,token) blocks replay
     const { data: stamp, error: stampError } = await supabase
       .from('stamps')
-      .insert({ customer_id, business_id, type: type ?? 'regular' })
+      .insert({
+        customer_id,
+        business_id,
+        type: type ?? 'regular',
+        ...(business.dynamic_qr_enabled && token ? { stamp_token: token } : {}),
+      })
       .select()
       .single()
 
     if (stampError) {
+      if (stampError.code === '23505') {
+        return NextResponse.json(
+          { error: 'Token already used. Please scan the QR code again.' },
+          { status: 409 }
+        )
+      }
       return NextResponse.json({ error: 'Failed to issue stamp. Please try again.' }, { status: 500 })
     }
 
