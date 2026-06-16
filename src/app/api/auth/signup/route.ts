@@ -7,13 +7,13 @@ const schema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
-export async function POST(req: NextRequest) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+)
 
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const result = schema.safeParse(body)

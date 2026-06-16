@@ -17,11 +17,12 @@ async function claimMilestone(
   })
 }
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function POST(req: NextRequest) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
   try {
     const body = await req.json()
     const result = stampIssueSchema.safeParse(body)
@@ -31,12 +32,21 @@ export async function POST(req: NextRequest) {
 
     const { customer_id, business_id, token, staff_pin, type } = result.data
 
-    // Fetch business
-    const { data: business, error: bizError } = await supabase
-      .from('businesses')
-      .select('*')
-      .eq('id', business_id)
-      .single()
+    // Business fetch and the cooldown lookup are independent of each other — run in parallel
+    const [
+      { data: business, error: bizError },
+      { data: recentStamp },
+    ] = await Promise.all([
+      supabase.from('businesses').select('*').eq('id', business_id).single(),
+      supabase
+        .from('stamps')
+        .select('stamped_at')
+        .eq('customer_id', customer_id)
+        .eq('business_id', business_id)
+        .order('stamped_at', { ascending: false })
+        .limit(1)
+        .single(),
+    ])
 
     if (bizError || !business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
@@ -57,15 +67,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Check cooldown
-    const { data: recentStamp } = await supabase
-      .from('stamps')
-      .select('stamped_at')
-      .eq('customer_id', customer_id)
-      .eq('business_id', business_id)
-      .order('stamped_at', { ascending: false })
-      .limit(1)
-      .single()
-
     if (recentStamp) {
       const diffMs = Date.now() - new Date(recentStamp.stamped_at).getTime()
       const fourHours = 4 * 60 * 60 * 1000

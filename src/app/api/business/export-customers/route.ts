@@ -15,11 +15,12 @@ function buildCsv(headers: string[], rows: (string | number | null | undefined)[
   return `${head}\n${body}`
 }
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function GET(req: NextRequest) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
   try {
     const { searchParams } = new URL(req.url)
     const bizId = searchParams.get('bizId')

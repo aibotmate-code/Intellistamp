@@ -18,11 +18,12 @@ function timingSafeEqual(a: string, b: string): boolean {
   return result === 0
 }
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function POST(req: NextRequest) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
   try {
     const body = await req.json()
     const result = kioskStampSchema.safeParse(body)
@@ -32,11 +33,14 @@ export async function POST(req: NextRequest) {
 
     const { business_id, phone, pin } = result.data
 
-    const { data: business, error: bizError } = await supabase
-      .from('businesses')
-      .select('*')
-      .eq('id', business_id)
-      .single()
+    // Business and customer-by-phone lookups are independent of each other — run in parallel
+    const [
+      { data: business, error: bizError },
+      { data: customerByPhone },
+    ] = await Promise.all([
+      supabase.from('businesses').select('*').eq('id', business_id).single(),
+      supabase.from('customers').select('*').eq('phone', phone).single(),
+    ])
 
     if (bizError || !business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
@@ -47,11 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Find or create customer
-    let { data: customer } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('phone', phone)
-      .single()
+    let customer = customerByPhone
 
     if (!customer) {
       const { data: newCustomer, error: createError } = await supabase
@@ -119,8 +119,9 @@ export async function POST(req: NextRequest) {
     const cardsCompleted = Math.floor(total / business.stamps_required)
     const stampComplete = cardStamps === 0 && total > 0
 
-    // Milestone resolution — same logic as stamp/issue
-    const [{ data: eligibleMilestones }, { data: priorClaims }] = await Promise.all([
+    // Milestone resolution (same logic as stamp/issue) and the review_claimed lookup
+    // both only depend on business_id/customer.id, not on each other — run in parallel
+    const [{ data: eligibleMilestones }, { data: priorClaims }, { data: bcRow }] = await Promise.all([
       supabase
         .from('milestones')
         .select('*')
@@ -133,6 +134,12 @@ export async function POST(req: NextRequest) {
         .select('milestone_id')
         .eq('customer_id', customer.id)
         .eq('business_id', business_id),
+      supabase
+        .from('business_customers')
+        .select('review_claimed')
+        .eq('business_id', business_id)
+        .eq('customer_id', customer.id)
+        .maybeSingle(),
     ])
 
     const claimedMilestoneIds = new Set((priorClaims ?? []).map((c) => c.milestone_id))
@@ -158,14 +165,6 @@ export async function POST(req: NextRequest) {
       })
       reward_result = { type: 'milestone', milestone: unclaimed_milestone }
     }
-
-    // Get review_claimed status for GMB prompt
-    const { data: bcRow } = await supabase
-      .from('business_customers')
-      .select('review_claimed')
-      .eq('business_id', business_id)
-      .eq('customer_id', customer.id)
-      .maybeSingle()
 
     return NextResponse.json({
       success: true,
