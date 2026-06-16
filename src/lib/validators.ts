@@ -48,3 +48,13 @@ export const stampRedeemSchema = z.object({
   customer_id: z.string().uuid(),
   business_id: z.string().uuid(),
 })
+
+export const customerRecoverSchema = z.object({
+  business_id: z.string().uuid(),
+  phone: z.string().min(1, 'Mobile number is required'),
+})
+
+export const customerLookupSchema = z.object({
+  business_id: z.string().uuid(),
+  phone: z.string().min(1, 'Mobile number is required'),
+})

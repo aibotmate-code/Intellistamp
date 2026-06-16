@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { customerRecoverSchema } from '@/lib/validators'
+import { normalizeIndianPhone } from '@/lib/phone'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+// Looks up a customer's existing card for ONE specific business by phone number.
+// "Found" requires both a global customers row AND a business_customers link for
+// business_id — a phone enrolled elsewhere must never be revealed here.
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const result = customerRecoverSchema.safeParse(body)
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
+    }
+
+    const { business_id } = result.data
+    const phone = normalizeIndianPhone(result.data.phone)
+    if (!phone) {
+      return NextResponse.json({ error: 'Enter a valid 10-digit Indian mobile number' }, { status: 400 })
+    }
+
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('id, name, phone, customer_token')
+      .eq('phone', phone)
+      .maybeSingle()
+
+    if (!customer) {
+      return NextResponse.json({ found: false })
+    }
+
+    const { data: link } = await supabase
+      .from('business_customers')
+      .select('id')
+      .eq('business_id', business_id)
+      .eq('customer_id', customer.id)
+      .maybeSingle()
+
+    if (!link) {
+      return NextResponse.json({ found: false })
+    }
+
+    return NextResponse.json({
+      found: true,
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        customer_token: customer.customer_token,
+      },
+    })
+  } catch {
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+  }
+}

@@ -228,6 +228,12 @@ export default function ScanPage() {
             <Button onClick={handleContinue} loading={loadingIdentify} className="w-full">
               Continue →
             </Button>
+            <button
+              onClick={() => router.push(`/recover/${bizId}`)}
+              className="text-sm text-zinc-500 hover:text-zinc-300 w-full text-center"
+            >
+              Already enrolled? Recover my card
+            </button>
           </div>
         )}
 

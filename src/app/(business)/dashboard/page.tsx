@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import StatsCard from '@/components/business/StatsCard'
 import CustomerTable from '@/components/business/CustomerTable'
+import CustomerLookup from '@/components/business/CustomerLookup'
 import FeatureToggles from '@/components/business/FeatureToggles'
 import RewardsTab from '@/components/business/RewardsTab'
 import Spinner from '@/components/ui/Spinner'
@@ -429,16 +430,24 @@ export default function DashboardPage() {
 
         {/* Tab: Customers */}
         {activeTab === 'customers' && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-zinc-400">
-                {customers.length} customer{customers.length !== 1 ? 's' : ''} enrolled
-              </p>
-              <Button size="sm" variant="secondary" onClick={handleExport}>
-                ⬇ Export Customers
-              </Button>
+          <div className="space-y-6">
+            <CustomerLookup
+              businessId={business.id}
+              stampsRequired={business.stamps_required}
+              staffPin={business.staff_pin}
+              onStamped={fetchData}
+            />
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-zinc-400">
+                  {customers.length} customer{customers.length !== 1 ? 's' : ''} enrolled
+                </p>
+                <Button size="sm" variant="secondary" onClick={handleExport}>
+                  ⬇ Export Customers
+                </Button>
+              </div>
+              <CustomerTable customers={customers} stampsRequired={business.stamps_required} />
             </div>
-            <CustomerTable customers={customers} stampsRequired={business.stamps_required} />
           </div>
         )}
 
