@@ -47,7 +47,7 @@ export default function RedeemPage() {
         setCode(data.code)
         setReward(data.reward)
 
-        const bizData = await fetch(`/api/business/get?bizId=${bizId}`).then((r) => r.json())
+        const bizData = await fetch(`/api/business/public?bizId=${bizId}`).then((r) => r.json())
         setBusinessName(bizData.business?.name ?? '')
       })
       .catch(() => setError('Network error'))

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { requireUserAndBusiness, adminClient } from '@/lib/auth'
 import { z } from 'zod'
 
 const milestoneSchema = z.object({
@@ -17,11 +17,6 @@ const saveSchema = z.object({
   milestones: z.array(milestoneSchema),
 })
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -32,8 +27,10 @@ export async function POST(req: NextRequest) {
 
     const { business_id, conflict_priority, stamps_required, reward, milestones } = result.data
 
-    // Delete existing milestones
-    const { error: deleteError } = await supabase
+    const business = await requireUserAndBusiness(business_id)
+    if (business instanceof NextResponse) return business
+
+    const { error: deleteError } = await adminClient
       .from('milestones')
       .delete()
       .eq('business_id', business_id)
@@ -42,11 +39,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to update milestones.' }, { status: 500 })
     }
 
-    // Insert new milestones
     let savedMilestones: unknown[] = []
     if (milestones.length > 0) {
       const rows = milestones.map((m) => ({ ...m, business_id }))
-      const { data: inserted, error: insertError } = await supabase
+      const { data: inserted, error: insertError } = await adminClient
         .from('milestones')
         .insert(rows)
         .select()
@@ -56,23 +52,25 @@ export async function POST(req: NextRequest) {
       savedMilestones = inserted ?? []
     }
 
-    // Update business
     const bizUpdates: Record<string, unknown> = { conflict_priority }
     if (stamps_required !== undefined) bizUpdates.stamps_required = stamps_required
     if (reward !== undefined) bizUpdates.reward = reward
 
-    const { data: business, error: bizError } = await supabase
+    const { data: updatedBiz, error: bizError } = await adminClient
       .from('businesses')
       .update(bizUpdates)
       .eq('id', business_id)
-      .select()
+      .select(
+        'id, name, slug, emoji, category, stamps_required, reward, gmb_link, ' +
+        'dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, conflict_priority'
+      )
       .single()
 
     if (bizError) {
       return NextResponse.json({ error: 'Failed to update business settings.' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, milestones: savedMilestones, business })
+    return NextResponse.json({ success: true, milestones: savedMilestones, business: updatedBiz })
   } catch {
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }

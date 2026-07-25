@@ -22,8 +22,6 @@ export default function ReviewPage() {
   const [business, setBusiness] = useState<Business | null>(null)
   const [loading, setLoading] = useState(true)
   const [gmbClicked, setGmbClicked] = useState(false)
-  const [claimLoading, setClaimLoading] = useState(false)
-  const [claimed, setClaimed] = useState(false)
 
   const { customerId, customerToken } = getSessionToken()
 
@@ -37,7 +35,7 @@ export default function ReviewPage() {
       router.push(`/scan/${bizId}`)
       return
     }
-    fetch(`/api/business/get?bizId=${bizId}`)
+    fetch(`/api/business/public?bizId=${bizId}`)
       .then((r) => r.json())
       .then((data) => {
         if (!data.business?.gmb_link) {
@@ -45,15 +43,6 @@ export default function ReviewPage() {
           return
         }
         setBusiness(data.business)
-
-        fetch(`/api/customer/profile?customerId=${customerId}`)
-          .then((r) => r.json())
-          .then((custData) => {
-            const enrollment = custData.cards?.find(
-              (c: { business_id: string; review_claimed: boolean }) => c.business_id === bizId
-            )
-            if (enrollment?.review_claimed) toCard()
-          })
       })
       .catch(() => toCard())
       .finally(() => setLoading(false))
@@ -64,33 +53,6 @@ export default function ReviewPage() {
     if (business?.gmb_link) {
       window.open(business.gmb_link, '_blank')
       setTimeout(() => setGmbClicked(true), 800)
-    }
-  }
-
-  const handleClaim = async () => {
-    if (!customerId) return
-    setClaimLoading(true)
-    try {
-      const token = (await import('@/lib/token')).generateToken(bizId, 0)
-      const res = await fetch('/api/stamp/issue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_id: customerId,
-          business_id: bizId,
-          token,
-          type: 'bonus_review',
-        }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setClaimed(true)
-        setTimeout(() => toCard(), 1500)
-      }
-    } catch {
-      // ignore
-    } finally {
-      setClaimLoading(false)
     }
   }
 
@@ -112,8 +74,8 @@ export default function ReviewPage() {
         </div>
 
         <div className="text-center">
-          <h1 className="text-3xl font-black text-white">YOU&apos;RE IN! 🎉</h1>
-          <p className="text-zinc-400 mt-1">Your loyalty card is ready. One small favour first...</p>
+          <h1 className="text-3xl font-black text-white">EARN A BONUS STAMP ⭐</h1>
+          <p className="text-zinc-400 mt-1">Leave a Google review and ask staff to add your bonus stamp.</p>
         </div>
 
         <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
@@ -125,34 +87,22 @@ export default function ReviewPage() {
           <p className="text-sm text-zinc-400 text-center leading-relaxed">
             Enjoying your experience? A quick Google review helps{' '}
             <span className="text-white font-medium">{business.name}</span> reach more customers like you.
-            Takes 30 seconds.
+            Takes 30 seconds — and staff will add a bonus stamp once they see your review.
           </p>
 
           <button
             onClick={handleGmbClick}
             className="w-full border-2 border-green-500 text-green-400 font-semibold py-3 px-4 rounded-xl hover:bg-green-500/10 transition-colors flex items-center justify-center gap-2"
           >
-            Share Your Experience on Google →
+            Leave a Review on Google →
           </button>
 
-          {gmbClicked && !claimed && (
-            <div className="space-y-3">
-              <p className="text-center text-sm text-zinc-400">
-                Review opened! Come back here after you&apos;re done ✅
+          {gmbClicked && (
+            <div className="rounded-xl bg-zinc-800 border border-zinc-700 p-4 text-center space-y-1">
+              <p className="text-sm text-zinc-300 font-medium">Review opened ✅</p>
+              <p className="text-xs text-zinc-500">
+                Once you&apos;ve posted your review, show staff and they&apos;ll add your bonus stamp at the counter.
               </p>
-              <button
-                onClick={handleClaim}
-                disabled={claimLoading}
-                className="w-full bg-yellow-400 text-black font-bold py-4 px-6 rounded-xl text-lg hover:bg-yellow-300 transition-colors animate-glow disabled:opacity-50"
-              >
-                {claimLoading ? '...' : '🎁 As a Thank You — Claim Bonus Stamp'}
-              </button>
-            </div>
-          )}
-
-          {claimed && (
-            <div className="text-center text-green-400 font-semibold py-2">
-              Bonus stamp added to {business.name}! 🎁 Redirecting...
             </div>
           )}
         </div>

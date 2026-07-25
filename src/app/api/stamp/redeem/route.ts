@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { randomBytes } from 'crypto'
+import { adminClient } from '@/lib/auth'
 import { stampRedeemSchema } from '@/lib/validators'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,32 +13,34 @@ export async function POST(req: NextRequest) {
 
     const { customer_id, business_id } = result.data
 
-    const { data: business, error: bizError } = await supabase
-      .from('businesses')
-      .select('stamps_required, reward')
-      .eq('id', business_id)
-      .single()
+    const [
+      { data: business, error: bizError },
+      { data: bc },
+    ] = await Promise.all([
+      adminClient
+        .from('businesses')
+        .select('stamps_required, reward')
+        .eq('id', business_id)
+        .single(),
+      adminClient
+        .from('business_customers')
+        .select('cards_redeemed')
+        .eq('business_id', business_id)
+        .eq('customer_id', customer_id)
+        .single(),
+    ])
 
     if (bizError || !business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    const { data: stamps } = await supabase
+    const { count: stampCount } = await adminClient
       .from('stamps')
-      .select('id')
+      .select('id', { count: 'exact', head: true })
       .eq('customer_id', customer_id)
       .eq('business_id', business_id)
 
-    const total = stamps?.length ?? 0
-
-    // Get current cards_redeemed
-    const { data: bc } = await supabase
-      .from('business_customers')
-      .select('cards_redeemed')
-      .eq('business_id', business_id)
-      .eq('customer_id', customer_id)
-      .single()
-
+    const total = stampCount ?? 0
     const cardsRedeemed = (bc as { cards_redeemed?: number } | null)?.cards_redeemed ?? 0
     const availableCards = Math.floor(total / business.stamps_required) - cardsRedeemed
 
@@ -50,13 +48,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No completed card to redeem' }, { status: 400 })
     }
 
-    await supabase
+    // Optimistic-lock the increment: WHERE cards_redeemed = <current value>
+    // so concurrent requests cannot double-increment the counter.
+    const { data: updated } = await adminClient
       .from('business_customers')
       .update({ cards_redeemed: cardsRedeemed + 1 })
       .eq('business_id', business_id)
       .eq('customer_id', customer_id)
+      .eq('cards_redeemed', cardsRedeemed)
+      .select('cards_redeemed')
 
-    const code = Math.random().toString(36).toUpperCase().slice(2, 8)
+    if (!updated || updated.length === 0) {
+      return NextResponse.json({ error: 'Redemption conflict. Please try again.' }, { status: 409 })
+    }
+
+    // 6-character cryptographically random hex code for staff to verify
+    const code = randomBytes(3).toString('hex').toUpperCase()
 
     return NextResponse.json({
       success: true,

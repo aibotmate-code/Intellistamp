@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { requireUserAndBusiness, adminClient } from '@/lib/auth'
 
 function escapeCsv(val: string | number | null | undefined): string {
   if (val === null || val === undefined) return ''
@@ -15,11 +15,6 @@ function buildCsv(headers: string[], rows: (string | number | null | undefined)[
   return `${head}\n${body}`
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
@@ -29,21 +24,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'bizId required' }, { status: 400 })
     }
 
-    // Business for slug + stamps_required
-    const { data: business, error: bizError } = await supabase
-      .from('businesses')
-      .select('id, slug, stamps_required')
-      .eq('id', bizId)
-      .single()
+    const business = await requireUserAndBusiness(bizId)
+    if (business instanceof NextResponse) return business
 
-    if (bizError || !business) {
-      return NextResponse.json({ error: 'Business not found' }, { status: 404 })
-    }
-
-    // business_customers with full customer row
-    const { data: bcRows, error: bcError } = await supabase
+    const { data: bcRows, error: bcError } = await adminClient
       .from('business_customers')
-      .select('*, customer:customers(*)')
+      .select('*, customer:customers(name, phone, whatsapp_optin, birthday_month, birthday_day)')
       .eq('business_id', bizId)
       .order('enrolled_at', { ascending: false })
 
@@ -51,27 +37,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch customers' }, { status: 500 })
     }
 
-    // All stamps for the business (customer_id + stamped_at only)
-    const { data: stamps } = await supabase
-      .from('stamps')
-      .select('customer_id, stamped_at')
-      .eq('business_id', bizId)
-      .order('stamped_at', { ascending: false })
+    const [{ data: stamps }, { data: claims }] = await Promise.all([
+      adminClient
+        .from('stamps')
+        .select('customer_id, stamped_at')
+        .eq('business_id', bizId)
+        .order('stamped_at', { ascending: false }),
+      adminClient
+        .from('milestone_claims')
+        .select('customer_id, milestone:milestones(badge)')
+        .eq('business_id', bizId),
+    ])
 
-    // Milestone claims with badge name
-    const { data: claims } = await supabase
-      .from('milestone_claims')
-      .select('customer_id, milestone:milestones(badge)')
-      .eq('business_id', bizId)
-
-    // Group stamps by customer: [most-recent, …]
     const stampMap = new Map<string, string[]>()
     for (const s of stamps ?? []) {
       if (!stampMap.has(s.customer_id)) stampMap.set(s.customer_id, [])
       stampMap.get(s.customer_id)!.push(s.stamped_at as string)
     }
 
-    // Group badges by customer
     const badgeMap = new Map<string, string[]>()
     for (const c of claims ?? []) {
       const badge = (c.milestone as { badge?: string } | null)?.badge
@@ -104,8 +87,8 @@ export async function GET(req: NextRequest) {
       const c = bc.customer
       const customerStamps = stampMap.get(bc.customer_id) ?? []
       const total = customerStamps.length
-      const cycleStamps = total % (business.stamps_required as number)
-      const earned = Math.floor(total / (business.stamps_required as number))
+      const cycleStamps = total % business.stamps_required
+      const earned = Math.floor(total / business.stamps_required)
       const redeemed = bc.cards_redeemed ?? 0
       const lastVisit = customerStamps[0] ?? ''
       const badges = (badgeMap.get(bc.customer_id) ?? []).join(' | ')
@@ -128,7 +111,7 @@ export async function GET(req: NextRequest) {
 
     const csv = buildCsv(headers, rows)
     const date = new Date().toISOString().split('T')[0]
-    const slug = (business.slug as string) || bizId.slice(0, 8)
+    const slug = business.slug || bizId.slice(0, 8)
     const filename = `${slug}-customers-${date}.csv`
 
     return new NextResponse(csv, {

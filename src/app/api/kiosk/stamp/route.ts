@@ -38,7 +38,11 @@ export async function POST(req: NextRequest) {
       { data: business, error: bizError },
       { data: customerByPhone },
     ] = await Promise.all([
-      supabase.from('businesses').select('*').eq('id', business_id).single(),
+      supabase
+        .from('businesses')
+        .select('id, staff_pin, staff_pin_hash, stamps_required, conflict_priority, reward')
+        .eq('id', business_id)
+        .single(),
       supabase.from('customers').select('*').eq('phone', phone).single(),
     ])
 

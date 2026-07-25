@@ -39,7 +39,7 @@ export default function ScanPage() {
 
   // Load business
   useEffect(() => {
-    fetch(`/api/business/get?bizId=${bizId}`)
+    fetch(`/api/business/public?bizId=${bizId}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.business) setBusiness(data.business)

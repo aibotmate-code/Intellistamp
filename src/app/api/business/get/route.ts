@@ -1,35 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { requireUser, adminClient } from '@/lib/auth'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const BUSINESS_FIELDS =
+  'id, name, slug, emoji, category, stamps_required, reward, gmb_link, ' +
+  'dynamic_qr_enabled, staff_pin_enabled, staff_pin, staff_pin_hash, ' +
+  'whatsapp_enabled, plan, conflict_priority, owner_id, owner_phone, created_at'
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await requireUser()
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(req.url)
-    const bizId = searchParams.get('bizId')
-    const ownerPhone = searchParams.get('ownerPhone')
-    const slug = searchParams.get('slug')
     const ownerId = searchParams.get('ownerId')
 
-    if (!bizId && !ownerPhone && !slug && !ownerId) {
-      return NextResponse.json({ error: 'bizId, ownerPhone, ownerId, or slug required' }, { status: 400 })
+    if (!ownerId) {
+      return NextResponse.json({ error: 'ownerId required' }, { status: 400 })
     }
 
-    let query = supabase.from('businesses').select('*')
-    if (bizId) {
-      query = query.eq('id', bizId)
-    } else if (slug) {
-      query = query.eq('slug', slug)
-    } else if (ownerId) {
-      query = query.eq('owner_id', ownerId)
-    } else {
-      query = query.eq('owner_phone', ownerPhone!)
+    // IDOR guard: the ownerId param must match the authenticated session
+    if (ownerId !== user.id) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    const { data: businesses, error: bizError } = await query
+    const { data: businesses, error: bizError } = await adminClient
+      .from('businesses')
+      .select(BUSINESS_FIELDS)
+      .eq('owner_id', ownerId)
 
     if (bizError || !businesses || businesses.length === 0) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
@@ -37,19 +34,17 @@ export async function GET(req: NextRequest) {
 
     const business = businesses[0]
 
-    // Get stats
     const [stampsResult, customersResult] = await Promise.all([
-      supabase.from('stamps').select('id', { count: 'exact' }).eq('business_id', business.id),
-      supabase.from('business_customers').select('id', { count: 'exact' }).eq('business_id', business.id),
+      adminClient.from('stamps').select('id', { count: 'exact' }).eq('business_id', business.id),
+      adminClient.from('business_customers').select('id', { count: 'exact' }).eq('business_id', business.id),
     ])
 
     const totalStamps = stampsResult.count ?? 0
     const totalCustomers = customersResult.count ?? 0
 
-    // Get customers with stamp info
-    const { data: bcData, error: bcError } = await supabase
+    const { data: bcData, error: bcError } = await adminClient
       .from('business_customers')
-      .select('*, customer:customers(*)')
+      .select('*, customer:customers(id, name, phone, whatsapp_optin, birthday_month, birthday_day, customer_token, created_at)')
       .eq('business_id', business.id)
       .order('enrolled_at', { ascending: false })
 
@@ -57,10 +52,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch customers' }, { status: 500 })
     }
 
-    // Get all stamps for this business (batch)
-    const { data: allStamps } = await supabase
+    const { data: allStamps } = await adminClient
       .from('stamps')
-      .select('*')
+      .select('id, customer_id, stamped_at, type')
       .eq('business_id', business.id)
       .order('stamped_at', { ascending: false })
 
@@ -80,7 +74,7 @@ export async function GET(req: NextRequest) {
     const customers = (bcData ?? []).map((bc) => {
       const customerStamps = stampsByCustomer.get(bc.customer_id) ?? []
       const total = customerStamps.length
-      const cardStamps = total % business.stamps_required
+      const cardStamps = total % (business.stamps_required as number)
       const lastStamp = customerStamps[0]
 
       let canStamp = true

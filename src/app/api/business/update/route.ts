@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { requireUserAndBusiness, adminClient } from '@/lib/auth'
 import { z } from 'zod'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 const schema = z.object({
   id: z.string().uuid(),
@@ -25,18 +20,24 @@ export async function PATCH(req: NextRequest) {
 
     const { id, ...updates } = result.data
 
-    const { data: business, error } = await supabase
+    const business = await requireUserAndBusiness(id)
+    if (business instanceof NextResponse) return business
+
+    const { data: updated, error } = await adminClient
       .from('businesses')
       .update(updates)
       .eq('id', id)
-      .select()
+      .select(
+        'id, name, slug, emoji, category, stamps_required, reward, gmb_link, ' +
+        'dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, conflict_priority'
+      )
       .single()
 
     if (error) {
       return NextResponse.json({ error: 'Failed to update business' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, business })
+    return NextResponse.json({ success: true, business: updated })
   } catch {
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }

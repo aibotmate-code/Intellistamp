@@ -35,7 +35,7 @@ export default function KioskPage({ params }: PageParams) {
   const phoneInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    fetch(`/api/business/get?slug=${businessSlug}`)
+    fetch(`/api/business/public?slug=${businessSlug}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.business) {
