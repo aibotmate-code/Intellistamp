@@ -36,7 +36,7 @@ export default function RedeemPage() {
     fetch('/api/stamp/redeem', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_id: session.id, business_id: bizId }),
+      body: JSON.stringify({ customer_id: session.id, business_id: bizId, customer_token: session.customer_token }),
     })
       .then((r) => r.json())
       .then(async (data) => {

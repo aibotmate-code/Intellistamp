@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { stampIssueSchema } from '@/lib/validators'
 import { validateToken } from '@/lib/token'
+import { verifyPin } from '@/lib/pinHash'
 import type { RewardResult } from '@/types'
 
 async function claimMilestone(
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
 
     // Validate staff PIN if required
     if (business.staff_pin_enabled) {
-      if (!staff_pin || staff_pin !== business.staff_pin) {
+      if (!staff_pin || !await verifyPin(staff_pin, business.staff_pin_hash, business.staff_pin)) {
         return NextResponse.json({ error: 'Invalid staff PIN' }, { status: 400 })
       }
     }

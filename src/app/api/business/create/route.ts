@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { businessCreateSchema } from '@/lib/validators'
+import { hashPin } from '@/lib/pinHash'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,6 +68,8 @@ export async function POST(req: NextRequest) {
       slug = `${slug}-${crypto.randomUUID().slice(0, 4)}`
     }
 
+    const pinHash = await hashPin(data.staff_pin)
+
     const { data: business, error } = await supabase
       .from('businesses')
       .insert({
@@ -76,6 +79,7 @@ export async function POST(req: NextRequest) {
         stamps_required: data.stamps_required,
         reward: data.reward,
         staff_pin: data.staff_pin,
+        staff_pin_hash: pinHash,
         gmb_link: data.gmb_link || null,
         dynamic_qr_enabled: data.dynamic_qr_enabled,
         staff_pin_enabled: data.staff_pin_enabled,
@@ -89,17 +93,11 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error || !business) {
-      console.error('Business insert error:', error)
-      return NextResponse.json({
-        error: 'Failed to create business. Please try again.',
-        _debug: error?.message ?? 'no business returned',
-        _code: error?.code,
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create business. Please try again.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, business })
-  } catch (err) {
-    console.error('Business create unexpected error:', err)
+  } catch {
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

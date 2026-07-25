@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { rateLimiter, rateLimitResponse } from '@/lib/rateLimit'
 
 const schema = z.object({
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
@@ -13,6 +14,10 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+  const rl = rateLimiter.check(`identify:${ip}`, 10, 15 * 60 * 1000)
+  if (!rl.ok) return rateLimitResponse(rl.retryAfter!)
+
   try {
     const body = await req.json()
     if (typeof body.phone === 'string') {

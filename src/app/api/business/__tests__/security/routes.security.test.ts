@@ -61,10 +61,11 @@ jest.mock('next/headers', () => ({
 // Fixtures
 // ---------------------------------------------------------------------------
 
-const OWNER_ID = '00000000-0000-4000-a000-000000000003'
-const OTHER_ID = '11111111-0000-4000-a000-000000000099'
-const BIZ_ID   = '00000000-0000-4000-a000-000000000001'
-const CUST_ID  = '00000000-0000-4000-a000-000000000002'
+const OWNER_ID   = '00000000-0000-4000-a000-000000000003'
+const OTHER_ID   = '11111111-0000-4000-a000-000000000099'
+const BIZ_ID     = '00000000-0000-4000-a000-000000000001'
+const CUST_ID    = '00000000-0000-4000-a000-000000000002'
+const CUST_TOKEN = 'aaaaaaaa-0000-4000-a000-000000000010'
 
 const mockBusiness = {
   id: BIZ_ID,
@@ -400,14 +401,15 @@ const { POST: redeemHandler } = require('../../../stamp/redeem/route')
 
 describe('POST /api/stamp/redeem — cryptographic code', () => {
   test('no completed card → 400', async () => {
-    // business + bc in parallel
+    // business + bc + customer-token-verify in parallel (Promise.all order)
     mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee' }, error: null })
     mockQueue.push({ data: { cards_redeemed: 0 }, error: null })
+    mockQueue.push({ data: { id: CUST_ID }, error: null })  // customer token verified
     // stamp count
     mockQueue.push({ count: 3, data: null, error: null })  // 3 stamps, needs 6
 
     const res = await redeemHandler(makePost('http://localhost/api/stamp/redeem', {
-      customer_id: CUST_ID, business_id: BIZ_ID,
+      customer_id: CUST_ID, business_id: BIZ_ID, customer_token: CUST_TOKEN,
     }))
     expect(res.status).toBe(400)
     const body = await res.json()
@@ -415,16 +417,17 @@ describe('POST /api/stamp/redeem — cryptographic code', () => {
   })
 
   test('successful redemption returns a 6-char alphanumeric code', async () => {
-    // business + bc in parallel
+    // business + bc + customer-token-verify in parallel
     mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee' }, error: null })
     mockQueue.push({ data: { cards_redeemed: 0 }, error: null })
+    mockQueue.push({ data: { id: CUST_ID }, error: null })
     // stamp count
     mockQueue.push({ count: 6, data: null, error: null })
     // optimistic update succeeds
     mockQueue.push({ data: [{ cards_redeemed: 1 }], error: null })
 
     const res = await redeemHandler(makePost('http://localhost/api/stamp/redeem', {
-      customer_id: CUST_ID, business_id: BIZ_ID,
+      customer_id: CUST_ID, business_id: BIZ_ID, customer_token: CUST_TOKEN,
     }))
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -432,16 +435,17 @@ describe('POST /api/stamp/redeem — cryptographic code', () => {
   })
 
   test('concurrent redemption attempt → 409 conflict', async () => {
-    // business + bc in parallel
+    // business + bc + customer-token-verify in parallel
     mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee' }, error: null })
     mockQueue.push({ data: { cards_redeemed: 0 }, error: null })
+    mockQueue.push({ data: { id: CUST_ID }, error: null })
     // stamp count
     mockQueue.push({ count: 6, data: null, error: null })
     // optimistic update returns empty (another request beat us)
     mockQueue.push({ data: [], error: null })
 
     const res = await redeemHandler(makePost('http://localhost/api/stamp/redeem', {
-      customer_id: CUST_ID, business_id: BIZ_ID,
+      customer_id: CUST_ID, business_id: BIZ_ID, customer_token: CUST_TOKEN,
     }))
     expect(res.status).toBe(409)
   })
@@ -451,10 +455,13 @@ describe('POST /api/stamp/redeem — cryptographic code', () => {
     for (let i = 0; i < 2; i++) {
       mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee' }, error: null })
       mockQueue.push({ data: { cards_redeemed: i }, error: null })
+      mockQueue.push({ data: { id: CUST_ID }, error: null })
       mockQueue.push({ count: 6 * (i + 1), data: null, error: null })
       mockQueue.push({ data: [{ cards_redeemed: i + 1 }], error: null })
 
-      const req = makePost('http://localhost/api/stamp/redeem', { customer_id: CUST_ID, business_id: BIZ_ID })
+      const req = makePost('http://localhost/api/stamp/redeem', {
+        customer_id: CUST_ID, business_id: BIZ_ID, customer_token: CUST_TOKEN,
+      })
       const res = await redeemHandler(req)
       expect(res.status).toBe(200)
       const body = await res.json()

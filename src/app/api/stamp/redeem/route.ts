@@ -11,11 +11,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    const { customer_id, business_id } = result.data
+    const { customer_id, business_id, customer_token } = result.data
 
     const [
       { data: business, error: bizError },
       { data: bc },
+      { data: verifiedCustomer },
     ] = await Promise.all([
       adminClient
         .from('businesses')
@@ -28,7 +29,17 @@ export async function POST(req: NextRequest) {
         .eq('business_id', business_id)
         .eq('customer_id', customer_id)
         .single(),
+      adminClient
+        .from('customers')
+        .select('id')
+        .eq('id', customer_id)
+        .eq('customer_token', customer_token)
+        .maybeSingle(),
     ])
+
+    if (!verifiedCustomer) {
+      return NextResponse.json({ error: 'Identity verification failed' }, { status: 401 })
+    }
 
     if (bizError || !business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })

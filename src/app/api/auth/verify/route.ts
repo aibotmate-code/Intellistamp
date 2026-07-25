@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { randomInt } from 'crypto'
 import { phoneSchema, otpVerifySchema } from '@/lib/validators'
+import { rateLimiter, rateLimitResponse } from '@/lib/rateLimit'
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
@@ -28,6 +30,9 @@ export async function POST(req: NextRequest) {
       }
       const { phone } = result.data
 
+      const rlSend = rateLimiter.check(`otp-send:${phone}`, 5, 15 * 60 * 1000)
+      if (!rlSend.ok) return rateLimitResponse(rlSend.retryAfter!)
+
       const { data: recentOtp } = await supabase
         .from('otp_store')
         .select('created_at')
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
 
       await supabase.from('otp_store').delete().eq('phone', phone).eq('used', false)
 
-      const otp = Math.floor(1000 + Math.random() * 9000).toString()
+      const otp = randomInt(1000, 10000).toString()
 
       const { error: insertError } = await supabase.from('otp_store').insert({
         phone,
@@ -70,6 +75,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
     const { phone, otp } = result.data
+
+    const rlVerify = rateLimiter.check(`otp-verify:${phone}`, 10, 15 * 60 * 1000)
+    if (!rlVerify.ok) return rateLimitResponse(rlVerify.retryAfter!)
 
     const { data: otpRecord, error: otpError } = await supabase
       .from('otp_store')

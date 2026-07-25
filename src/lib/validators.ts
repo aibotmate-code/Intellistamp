@@ -47,6 +47,7 @@ export const campaignSendSchema = z.object({
 export const stampRedeemSchema = z.object({
   customer_id: z.string().uuid(),
   business_id: z.string().uuid(),
+  customer_token: z.string().uuid(),
 })
 
 export const customerRecoverSchema = z.object({

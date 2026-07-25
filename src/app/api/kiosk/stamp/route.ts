@@ -2,21 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import type { RewardResult } from '@/types'
+import { verifyPin } from '@/lib/pinHash'
 
 const kioskStampSchema = z.object({
   business_id: z.string().uuid(),
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid phone number'),
   pin: z.string().length(4, 'PIN must be 4 digits'),
 })
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return result === 0
-}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -50,7 +42,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    if (!timingSafeEqual(business.staff_pin, pin)) {
+    if (!await verifyPin(pin, business.staff_pin_hash, business.staff_pin)) {
       return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
     }
 
