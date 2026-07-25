@@ -108,6 +108,24 @@ create table if not exists campaigns (
   delivered integer not null default 0
 );
 
+-- BUSINESS BRANDING
+create table if not exists business_branding (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null unique references businesses(id) on delete cascade,
+  logo_path text,
+  primary_color text not null default '#D4AF37',
+  primary_dark_color text not null default '#D4AF37',
+  primary_light_color text not null default '#D4AF37',
+  secondary_color text,
+  accent_color text,
+  background_color text,
+  surface_color text,
+  text_on_primary text not null default '#000000',
+  is_enabled boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- OTP STORE
 create table if not exists otp_store (
   id uuid primary key default uuid_generate_v4(),
@@ -127,6 +145,7 @@ alter table campaigns enable row level security;
 alter table otp_store enable row level security;
 alter table milestones enable row level security;
 alter table milestone_claims enable row level security;
+alter table business_branding enable row level security;
 
 -- Table-level grants — required even with RLS policies
 grant usage on schema public to anon, authenticated, service_role;
@@ -162,5 +181,32 @@ do $$ begin
   end if;
   if not exists (select 1 from pg_policies where tablename='milestone_claims' and policyname='Allow all') then
     create policy "Allow all" on milestone_claims for all using (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename='business_branding' and policyname='Allow public read access') then
+    create policy "Allow public read access" on business_branding for select using (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename='business_branding' and policyname='Allow owner all access') then
+    create policy "Allow owner all access" on business_branding for all using (
+      exists (select 1 from businesses where id = business_branding.business_id and owner_id = auth.uid())
+    );
+  end if;
+end $$;
+
+grant all on public.business_branding to anon, authenticated, service_role;
+
+-- STORAGE: branding bucket (public, 2 MB limit, images only)
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('branding', 'branding', true, 2097152, array['image/png', 'image/jpeg', 'image/webp'])
+on conflict (id) do nothing;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='Allow public bucket read') then
+    create policy "Allow public bucket read" on storage.objects for select using (bucket_id = 'branding');
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='Allow service role bucket write') then
+    create policy "Allow service role bucket write" on storage.objects for insert with check (bucket_id = 'branding');
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='Allow service role bucket delete') then
+    create policy "Allow service role bucket delete" on storage.objects for delete using (bucket_id = 'branding');
   end if;
 end $$;
