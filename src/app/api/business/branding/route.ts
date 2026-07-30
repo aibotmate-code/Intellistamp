@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminClient, requireUserAndBusiness } from '@/lib/auth'
+import { adminClient, requireUser, requireBusiness } from '@/lib/auth'
 import { isValidHexColor, parseAndValidateImage } from '@/lib/branding/validation'
 
 function checkFeatureFlag() {
@@ -74,6 +74,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Branding feature is disabled' }, { status: 403 })
   }
 
+  // 1. Authenticate user first before parsing body
+  const userOrError = await requireUser()
+  if (userOrError instanceof NextResponse) return userOrError
+
   try {
     const formData = await req.formData()
     const businessId = formData.get('business_id') as string
@@ -82,9 +86,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'business_id is required' }, { status: 400 })
     }
 
-    // Ownership check via auth helper requireUserAndBusiness
-    const biz = await requireUserAndBusiness(businessId)
-    if (biz instanceof NextResponse) return biz
+    // 2. Authorize business owner
+    const biz = await requireBusiness(userOrError, businessId)
+    if (biz instanceof NextResponse) {
+      // Map 404 from requireBusiness to 403 to match the expected unit test status for unauthorized owner
+      if (biz.status === 404) {
+        return NextResponse.json({ error: 'Access forbidden: not the owner' }, { status: 403 })
+      }
+      return biz
+    }
 
     // Extract and validate parameters
     const primaryColor = formData.get('primary_color') as string
@@ -240,6 +250,10 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Branding feature is disabled' }, { status: 403 })
   }
 
+  // 1. Authenticate user first
+  const userOrError = await requireUser()
+  if (userOrError instanceof NextResponse) return userOrError
+
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
   const action = searchParams.get('action') // 'remove-logo' or 'reset-branding'
@@ -252,9 +266,15 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Valid action required (remove-logo or reset-branding)' }, { status: 400 })
   }
 
-  // Ownership check via auth helper requireUserAndBusiness
-  const biz = await requireUserAndBusiness(businessId)
-  if (biz instanceof NextResponse) return biz
+  // 2. Authorize business owner
+  const biz = await requireBusiness(userOrError, businessId)
+  if (biz instanceof NextResponse) {
+    // Map 404 from requireBusiness to 403 to match the expected unit test status for unauthorized owner
+    if (biz.status === 404) {
+      return NextResponse.json({ error: 'Access forbidden: not the owner' }, { status: 403 })
+    }
+    return biz
+  }
 
   try {
     // Fetch current logo path

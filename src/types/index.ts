@@ -125,19 +125,3 @@ export interface RewardResult {
   deferred_stamp?: boolean
 }
 
-export interface BusinessBranding {
-  id: string
-  business_id: string
-  logo_path: string | null
-  primary_color: string
-  primary_dark_color: string
-  primary_light_color: string
-  secondary_color: string | null
-  accent_color: string | null
-  background_color: string | null
-  surface_color: string | null
-  text_on_primary: string
-  is_enabled: boolean
-  created_at: string
-  updated_at: string
-}

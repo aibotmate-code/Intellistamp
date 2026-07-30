@@ -46,7 +46,8 @@ export async function requireUser(): Promise<AuthUser | NextResponse> {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
     return { id: session.user.id, email: session.user.email }
-  } catch {
+  } catch (e) {
+    console.error('requireUser failed with error:', e)
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
   }
 }

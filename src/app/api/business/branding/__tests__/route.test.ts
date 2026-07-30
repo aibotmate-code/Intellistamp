@@ -42,11 +42,11 @@ jest.mock('@supabase/supabase-js', () => ({
 // Auth helpers + cookies mock
 // ---------------------------------------------------------------------------
 
-const mockGetUser = jest.fn()
+const mockGetSession = jest.fn()
 
 jest.mock('@supabase/auth-helpers-nextjs', () => ({
   createServerClient: jest.fn(() => ({
-    auth: { getUser: mockGetUser },
+    auth: { getSession: mockGetSession },
   })),
 }))
 
@@ -120,14 +120,14 @@ describe('GET /api/business/branding', () => {
 
 describe('POST /api/business/branding', () => {
   test('unauthenticated → 401 error', async () => {
-    mockGetUser.mockResolvedValueOnce({ data: { user: null }, error: new Error('no user') })
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
     const req = new NextRequest('http://localhost/api/business/branding', { method: 'POST' })
     const res = await POST(req)
     expect(res.status).toBe(401)
   })
 
   test('authenticated but not owner → 403 error', async () => {
-    mockGetUser.mockResolvedValueOnce({ data: { user: { id: 'other-user' } }, error: null })
+    mockGetSession.mockResolvedValueOnce({ data: { session: { user: { id: 'other-user' } } }, error: null })
     // Mock business lookup (returns owner_id: OWNER_ID)
     mockQueue.push({ data: { owner_id: OWNER_ID }, error: null })
 
@@ -143,7 +143,7 @@ describe('POST /api/business/branding', () => {
   })
 
   test('invalid colors → 400 error', async () => {
-    mockGetUser.mockResolvedValueOnce({ data: { user: { id: OWNER_ID } }, error: null })
+    mockGetSession.mockResolvedValueOnce({ data: { session: { user: { id: OWNER_ID } } }, error: null })
     // mock business owner check
     mockQueue.push({ data: { owner_id: OWNER_ID }, error: null })
 
@@ -162,7 +162,7 @@ describe('POST /api/business/branding', () => {
   })
 
   test('valid payload, no logo upload → saves successfully', async () => {
-    mockGetUser.mockResolvedValueOnce({ data: { user: { id: OWNER_ID } }, error: null })
+    mockGetSession.mockResolvedValueOnce({ data: { session: { user: { id: OWNER_ID } } }, error: null })
     // business owner check
     mockQueue.push({ data: { owner_id: OWNER_ID }, error: null })
     // existing branding check -> none
@@ -192,7 +192,7 @@ describe('POST /api/business/branding', () => {
 
 describe('DELETE /api/business/branding', () => {
   test('unauthenticated → 401 error', async () => {
-    mockGetUser.mockResolvedValueOnce({ data: { user: null }, error: new Error('no user') })
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
     const req = new NextRequest(`http://localhost/api/business/branding?businessId=${BIZ_ID}&action=remove-logo`, {
       method: 'DELETE',
     })
@@ -201,7 +201,7 @@ describe('DELETE /api/business/branding', () => {
   })
 
   test('action remove-logo → updates database and removes file', async () => {
-    mockGetUser.mockResolvedValueOnce({ data: { user: { id: OWNER_ID } }, error: null })
+    mockGetSession.mockResolvedValueOnce({ data: { session: { user: { id: OWNER_ID } } }, error: null })
     // business owner check
     mockQueue.push({ data: { owner_id: OWNER_ID }, error: null })
     // fetch current branding
@@ -219,7 +219,7 @@ describe('DELETE /api/business/branding', () => {
   })
 
   test('action reset-branding → deletes database row and removes file', async () => {
-    mockGetUser.mockResolvedValueOnce({ data: { user: { id: OWNER_ID } }, error: null })
+    mockGetSession.mockResolvedValueOnce({ data: { session: { user: { id: OWNER_ID } } }, error: null })
     // business owner check
     mockQueue.push({ data: { owner_id: OWNER_ID }, error: null })
     // fetch current branding
