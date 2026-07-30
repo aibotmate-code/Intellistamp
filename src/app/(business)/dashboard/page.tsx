@@ -9,6 +9,7 @@ import CustomerTable from '@/components/business/CustomerTable'
 import CustomerLookup from '@/components/business/CustomerLookup'
 import FeatureToggles from '@/components/business/FeatureToggles'
 import RewardsTab from '@/components/business/RewardsTab'
+import BrandingTab from '@/components/business/BrandingTab'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
 import Alert from '@/components/ui/Alert'
@@ -18,7 +19,7 @@ import type { Business, Customer, BusinessCustomer, Milestone } from '@/types'
 const QRDisplay = dynamic(() => import('@/components/business/QRDisplay'), { ssr: false })
 const KioskMode = dynamic(() => import('@/components/business/KioskMode'), { ssr: false })
 
-type Tab = 'qr' | 'customers' | 'rewards' | 'campaigns' | 'settings'
+type Tab = 'qr' | 'customers' | 'rewards' | 'campaigns' | 'settings' | 'branding'
 
 interface CustomerRow extends BusinessCustomer {
   customer: Customer
@@ -302,7 +303,10 @@ export default function DashboardPage() {
             { id: 'rewards' as Tab,   label: 'Rewards' },
             { id: 'campaigns' as Tab, label: 'Campaigns' },
             { id: 'settings' as Tab,  label: 'Settings' },
-          ] as const).map((tab) => (
+            ...(process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true'
+              ? [{ id: 'branding' as Tab, label: '🎨 Branding' }]
+              : []),
+          ]).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -478,6 +482,11 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
+        )}
+
+        {/* Tab: Branding */}
+        {activeTab === 'branding' && process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && (
+          <BrandingTab businessId={business.id} />
         )}
 
         {/* Tab: Settings */}

@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    const business = businesses[0]
+    const business = businesses[0] as unknown as typeof businesses[number] & { id: string; stamps_required: number }
 
     const [stampsResult, customersResult] = await Promise.all([
       adminClient.from('stamps').select('id', { count: 'exact' }).eq('business_id', business.id),
