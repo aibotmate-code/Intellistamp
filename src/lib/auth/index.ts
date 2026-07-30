@@ -94,12 +94,13 @@ export async function requireBusiness(
     return NextResponse.json({ error: 'Business not found' }, { status: 404 })
   }
 
-  if (business.owner_id !== userOrError.id) {
+  const biz = business as unknown as AuthorizedBusiness
+  if (biz.owner_id !== userOrError.id) {
     // Return 404 not 403 to avoid confirming the business exists to non-owners
     return NextResponse.json({ error: 'Business not found' }, { status: 404 })
   }
 
-  return business as AuthorizedBusiness
+  return biz
 }
 
 /** Convenience: require user + business in one call. */

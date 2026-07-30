@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/auth-helpers-nextjs'
-import { createClient } from '@supabase/supabase-js'
+import { adminClient, requireUserAndBusiness } from '@/lib/auth'
 import { isValidHexColor, parseAndValidateImage } from '@/lib/branding/validation'
-
-// Server-side service role client (bypasses RLS to query tables and perform storage adjustments)
-const serviceRoleClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'dummy-key-to-prevent-build-crashes'
-)
 
 function checkFeatureFlag() {
   return (
@@ -20,7 +12,7 @@ function checkFeatureFlag() {
 // Helper to construct a public URL from a relative path
 function getPublicUrl(path: string | null): string | null {
   if (!path) return null
-  const { data } = serviceRoleClient.storage.from('branding').getPublicUrl(path)
+  const { data } = adminClient.storage.from('branding').getPublicUrl(path)
   return data.publicUrl || null
 }
 
@@ -38,7 +30,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    let query = serviceRoleClient.from('business_branding').select('*, business:businesses(*)')
+    let query = adminClient.from('business_branding').select('*, business:businesses(*)')
 
     if (businessId) {
       query = query.eq('business_id', businessId)
@@ -82,24 +74,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Branding feature is disabled' }, { status: 403 })
   }
 
-  // 1. Resolve cookie session of the caller using auth.getUser() for secure check
-  const cookieStore = await cookies()
-  const authClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll() { /* read-only */ },
-      },
-    }
-  )
-
-  const { data: { user }, error: authError } = await authClient.auth.getUser()
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-  }
-
   try {
     const formData = await req.formData()
     const businessId = formData.get('business_id') as string
@@ -108,22 +82,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'business_id is required' }, { status: 400 })
     }
 
-    // 2. Fetch business to verify owner_id matches session user
-    const { data: business, error: bizError } = await serviceRoleClient
-      .from('businesses')
-      .select('owner_id')
-      .eq('id', businessId)
-      .single()
+    // Ownership check via auth helper requireUserAndBusiness
+    const biz = await requireUserAndBusiness(businessId)
+    if (biz instanceof NextResponse) return biz
 
-    if (bizError || !business) {
-      return NextResponse.json({ error: 'Business not found' }, { status: 404 })
-    }
-
-    if (business.owner_id !== user.id) {
-      return NextResponse.json({ error: 'Access forbidden: not the owner' }, { status: 403 })
-    }
-
-    // 3. Extract and validate parameters
+    // Extract and validate parameters
     const primaryColor = formData.get('primary_color') as string
     const primaryDarkColor = formData.get('primary_dark_color') as string
     const primaryLightColor = formData.get('primary_light_color') as string
@@ -157,7 +120,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check existing branding row to determine if we update or insert, and get old logo path
-    const { data: existingBranding } = await serviceRoleClient
+    const { data: existingBranding } = await adminClient
       .from('business_branding')
       .select('logo_path')
       .eq('business_id', businessId)
@@ -166,7 +129,7 @@ export async function POST(req: NextRequest) {
     let newLogoPath: string | null = existingBranding?.logo_path || null
     let uploadedToStorage = false
 
-    // 4. File uploads and checks if file was provided
+    // File uploads and checks if file was provided
     if (logoFile && typeof logoFile !== 'string' && logoFile.size > 0) {
       // Size check (2MB limit)
       if (logoFile.size > 2 * 1024 * 1024) {
@@ -191,7 +154,7 @@ export async function POST(req: NextRequest) {
       const filePath = `${businessId}/${randomId}.${sanitizedExt}`
 
       // Upload to Supabase Storage (branding bucket)
-      const { error: uploadError } = await serviceRoleClient.storage
+      const { error: uploadError } = await adminClient.storage
         .from('branding')
         .upload(filePath, buffer, {
           contentType: logoFile.type,
@@ -207,7 +170,7 @@ export async function POST(req: NextRequest) {
       uploadedToStorage = true
     }
 
-    // 5. Database Save operation
+    // Database Save operation
     const brandingData = {
       business_id: businessId,
       logo_path: newLogoPath,
@@ -226,29 +189,29 @@ export async function POST(req: NextRequest) {
     let saveError = null
 
     if (existingBranding) {
-      const { error } = await serviceRoleClient
+      const { error } = await adminClient
         .from('business_branding')
         .update(brandingData)
         .eq('business_id', businessId)
       saveError = error
     } else {
-      const { error } = await serviceRoleClient
+      const { error } = await adminClient
         .from('business_branding')
         .insert(brandingData)
       saveError = error
     }
 
-    // 6. DB Fail Cleanup: If DB write fails, delete uploaded file immediately to prevent orphan
+    // DB Fail Cleanup: If DB write fails, delete uploaded file immediately to prevent orphan
     if (saveError) {
       if (uploadedToStorage && newLogoPath) {
-        await serviceRoleClient.storage.from('branding').remove([newLogoPath])
+        await adminClient.storage.from('branding').remove([newLogoPath])
       }
       return NextResponse.json({ error: 'Database save failed. File changes rolled back.' }, { status: 500 })
     }
 
-    // 7. Success Cleanup: If new logo succeeded and old logo existed, delete old logo from storage
+    // Success Cleanup: If new logo succeeded and old logo existed, delete old logo from storage
     if (uploadedToStorage && existingBranding?.logo_path) {
-      await serviceRoleClient.storage.from('branding').remove([existingBranding.logo_path])
+      await adminClient.storage.from('branding').remove([existingBranding.logo_path])
     }
 
     return NextResponse.json({
@@ -277,24 +240,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Branding feature is disabled' }, { status: 403 })
   }
 
-  // 1. Resolve cookie session
-  const cookieStore = await cookies()
-  const authClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll() { /* read-only */ },
-      },
-    }
-  )
-
-  const { data: { user }, error: authError } = await authClient.auth.getUser()
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-  }
-
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
   const action = searchParams.get('action') // 'remove-logo' or 'reset-branding'
@@ -307,24 +252,13 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Valid action required (remove-logo or reset-branding)' }, { status: 400 })
   }
 
+  // Ownership check via auth helper requireUserAndBusiness
+  const biz = await requireUserAndBusiness(businessId)
+  if (biz instanceof NextResponse) return biz
+
   try {
-    // 2. Fetch business owner_id
-    const { data: business, error: bizError } = await serviceRoleClient
-      .from('businesses')
-      .select('owner_id')
-      .eq('id', businessId)
-      .single()
-
-    if (bizError || !business) {
-      return NextResponse.json({ error: 'Business not found' }, { status: 404 })
-    }
-
-    if (business.owner_id !== user.id) {
-      return NextResponse.json({ error: 'Access forbidden: not the owner' }, { status: 403 })
-    }
-
-    // 3. Fetch current logo path
-    const { data: branding } = await serviceRoleClient
+    // Fetch current logo path
+    const { data: branding } = await adminClient
       .from('business_branding')
       .select('logo_path')
       .eq('business_id', businessId)
@@ -336,7 +270,7 @@ export async function DELETE(req: NextRequest) {
       }
 
       // Update DB logo_path to null
-      const { error: updateError } = await serviceRoleClient
+      const { error: updateError } = await adminClient
         .from('business_branding')
         .update({ logo_path: null, updated_at: new Date().toISOString() })
         .eq('business_id', businessId)
@@ -347,13 +281,13 @@ export async function DELETE(req: NextRequest) {
 
       // Delete old logo file from storage
       if (branding.logo_path) {
-        await serviceRoleClient.storage.from('branding').remove([branding.logo_path])
+        await adminClient.storage.from('branding').remove([branding.logo_path])
       }
 
       return NextResponse.json({ success: true, message: 'Logo removed successfully' })
     } else {
       // Action: reset-branding (Delete row entirely)
-      const { error: deleteError } = await serviceRoleClient
+      const { error: deleteError } = await adminClient
         .from('business_branding')
         .delete()
         .eq('business_id', businessId)
@@ -364,7 +298,7 @@ export async function DELETE(req: NextRequest) {
 
       // Delete logo file from storage if it exists
       if (branding?.logo_path) {
-        await serviceRoleClient.storage.from('branding').remove([branding.logo_path])
+        await adminClient.storage.from('branding').remove([branding.logo_path])
       }
 
       return NextResponse.json({ success: true, message: 'Branding reset successfully' })

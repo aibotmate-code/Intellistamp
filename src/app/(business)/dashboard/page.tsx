@@ -9,6 +9,7 @@ import CustomerTable from '@/components/business/CustomerTable'
 import CustomerLookup from '@/components/business/CustomerLookup'
 import FeatureToggles from '@/components/business/FeatureToggles'
 import RewardsTab from '@/components/business/RewardsTab'
+import BrandingTab from '@/components/business/BrandingTab'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
 import Alert from '@/components/ui/Alert'
@@ -18,7 +19,7 @@ import type { Business, Customer, BusinessCustomer, Milestone } from '@/types'
 const QRDisplay = dynamic(() => import('@/components/business/QRDisplay'), { ssr: false })
 const KioskMode = dynamic(() => import('@/components/business/KioskMode'), { ssr: false })
 
-type Tab = 'qr' | 'customers' | 'rewards' | 'campaigns' | 'settings'
+type Tab = 'qr' | 'customers' | 'rewards' | 'campaigns' | 'settings' | 'branding'
 
 interface CustomerRow extends BusinessCustomer {
   customer: Customer
@@ -49,12 +50,6 @@ export default function DashboardPage() {
   // Rewards tab state
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [milestonesLoaded, setMilestonesLoaded] = useState(false)
-
-  // Staff validator state
-  const [staffToken, setStaffToken] = useState('')
-  const [staffPin, setStaffPin] = useState('')
-  const [staffLoading, setStaffLoading] = useState(false)
-  const [staffResult, setStaffResult] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
 
   // Campaign state
   const [campaignAudience, setCampaignAudience] = useState<'all' | 'inactive' | 'near_reward'>('all')
@@ -156,38 +151,6 @@ export default function DashboardPage() {
       URL.revokeObjectURL(url)
     } catch {
       // silent fail — no external state to show
-    }
-  }
-
-  const handleStaffStamp = async () => {
-    if (!data) return
-    setStaffLoading(true)
-    setStaffResult(null)
-    try {
-      const res = await fetch('/api/stamp/issue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_id: staffToken,
-          business_id: data.business.id,
-          token: staffToken,
-          staff_pin: staffPin,
-          type: 'regular',
-        }),
-      })
-      const json = await res.json()
-      if (res.ok) {
-        setStaffResult({ type: 'success', msg: 'Stamp issued successfully!' })
-        setStaffToken('')
-        setStaffPin('')
-        fetchData()
-      } else {
-        setStaffResult({ type: 'error', msg: json.error || 'Failed to issue stamp' })
-      }
-    } catch {
-      setStaffResult({ type: 'error', msg: 'Network error' })
-    } finally {
-      setStaffLoading(false)
     }
   }
 
@@ -340,7 +303,10 @@ export default function DashboardPage() {
             { id: 'rewards' as Tab,   label: 'Rewards' },
             { id: 'campaigns' as Tab, label: 'Campaigns' },
             { id: 'settings' as Tab,  label: 'Settings' },
-          ] as const).map((tab) => (
+            ...(process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true'
+              ? [{ id: 'branding' as Tab, label: '🎨 Branding' }]
+              : []),
+          ]).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -381,48 +347,24 @@ export default function DashboardPage() {
             </div>
 
             {/* Right: Staff Validator */}
-            <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+            <div>
               {!business.staff_pin_enabled ? (
-                <div className="h-full flex flex-col items-center justify-center text-center gap-3 py-8">
+                <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 h-full flex flex-col items-center justify-center text-center gap-3 py-8">
                   <div className="text-4xl">⚡</div>
                   <h3 className="font-bold text-white">Smart Mode Active</h3>
                   <p className="text-sm text-zinc-400">
                     Customers stamp themselves by scanning the QR
                   </p>
                   <p className="text-xs text-zinc-500">
-                    Enable Staff PIN in Settings for manual validation
+                    Enable Staff PIN in Settings for manual stamp issuing
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <h3 className="font-bold text-white">Staff Stamp Validator</h3>
-                  <Input
-                    label="Customer Token (6 chars)"
-                    placeholder="X7K3P2"
-                    value={staffToken}
-                    onChange={(e) => setStaffToken(e.target.value.toUpperCase())}
-                    maxLength={6}
-                  />
-                  <Input
-                    label="Staff PIN"
-                    type="password"
-                    placeholder="4-digit PIN"
-                    value={staffPin}
-                    onChange={(e) => setStaffPin(e.target.value)}
-                    maxLength={4}
-                    inputMode="numeric"
-                  />
-                  {staffResult && (
-                    <Alert type={staffResult.type} message={staffResult.msg} />
-                  )}
-                  <Button
-                    onClick={handleStaffStamp}
-                    loading={staffLoading}
-                    className="w-full"
-                  >
-                    ISSUE STAMP
-                  </Button>
-                </div>
+                <CustomerLookup
+                  businessId={business.id}
+                  stampsRequired={business.stamps_required}
+                  onStamped={fetchData}
+                />
               )}
             </div>
           </div>
@@ -434,7 +376,6 @@ export default function DashboardPage() {
             <CustomerLookup
               businessId={business.id}
               stampsRequired={business.stamps_required}
-              staffPin={business.staff_pin}
               onStamped={fetchData}
             />
             <div>
@@ -541,6 +482,11 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
+        )}
+
+        {/* Tab: Branding */}
+        {activeTab === 'branding' && process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && (
+          <BrandingTab business={business} onUpdate={fetchData} />
         )}
 
         {/* Tab: Settings */}
