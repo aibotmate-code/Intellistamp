@@ -50,12 +50,6 @@ export default function DashboardPage() {
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [milestonesLoaded, setMilestonesLoaded] = useState(false)
 
-  // Staff validator state
-  const [staffToken, setStaffToken] = useState('')
-  const [staffPin, setStaffPin] = useState('')
-  const [staffLoading, setStaffLoading] = useState(false)
-  const [staffResult, setStaffResult] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
-
   // Campaign state
   const [campaignAudience, setCampaignAudience] = useState<'all' | 'inactive' | 'near_reward'>('all')
   const [campaignMessage, setCampaignMessage] = useState('')
@@ -156,38 +150,6 @@ export default function DashboardPage() {
       URL.revokeObjectURL(url)
     } catch {
       // silent fail — no external state to show
-    }
-  }
-
-  const handleStaffStamp = async () => {
-    if (!data) return
-    setStaffLoading(true)
-    setStaffResult(null)
-    try {
-      const res = await fetch('/api/stamp/issue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_id: staffToken,
-          business_id: data.business.id,
-          token: staffToken,
-          staff_pin: staffPin,
-          type: 'regular',
-        }),
-      })
-      const json = await res.json()
-      if (res.ok) {
-        setStaffResult({ type: 'success', msg: 'Stamp issued successfully!' })
-        setStaffToken('')
-        setStaffPin('')
-        fetchData()
-      } else {
-        setStaffResult({ type: 'error', msg: json.error || 'Failed to issue stamp' })
-      }
-    } catch {
-      setStaffResult({ type: 'error', msg: 'Network error' })
-    } finally {
-      setStaffLoading(false)
     }
   }
 
@@ -381,48 +343,24 @@ export default function DashboardPage() {
             </div>
 
             {/* Right: Staff Validator */}
-            <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+            <div>
               {!business.staff_pin_enabled ? (
-                <div className="h-full flex flex-col items-center justify-center text-center gap-3 py-8">
+                <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 h-full flex flex-col items-center justify-center text-center gap-3 py-8">
                   <div className="text-4xl">⚡</div>
                   <h3 className="font-bold text-white">Smart Mode Active</h3>
                   <p className="text-sm text-zinc-400">
                     Customers stamp themselves by scanning the QR
                   </p>
                   <p className="text-xs text-zinc-500">
-                    Enable Staff PIN in Settings for manual validation
+                    Enable Staff PIN in Settings for manual stamp issuing
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <h3 className="font-bold text-white">Staff Stamp Validator</h3>
-                  <Input
-                    label="Customer Token (6 chars)"
-                    placeholder="X7K3P2"
-                    value={staffToken}
-                    onChange={(e) => setStaffToken(e.target.value.toUpperCase())}
-                    maxLength={6}
-                  />
-                  <Input
-                    label="Staff PIN"
-                    type="password"
-                    placeholder="4-digit PIN"
-                    value={staffPin}
-                    onChange={(e) => setStaffPin(e.target.value)}
-                    maxLength={4}
-                    inputMode="numeric"
-                  />
-                  {staffResult && (
-                    <Alert type={staffResult.type} message={staffResult.msg} />
-                  )}
-                  <Button
-                    onClick={handleStaffStamp}
-                    loading={staffLoading}
-                    className="w-full"
-                  >
-                    ISSUE STAMP
-                  </Button>
-                </div>
+                <CustomerLookup
+                  businessId={business.id}
+                  stampsRequired={business.stamps_required}
+                  onStamped={fetchData}
+                />
               )}
             </div>
           </div>
@@ -434,7 +372,6 @@ export default function DashboardPage() {
             <CustomerLookup
               businessId={business.id}
               stampsRequired={business.stamps_required}
-              staffPin={business.staff_pin}
               onStamped={fetchData}
             />
             <div>

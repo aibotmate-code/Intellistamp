@@ -21,13 +21,14 @@ interface LookupResult {
 interface CustomerLookupProps {
   businessId: string
   stampsRequired: number
-  staffPin: string
   onStamped?: () => void
 }
 
-export default function CustomerLookup({ businessId, stampsRequired, staffPin, onStamped }: CustomerLookupProps) {
+export default function CustomerLookup({ businessId, stampsRequired, onStamped }: CustomerLookupProps) {
   const [phone, setPhone] = useState('')
+  const [pin, setPin] = useState('')
   const [phoneError, setPhoneError] = useState('')
+  const [pinError, setPinError] = useState('')
   const [loading, setLoading] = useState(false)
   const [stamping, setStamping] = useState(false)
   const [result, setResult] = useState<LookupResult | null>(null)
@@ -35,12 +36,15 @@ export default function CustomerLookup({ businessId, stampsRequired, staffPin, o
 
   const handleLookup = async () => {
     setPhoneError('')
+    setPinError('')
     setResult(null)
     setStampMsg(null)
-    if (!phone.trim()) {
-      setPhoneError('Enter a mobile number')
-      return
-    }
+
+    let hasError = false
+    if (!phone.trim()) { setPhoneError('Enter a mobile number'); hasError = true }
+    if (!pin.trim()) { setPinError('Enter staff PIN'); hasError = true }
+    if (hasError) return
+
     setLoading(true)
     try {
       const res = await fetch('/api/business/customer-lookup', {
@@ -69,7 +73,7 @@ export default function CustomerLookup({ businessId, stampsRequired, staffPin, o
       const res = await fetch('/api/kiosk/stamp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ business_id: businessId, phone: result.customer.phone, pin: staffPin }),
+        body: JSON.stringify({ business_id: businessId, phone: result.customer.phone, pin }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -78,6 +82,8 @@ export default function CustomerLookup({ businessId, stampsRequired, staffPin, o
       }
       setStampMsg({ type: 'success', msg: 'Stamp issued successfully!' })
       setResult((prev) => prev ? { ...prev, card_state: data.card_state } : prev)
+      setPhone('')
+      setPin('')
       onStamped?.()
     } catch {
       setStampMsg({ type: 'error', msg: 'Network error' })
@@ -89,8 +95,9 @@ export default function CustomerLookup({ businessId, stampsRequired, staffPin, o
   return (
     <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
       <h3 className="font-bold text-white">Find customer by mobile number</h3>
+
       <Input
-        label="Enter mobile number"
+        label="Customer Mobile Number"
         placeholder="9876543210"
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
@@ -98,8 +105,20 @@ export default function CustomerLookup({ businessId, stampsRequired, staffPin, o
         inputMode="numeric"
         maxLength={15}
       />
+
+      <Input
+        label="Staff PIN"
+        type="password"
+        placeholder="4-digit PIN"
+        value={pin}
+        onChange={(e) => setPin(e.target.value)}
+        error={pinError}
+        inputMode="numeric"
+        maxLength={4}
+      />
+
       <Button onClick={handleLookup} loading={loading} className="w-full">
-        Find customer
+        Find Customer
       </Button>
 
       {result && !result.found && (
@@ -137,7 +156,7 @@ export default function CustomerLookup({ businessId, stampsRequired, staffPin, o
           )}
           {stampMsg && <Alert type={stampMsg.type} message={stampMsg.msg} />}
           <Button onClick={handleIssueStamp} loading={stamping} className="w-full">
-            Issue Stamp
+            Confirm & Issue Stamp
           </Button>
         </div>
       )}
