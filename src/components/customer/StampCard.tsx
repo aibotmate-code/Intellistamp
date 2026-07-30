@@ -20,6 +20,8 @@ interface StampCardProps {
   milestones?: MilestoneWithStatus[]
   rewardResult?: RewardResult | null
   totalVisits?: number
+  branding?: import('@/types').BusinessBranding | null
+  businessBranding?: import('@/types').BusinessBranding | null
 }
 
 // ── Milestone progress bar — animates 0→pct on mount ─────────────────────────

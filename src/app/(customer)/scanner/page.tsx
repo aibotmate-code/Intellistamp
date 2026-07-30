@@ -22,7 +22,7 @@ export default function ScannerPage() {
 
   useEffect(() => {
     if (!('BarcodeDetector' in window)) {
-      setScanState('unsupported')
+      queueMicrotask(() => setScanState('unsupported'))
       return
     }
 

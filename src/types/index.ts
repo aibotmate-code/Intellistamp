@@ -22,6 +22,25 @@ export interface Business {
   conflict_priority: ConflictPriority
   stamps_required_updated_at?: string
   milestones?: Milestone[]
+  branding?: BusinessBranding | null
+}
+
+export interface BusinessBranding {
+  id?: string
+  business_id: string
+  logo_url?: string | null
+  logo_path?: string | null
+  primary_color: string
+  primary_dark_color: string
+  primary_light_color: string
+  secondary_color?: string | null
+  accent_color?: string | null
+  background_color?: string | null
+  surface_color?: string | null
+  text_on_primary: string
+  is_enabled: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Customer {

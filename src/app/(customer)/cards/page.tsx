@@ -38,11 +38,11 @@ export default function CardsPage() {
   useEffect(() => {
     const stored = localStorage.getItem('customer_session')
     if (!stored) {
-      setFlow('phone')
+      queueMicrotask(() => setFlow('phone'))
       return
     }
     const session = JSON.parse(stored) as { id: string; phone: string; customer_token?: string }
-    loadCards(session.id)
+    queueMicrotask(() => loadCards(session.id))
   }, [])
 
   const handlePhoneLookup = async () => {

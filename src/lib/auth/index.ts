@@ -86,11 +86,7 @@ export async function requireBusiness(
 
   const { data: business, error } = await adminClient
     .from('businesses')
-    .select(
-      'id, name, slug, stamps_required, reward, staff_pin, staff_pin_hash, gmb_link, ' +
-      'dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, ' +
-      'conflict_priority, emoji, category, owner_id'
-    )
+    .select('id, name, slug, stamps_required, reward, staff_pin, staff_pin_hash, gmb_link, dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, conflict_priority, emoji, category, owner_id')
     .eq('id', businessId)
     .maybeSingle()
 
