@@ -187,6 +187,50 @@ describe('GET /api/business/get — auth security', () => {
     const res = await getBusinessHandler(makeGet(`http://localhost/api/business/get?ownerId=${OWNER_ID}`))
     expect(res.status).toBe(200)
   })
+
+  test('customer list output contains required fields but excludes customer_token', async () => {
+    mockSession(OWNER_ID)
+    // 1. businesses query
+    mockQueue.push({ data: [mockBusiness], error: null })
+    // 2. stamps count
+    mockQueue.push({ count: 10, data: null, error: null })
+    // 3. customers count
+    mockQueue.push({ count: 1, data: null, error: null })
+    // 4. business_customers join
+    mockQueue.push({
+      data: [{
+        business_id: BIZ_ID,
+        customer_id: CUST_ID,
+        review_claimed: false,
+        cards_redeemed: 0,
+        enrolled_at: new Date().toISOString(),
+        customer: {
+          id: CUST_ID,
+          name: 'Jane Doe',
+          phone: '9876543210',
+          whatsapp_optin: true,
+          birthday_month: 'January',
+          birthday_day: 1,
+          created_at: new Date().toISOString()
+        }
+      }],
+      error: null
+    })
+    // 5. all stamps
+    mockQueue.push({ data: [], error: null })
+
+    const res = await getBusinessHandler(makeGet(`http://localhost/api/business/get?ownerId=${OWNER_ID}`))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.customers).toBeDefined()
+    expect(body.customers.length).toBe(1)
+    
+    const custRecord = body.customers[0]
+    expect(custRecord.customer.id).toBe(CUST_ID)
+    expect(custRecord.customer.name).toBe('Jane Doe')
+    expect(custRecord.customer.phone).toBe('9876543210')
+    expect(custRecord.customer.customer_token).toBeUndefined() // Token must be redacted!
+  })
 })
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { verifyPin } from '@/lib/pinHash'
 
 const schema = z.object({
   business_id: z.string().uuid(),
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     const { data: business } = await supabase
       .from('businesses')
-      .select('staff_pin, stamps_required, gmb_link')
+      .select('staff_pin, staff_pin_hash, stamps_required, gmb_link')
       .eq('id', business_id)
       .single()
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    if (business.staff_pin !== pin) {
+    if (!await verifyPin(pin, business.staff_pin_hash, business.staff_pin)) {
       return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
     }
 

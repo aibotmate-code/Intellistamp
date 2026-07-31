@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 
     const { data: bcData, error: bcError } = await adminClient
       .from('business_customers')
-      .select('*, customer:customers(id, name, phone, whatsapp_optin, birthday_month, birthday_day, customer_token, created_at)')
+      .select('*, customer:customers(id, name, phone, whatsapp_optin, birthday_month, birthday_day, created_at)')
       .eq('business_id', business.id)
       .order('enrolled_at', { ascending: false })
 
