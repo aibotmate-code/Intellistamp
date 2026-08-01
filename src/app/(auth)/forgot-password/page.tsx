@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
+import { getAppOrigin } from '@/lib/origin'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 
@@ -30,17 +31,10 @@ export default function ForgotPasswordPage() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       )
 
-      // Determine the redirect URL — must route through /api/auth/callback
-      // to exchange the Supabase auth code for a session before hitting
-      // the reset-password UI page.
-      const appUrl =
-        process.env.NEXT_PUBLIC_APP_URL ||
-        (typeof window !== 'undefined' ? window.location.origin : '')
-
       // We intentionally call resetPasswordForEmail regardless of whether
       // the email exists — this prevents user enumeration attacks.
       await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${appUrl}/api/auth/callback`,
+        redirectTo: `${getAppOrigin()}/api/auth/callback`,
       })
 
       // Always show success — never reveal whether the email exists

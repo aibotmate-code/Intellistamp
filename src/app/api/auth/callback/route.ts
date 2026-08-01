@@ -7,27 +7,24 @@ import { cookies } from 'next/headers'
  *
  * Supabase redirects here after:
  *  - Password-reset email link clicked
- *  - (Future) OAuth or magic-link flows
  *
  * The URL contains ?code=<auth_code> which we exchange for a session.
- * After exchange, we redirect to the appropriate page based on the
- * session's `type` (recovery → /reset-password, else → /dashboard).
+ * After a successful exchange we always redirect to /reset-password so the
+ * user can set their new password.  If the exchange fails (expired or
+ * already-used link) we redirect to /reset-password?error=expired so the
+ * client shows the appropriate recovery UI.
  *
  * Security:
  * - Only redirects to internal paths (no open redirects)
  * - Does not log the code or any tokens
+ * - The ?next= param is validated before use to prevent open-redirect attacks
  */
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  const next = requestUrl.searchParams.get('next') ?? '/dashboard'
-
-  // Validate the `next` param to prevent open redirects — must be a
-  // relative path starting with / and not containing a protocol.
-  const safeNext = /^\/[^/]/.test(next) && !next.includes('://') ? next : '/dashboard'
 
   if (!code) {
-    // No code — could be a direct hit or a malformed link
+    // No code — direct hit or malformed link
     return NextResponse.redirect(new URL('/login?error=missing_code', request.url))
   }
 
@@ -51,22 +48,17 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
-      // Expired or invalid link
+      // Expired or invalid code — show the recovery UI so the user can
+      // request a new reset link without having to navigate away.
       return NextResponse.redirect(
         new URL('/reset-password?error=expired', request.url)
       )
     }
 
-    // Check what type of session this is
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (session?.user?.aud === 'authenticated') {
-      // Recovery flow → send to reset-password page (session is now active)
-      // The reset-password page will call updateUser({ password })
-      return NextResponse.redirect(new URL('/reset-password', request.url))
-    }
-
-    return NextResponse.redirect(new URL(safeNext, request.url))
+    // Successful exchange — the session is now set in the response cookies.
+    // Always redirect to /reset-password; this callback is only triggered
+    // from password-reset emails (no OAuth configured).
+    return NextResponse.redirect(new URL('/reset-password', request.url))
   } catch {
     return NextResponse.redirect(
       new URL('/login?error=callback_failed', request.url)
