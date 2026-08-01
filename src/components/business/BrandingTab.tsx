@@ -332,10 +332,13 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 bg-zinc-950 rounded-2xl border border-zinc-900">
-      
-      {/* Configuration Form */}
-      <form onSubmit={handleSave} className="lg:col-span-7 space-y-6" onPaste={handlePaste}>
+    <div className="p-6 bg-zinc-950 rounded-2xl border border-zinc-900">
+      {/* Two-column layout: controls scroll freely; preview is sticky on desktop.
+          On mobile we use flex-col-reverse so preview appears above controls. */}
+      <div className="flex flex-col-reverse lg:flex-row lg:items-start gap-8">
+
+      {/* Configuration Form – left / bottom on mobile */}
+      <form onSubmit={handleSave} className="flex-1 min-w-0 space-y-6" onPaste={handlePaste}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-white">Client Co-Branding</h2>
@@ -685,11 +688,18 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
         </div>
       </form>
 
-      {/* Real-time Preview Pane */}
-      <div className="lg:col-span-5 flex flex-col items-center justify-start space-y-4">
-        <h3 className="text-sm font-semibold text-zinc-400 uppercase self-start">Live Card Preview</h3>
-        <div 
-          className="w-full flex justify-center items-center p-4 rounded-2xl border min-h-[380px]"
+      {/* Real-time Preview Pane – right / top on mobile */}
+      {/* sticky: needs the parent to be flex with items-start (not stretch) */}
+      <div
+        className="
+          w-full lg:w-[38%] lg:flex-shrink-0
+          flex flex-col items-center space-y-3
+          lg:sticky lg:top-24 lg:self-start
+        "
+      >
+        <h3 className="text-sm font-semibold text-zinc-400 uppercase self-start tracking-wide">Live Card Preview</h3>
+        <div
+          className="w-full flex justify-center items-center p-4 rounded-2xl border min-h-[360px]"
           style={{
             background: isEnabled && backgroundColor ? backgroundColor : 'rgba(24, 24, 27, 0.3)',
             borderColor: isEnabled && surfaceColor ? surfaceColor : '#27272a',
@@ -705,14 +715,21 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
               newStampIndex={undefined}
               redeemable={false}
               onClaim={() => {}}
-              // Make sure to pass the mock branding configuration directly
               businessBranding={mockBranding}
             />
           </BrandingWrapper>
         </div>
-        <p className="text-xs text-zinc-500 text-center">Preview simulates a card with 3 collected stamps. Text contrast matches WCAG AA rules.</p>
+        <p className="text-xs text-zinc-400 text-center flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#3A7874', flexShrink: 0 }}
+          />
+          Changes appear here instantly
+        </p>
+        <p className="text-xs text-zinc-600 text-center">3 collected stamps · WCAG AA contrast</p>
       </div>
 
+      </div>{/* end two-column flex */}
     </div>
   )
 }
