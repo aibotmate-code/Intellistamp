@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
-import { getClientIp, checkRateLimit } from '../rateLimit'
+import { getClientIp, checkRateLimit, generateHmacIdentity } from '../rateLimit'
+import crypto from 'crypto'
 
 // @ts-expect-error Mocked module injection
 import { __mocks as smocks } from '@supabase/supabase-js'
@@ -16,6 +17,7 @@ jest.mock('@supabase/supabase-js', () => {
 describe('Rate Limit & IP Extraction Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    process.env.RATE_LIMIT_KEY_SECRET = 'test_secret_do_not_use_in_prod'
   })
 
   describe('[MOCKED TESTS] Client IP Helper', () => {
@@ -49,13 +51,34 @@ describe('Rate Limit & IP Extraction Tests', () => {
       expect(getClientIp(req)).toBe('3.3.3.3')
     })
 
-    test('IP Helper: rejects malformed IP and falls back', () => {
+    test('IP Helper: valid IPv4 accepted', () => {
+      const req = new NextRequest('http://localhost', {
+        headers: new Headers({ 'x-vercel-forwarded-for': '192.168.1.1' })
+      })
+      expect(getClientIp(req)).toBe('192.168.1.1')
+    })
+
+    test('IP Helper: valid IPv6 accepted and normalized', () => {
+      const req = new NextRequest('http://localhost', {
+        headers: new Headers({ 'x-vercel-forwarded-for': '[2001:db8::1]' })
+      })
+      expect(getClientIp(req)).toBe('2001:db8::1')
+    })
+
+    test('IP Helper: IPv4-mapped IPv6 is normalized', () => {
+      const req = new NextRequest('http://localhost', {
+        headers: new Headers({ 'x-vercel-forwarded-for': '::ffff:192.0.2.128' })
+      })
+      expect(getClientIp(req)).toBe('192.0.2.128')
+    })
+
+    test('IP Helper: rejects malformed pseudo-IP and falls back', () => {
       const req = new NextRequest('http://localhost', {
         headers: new Headers({
           'x-forwarded-for': 'drop table users;--'
         })
       })
-      expect(getClientIp(req)).toBe('127.0.0.1')
+      expect(getClientIp(req)).toBe('unknown-client')
     })
 
     test('IP Helper: rejects oversized IP string', () => {
@@ -65,20 +88,38 @@ describe('Rate Limit & IP Extraction Tests', () => {
           'x-vercel-forwarded-for': oversized
         })
       })
-      expect(getClientIp(req)).toBe('127.0.0.1')
+      expect(getClientIp(req)).toBe('unknown-client')
     })
 
-    test('IP Helper: returns stable fallback when missing', () => {
+    test('IP Helper: returns stable fallback unknown-client when missing', () => {
       const req = new NextRequest('http://localhost')
-      expect(getClientIp(req)).toBe('127.0.0.1')
+      expect(getClientIp(req)).toBe('unknown-client')
     })
   })
 
-  describe('[MOCKED TESTS] TS Wrapper logic', () => {
-    test('Wrapper fails open on DB error', async () => {
+  describe('[MOCKED TESTS] HMAC Identity Generation', () => {
+    test('generateHmacIdentity produces stable truncated hashes', () => {
+      const hash1 = generateHmacIdentity('ip', '1.1.1.1')
+      const hash2 = generateHmacIdentity('ip', '1.1.1.1')
+      expect(hash1).toBe(hash2)
+      expect(hash1.length).toBe(32)
+      expect(hash1).not.toContain('1.1.1.1') // Raw IP is absent
+    })
+
+    test('different prefixes separate domains', () => {
+      const hashIp = generateHmacIdentity('ip', '1.1.1.1')
+      const hashPhone = generateHmacIdentity('phone', '1.1.1.1')
+      expect(hashIp).not.toBe(hashPhone)
+    })
+  })
+
+  describe('[MOCKED TESTS] TS Wrapper logic & Fail-Closed', () => {
+    test('limiter RPC failure fails closed (blocks PIN verification, recovery, etc.)', async () => {
       smocks.mockRpc.mockResolvedValueOnce({ data: null, error: new Error('DB Error') })
       const res = await checkRateLimit('test_key', 5, 60)
-      expect(res.ok).toBe(true) // fails open to not block traffic
+      expect(res.ok).toBe(false)
+      expect(res.isError).toBe(true)
+      expect(res.retryAfter).toBe(60) // Fails closed, temporary backoff
     })
 
     test('Wrapper correctly passes arguments to RPC', async () => {
@@ -95,26 +136,32 @@ describe('Rate Limit & IP Extraction Tests', () => {
   })
 
   describe('[REAL POSTGRESQL TESTS - TO BE EXECUTED AFTER MIGRATION]', () => {
-    // We declare these as skip/todo since the migration is not yet executed locally/staging during this CI run
+    // These tests map directly to the migration SQL logic requirements
     test.todo('first request allowed')
-    test.todo('exactly limit requests allowed')
-    test.todo('limit + 1 blocked')
-    test.todo('expired window resets')
-    test.todo('concurrent calls stay within limit (using pg_advisory_xact_lock / FOR UPDATE)')
+    test.todo('exact limit boundary (limit requests allowed)')
+    test.todo('limit + 1 rejection (limit + 1 blocked)')
+    test.todo('expired window resets count to 1')
+    test.todo('concurrent UPSERT behavior stays within limit (using pg_advisory_xact_lock / FOR UPDATE)')
     test.todo('invalid key rejected (length > 256 or empty)')
-    test.todo('oversized key rejected')
     test.todo('invalid limit rejected (outside 1..1000)')
     test.todo('invalid window rejected (outside 1..86400)')
-    test.todo('retry_after non-negative')
-    test.todo('count capped at limit + 1')
-    test.todo('business isolation (different keys do not overlap)')
-    test.todo('IP isolation (different IP keys do not overlap)')
+    test.todo('retry_after never negative')
+    test.todo('count capped at limit + 1 in the database')
+    
+    // Isolation requirements at the database key level
+    test.todo('one attacker IP cannot lock all other IPs for a business (appended client hash isolates rows)')
+    test.todo('the same IP is isolated between businesses (business_id in key)')
+    test.todo('stamp, kiosk, review, and lookup actions have separate scopes (action prefixes in keys)')
+    
+    // Cleanup behavior
+    test.todo('cleanup orders by oldest reset_at first')
     test.todo('cleanup removes only expired rows (reset_at < now() - 1 day)')
-    test.todo('cleanup respects batch limit (p_batch_size)')
+    test.todo('cleanup remains batch-limited (p_batch_size)')
+    
+    // Permissions
     test.todo('anon cannot execute (Permission denied)')
     test.todo('authenticated cannot execute (Permission denied)')
     test.todo('service_role can execute')
     test.todo('direct table access blocked for all (RLS enabled, no policies)')
-    test.todo('no sensitive values in stored keys (app level key formatting)')
   })
 })

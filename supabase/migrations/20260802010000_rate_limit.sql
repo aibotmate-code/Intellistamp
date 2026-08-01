@@ -1,13 +1,30 @@
--- 1. Create schema-qualified table
+-- 1. Create schema-qualified table safely (upgrade path)
 CREATE TABLE IF NOT EXISTS public.rate_limits (
   key text PRIMARY KEY,
   count integer NOT NULL DEFAULT 0,
-  reset_at timestamptz NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT chk_rate_limit_key_length CHECK (char_length(btrim(key)) BETWEEN 1 AND 256),
-  CONSTRAINT chk_rate_limit_count_positive CHECK (count >= 0)
+  reset_at timestamptz NOT NULL
 );
+
+ALTER TABLE public.rate_limits 
+  ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'chk_rate_limit_key_length'
+  ) THEN
+    ALTER TABLE public.rate_limits 
+      ADD CONSTRAINT chk_rate_limit_key_length CHECK (char_length(btrim(key)) BETWEEN 1 AND 256);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'chk_rate_limit_count_positive'
+  ) THEN
+    ALTER TABLE public.rate_limits 
+      ADD CONSTRAINT chk_rate_limit_count_positive CHECK (count >= 0);
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS rate_limits_reset_at_idx ON public.rate_limits(reset_at);
 
@@ -107,6 +124,7 @@ BEGIN
   WITH to_delete AS (
     SELECT key FROM public.rate_limits
     WHERE reset_at < (now() - interval '1 day')
+    ORDER BY reset_at ASC
     LIMIT p_batch_size
     FOR UPDATE SKIP LOCKED
   ),

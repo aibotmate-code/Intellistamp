@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { randomInt } from 'crypto'
 import { phoneSchema, otpVerifySchema } from '@/lib/validators'
-import { checkRateLimit, rateLimitResponse, getClientIp } from '@/lib/rateLimit'
+import { checkRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
@@ -32,8 +32,12 @@ export async function POST(req: NextRequest) {
       }
       const { phone } = result.data
 
-      const rlSend = await checkRateLimit(`otp-send:${phone}`, 5, 15 * 60 * 1000)
-      if (!rlSend.ok) return rateLimitResponse(rlSend.retryAfter!)
+      const phoneHash = generateHmacIdentity('phone', phone)
+      const rlSend = await checkRateLimit(`otp-send:${phoneHash}`, 5, 15 * 60 * 1000)
+      if (!rlSend.ok) {
+        if (rlSend.isError) return rateLimitErrorResponse()
+        return rateLimitResponse(rlSend.retryAfter || 60)
+      }
 
       const { data: recentOtp } = await supabase
         .from('otp_store')
@@ -78,8 +82,12 @@ export async function POST(req: NextRequest) {
     }
     const { phone, otp } = result.data
 
-    const rlVerify = await checkRateLimit(`otp-verify:${phone}`, 10, 15 * 60 * 1000)
-    if (!rlVerify.ok) return rateLimitResponse(rlVerify.retryAfter!)
+    const phoneHash = generateHmacIdentity('phone', phone)
+    const rlVerify = await checkRateLimit(`otp-verify:${phoneHash}`, 10, 15 * 60 * 1000)
+    if (!rlVerify.ok) {
+      if (rlVerify.isError) return rateLimitErrorResponse()
+      return rateLimitResponse(rlVerify.retryAfter || 60)
+    }
 
     const { data: otpRecord, error: otpError } = await supabase
       .from('otp_store')

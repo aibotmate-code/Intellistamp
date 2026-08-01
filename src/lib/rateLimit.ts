@@ -1,4 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import net from 'net'
+import crypto from 'crypto'
 
 export function getClientIp(req: NextRequest): string {
   // Prefer Vercel trusted IP header
@@ -12,21 +15,37 @@ export function getClientIp(req: NextRequest): string {
   }
 
   if (ip) {
-    // Basic normalization/validation for IPv4 or IPv6
-    // Reject anything too long or containing bizarre characters
-    if (ip.length <= 45 && /^[a-fA-F0-9.:]+$/.test(ip)) {
+    // IPv6 could be enclosed in brackets e.g., [::1]
+    ip = ip.replace(/^\[|\]$/g, '').trim()
+
+    // Normalize IPv4-mapped IPv6
+    if (ip.startsWith('::ffff:')) {
+      ip = ip.substring(7)
+    }
+
+    if (ip.length <= 45 && net.isIP(ip)) {
       return ip
     }
   }
   
-  return '127.0.0.1' // Stable fallback
+  return 'unknown-client' // Stable fallback
 }
+
+export function generateHmacIdentity(prefix: string, value: string): string {
+  const secret = process.env.RATE_LIMIT_KEY_SECRET
+  if (!secret) {
+    throw new Error('RATE_LIMIT_KEY_SECRET is not configured')
+  }
+  const hmac = crypto.createHmac('sha256', secret)
+  hmac.update(`${prefix}|${value}`)
+  return hmac.digest('hex').substring(0, 32)
+}
+
 export interface RateLimitResult {
   ok: boolean
   retryAfter?: number
+  isError?: boolean
 }
-
-import { createClient } from '@supabase/supabase-js'
 
 export async function checkRateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
   const supabase = createClient(
@@ -41,7 +60,8 @@ export async function checkRateLimit(key: string, limit: number, windowMs: numbe
   
   if (error || !data) {
     console.error('Rate limit DB error:', error)
-    return { ok: true } // Fail open on DB errors
+    // FAIL CLOSED: if DB fails, do not allow unlimited access
+    return { ok: false, retryAfter: 60, isError: true } // Default temporary backoff on error
   }
   
   return {
@@ -54,5 +74,12 @@ export function rateLimitResponse(retryAfter: number): NextResponse {
   return NextResponse.json(
     { error: 'Too many requests. Please try again later.' },
     { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+  )
+}
+
+export function rateLimitErrorResponse(): NextResponse {
+  return NextResponse.json(
+    { error: 'Service temporarily unavailable.' },
+    { status: 503, headers: { 'Retry-After': '60' } }
   )
 }

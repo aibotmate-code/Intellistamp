@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { customerRecoverSchema } from '@/lib/validators'
 import { normalizeIndianPhone } from '@/lib/phone'
-import { checkRateLimit, rateLimitResponse, getClientIp } from '@/lib/rateLimit'
+import { checkRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,8 +14,12 @@ const supabase = createClient(
 // business_id — a phone enrolled elsewhere must never be revealed here.
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
-  const rl = await checkRateLimit(`recover:${ip}`, 10, 15 * 60 * 1000)
-  if (!rl.ok) return rateLimitResponse(rl.retryAfter!)
+  const clientHash = generateHmacIdentity('ip', ip)
+  const rl = await checkRateLimit(`recover:${clientHash}`, 10, 15 * 60 * 1000)
+  if (!rl.ok) {
+    if (rl.isError) return rateLimitErrorResponse()
+    return rateLimitResponse(rl.retryAfter || 60)
+  }
 
   try {
     const body = await req.json()

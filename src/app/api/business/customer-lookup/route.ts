@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { customerLookupSchema } from '@/lib/validators'
 import { normalizeIndianPhone } from '@/lib/phone'
+import { checkRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -42,6 +43,14 @@ export async function POST(req: NextRequest) {
     const phone = normalizeIndianPhone(result.data.phone)
     if (!phone) {
       return NextResponse.json({ error: 'Enter a valid 10-digit Indian mobile number' }, { status: 400 })
+    }
+
+    const ip = getClientIp(req)
+    const clientHash = generateHmacIdentity('ip', ip)
+    const rl = await checkRateLimit(`pin:lookup:${business_id}:${clientHash}`, 20, 15 * 60 * 1000)
+    if (!rl.ok) {
+      if (rl.isError) return rateLimitErrorResponse()
+      return rateLimitResponse(rl.retryAfter || 60)
     }
 
     // Confirm business_id actually belongs to the authenticated owner

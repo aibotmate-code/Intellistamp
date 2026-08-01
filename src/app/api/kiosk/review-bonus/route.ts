@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { verifyPin } from '@/lib/pinHash'
-import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimit'
+import { checkRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
 
 const schema = z.object({
   business_id: z.string().uuid(),
@@ -24,6 +24,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { business_id, customer_id, pin } = result.data
+    const ip = getClientIp(req)
+    const clientHash = generateHmacIdentity('ip', ip)
 
     const { data: business } = await supabase
       .from('businesses')
@@ -35,8 +37,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    const pinRl = await checkRateLimit(`pin:${business_id}`, 10, 5 * 60 * 1000)
-    if (!pinRl.ok) return rateLimitResponse(pinRl.retryAfter!)
+    const pinRl = await checkRateLimit(`pin:review:${business_id}:${clientHash}`, 10, 5 * 60 * 1000)
+    if (!pinRl.ok) {
+      if (pinRl.isError) return rateLimitErrorResponse()
+      return rateLimitResponse(pinRl.retryAfter || 60)
+    }
 
     if (!await verifyPin(pin, business.staff_pin_hash)) {
       return NextResponse.json({ error: 'Invalid PIN' }, { status: 400 })
