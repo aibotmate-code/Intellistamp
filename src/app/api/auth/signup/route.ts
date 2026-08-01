@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { rateLimiter, rateLimitResponse } from '@/lib/rateLimit'
+import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimit'
 
 const schema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(8),
 })
 
 const supabase = createClient(
@@ -15,11 +15,11 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
-  const rl = rateLimiter.check(`signup:${ip}`, 5, 15 * 60 * 1000)
-  if (!rl.ok) return rateLimitResponse(rl.retryAfter!)
-
   try {
+    const ip = req.headers.get('x-forwarded-for') || 'unknown'
+    const rl = await checkRateLimit(`signup:${ip}`, 5, 15 * 60 * 1000)
+    if (!rl.ok) return rateLimitResponse(rl.retryAfter!)
+
     const body = await req.json()
     const result = schema.safeParse(body)
     if (!result.success) {

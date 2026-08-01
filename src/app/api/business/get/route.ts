@@ -3,7 +3,7 @@ import { requireUser, adminClient } from '@/lib/auth'
 import type { BusinessBranding } from '@/types'
 
 const BUSINESS_FIELDS =
-  'id, name, slug, emoji, category, stamps_required, reward, gmb_link, dynamic_qr_enabled, staff_pin_enabled, staff_pin, staff_pin_hash, whatsapp_enabled, plan, conflict_priority, owner_id, owner_phone, created_at'
+  'id, name, slug, emoji, category, stamps_required, reward, gmb_link, dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, conflict_priority, owner_id, owner_phone, created_at'
 
 export async function GET(req: NextRequest) {
   try {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { randomInt } from 'crypto'
 import { phoneSchema, otpVerifySchema } from '@/lib/validators'
-import { rateLimiter, rateLimitResponse } from '@/lib/rateLimit'
+import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimit'
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       }
       const { phone } = result.data
 
-      const rlSend = rateLimiter.check(`otp-send:${phone}`, 5, 15 * 60 * 1000)
+      const rlSend = await checkRateLimit(`otp-send:${phone}`, 5, 15 * 60 * 1000)
       if (!rlSend.ok) return rateLimitResponse(rlSend.retryAfter!)
 
       const { data: recentOtp } = await supabase
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     }
     const { phone, otp } = result.data
 
-    const rlVerify = rateLimiter.check(`otp-verify:${phone}`, 10, 15 * 60 * 1000)
+    const rlVerify = await checkRateLimit(`otp-verify:${phone}`, 10, 15 * 60 * 1000)
     if (!rlVerify.ok) return rateLimitResponse(rlVerify.retryAfter!)
 
     const { data: otpRecord, error: otpError } = await supabase

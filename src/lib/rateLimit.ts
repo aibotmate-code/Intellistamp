@@ -5,33 +5,26 @@ export interface RateLimitResult {
   retryAfter?: number
 }
 
-interface Entry { count: number; resetAt: number }
+import { createClient } from '@supabase/supabase-js'
 
-class InMemoryRateLimiter {
-  private store = new Map<string, Entry>()
-
-  check(key: string, limit: number, windowMs: number): RateLimitResult {
-    const now = Date.now()
-    const entry = this.store.get(key)
-
-    if (!entry || now >= entry.resetAt) {
-      this.store.set(key, { count: 1, resetAt: now + windowMs })
-      return { ok: true }
-    }
-
-    if (entry.count >= limit) {
-      return { ok: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) }
-    }
-
-    entry.count++
-    return { ok: true }
+export async function checkRateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+  const { data, error } = await supabase.rpc('check_rate_limit', {
+    p_key: key,
+    p_limit: limit,
+    p_window_seconds: Math.floor(windowMs / 1000)
+  })
+  
+  if (error || !data) {
+    console.error('Rate limit DB error:', error)
+    return { ok: true } // Fail open on DB errors
   }
+  
+  return data
 }
-
-// Module-scope singleton — shared across requests on the same warm serverless instance.
-// In production with multiple instances each keeps its own counter; limits are approximate.
-// Swap for an Upstash Redis adapter when hard per-user enforcement is required.
-export const rateLimiter = new InMemoryRateLimiter()
 
 export function rateLimitResponse(retryAfter: number): NextResponse {
   return NextResponse.json(

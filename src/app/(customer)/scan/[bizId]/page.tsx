@@ -1,19 +1,20 @@
 'use client'
 
 import { startTransition, useCallback, useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
 import Spinner from '@/components/ui/Spinner'
 import StampCard from '@/components/customer/StampCard'
-import { generateToken } from '@/lib/token'
 import type { Business, StampCardState } from '@/types'
 
 type FlowState = 'loading' | 'login' | 'name' | 'stamping' | 'success' | 'error' | 'cooldown'
 
 export default function ScanPage() {
   const { bizId } = useParams<{ bizId: string }>()
+  const searchParams = useSearchParams()
+  const qrToken = searchParams.get('t') || searchParams.get('token')
   const router = useRouter()
 
   const [flowState, setFlowState] = useState<FlowState>('loading')
@@ -70,14 +71,13 @@ export default function ScanPage() {
     if (!customer || !business) return
     setLoadingStamp(true)
     try {
-      const token = generateToken(bizId, 0)
       const res = await fetch('/api/stamp/issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer_id: customer.id,
           business_id: bizId,
-          token,
+          token: qrToken,
           type: 'regular',
         }),
       })
@@ -123,17 +123,30 @@ export default function ScanPage() {
     }
     setLoadingIdentify(true)
     try {
-      const res = await fetch(`/api/customer/profile?phone=${encodeURIComponent(phone)}`)
-      if (res.status === 404) {
-        // New customer — collect name before creating
-        setFlowState('name')
-        return
-      }
+      const res = await fetch('/api/customer/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business_id: bizId, phone, qr_token: qrToken }),
+      })
       const data = await res.json()
+      
       if (!res.ok) {
         setPhoneError(data.error || 'Something went wrong')
         return
       }
+
+      if (data.isNew === false) {
+        // Existing customer, they must recover via staff or they already have session
+        setPhoneError(data.message || 'Cannot recover card automatically.')
+        return
+      }
+
+      if (data.needsName) {
+        setFlowState('name')
+        return
+      }
+
+      // If we somehow got a customer object immediately
       const c = data.customer
       localStorage.setItem('customer_session', JSON.stringify({
         id: c.id,
@@ -161,13 +174,19 @@ export default function ScanPage() {
       const res = await fetch('/api/customer/identify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, name: name.trim() }),
+        body: JSON.stringify({ business_id: bizId, phone, name: name.trim(), qr_token: qrToken }),
       })
       const data = await res.json()
       if (!res.ok) {
         setNameError(data.error || 'Something went wrong')
         return
       }
+
+      if (data.isNew === false) {
+        setNameError(data.message || 'Cannot recover card automatically.')
+        return
+      }
+
       const c = data.customer
       localStorage.setItem('customer_session', JSON.stringify({
         id: c.id,

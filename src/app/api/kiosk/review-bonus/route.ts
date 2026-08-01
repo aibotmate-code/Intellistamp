@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { verifyPin } from '@/lib/pinHash'
+import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimit'
 
 const schema = z.object({
   business_id: z.string().uuid(),
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     const { data: business } = await supabase
       .from('businesses')
-      .select('staff_pin, staff_pin_hash, stamps_required, gmb_link')
+      .select('staff_pin_hash, stamps_required, gmb_link')
       .eq('id', business_id)
       .single()
 
@@ -34,8 +35,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    if (!await verifyPin(pin, business.staff_pin_hash, business.staff_pin)) {
-      return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
+    const pinRl = await checkRateLimit(`pin:${business_id}`, 10, 5 * 60 * 1000)
+    if (!pinRl.ok) return rateLimitResponse(pinRl.retryAfter!)
+
+    if (!await verifyPin(pin, business.staff_pin_hash)) {
+      return NextResponse.json({ error: 'Invalid PIN' }, { status: 400 })
     }
 
     if (!business.gmb_link) {

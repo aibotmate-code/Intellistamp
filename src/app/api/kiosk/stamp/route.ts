@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import type { RewardResult } from '@/types'
 import { verifyPin } from '@/lib/pinHash'
+import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimit'
 
 const kioskStampSchema = z.object({
   business_id: z.string().uuid(),
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     ] = await Promise.all([
       supabase
         .from('businesses')
-        .select('id, staff_pin, staff_pin_hash, stamps_required, conflict_priority, reward')
+        .select('id, staff_pin_hash, stamps_required, conflict_priority, reward')
         .eq('id', business_id)
         .single(),
       supabase.from('customers').select('*').eq('phone', phone).single(),
@@ -42,8 +43,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    if (!await verifyPin(pin, business.staff_pin_hash, business.staff_pin)) {
-      return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 })
+    const pinRl = await checkRateLimit(`pin:${business_id}`, 10, 5 * 60 * 1000)
+    if (!pinRl.ok) return rateLimitResponse(pinRl.retryAfter!)
+
+    if (!await verifyPin(pin, business.staff_pin_hash)) {
+      return NextResponse.json({ error: 'Invalid PIN' }, { status: 400 })
     }
 
     // Find or create customer
@@ -175,7 +179,8 @@ export async function POST(req: NextRequest) {
       },
       reward_result,
     })
-  } catch {
+  } catch (err) {
+    console.error('stamp route error:', err)
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
   }
 }

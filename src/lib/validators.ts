@@ -25,7 +25,7 @@ export const businessCreateSchema = z.object({
 export const stampIssueSchema = z.object({
   customer_id: z.string().uuid(),
   business_id: z.string().uuid(),
-  token: z.string().length(6),
+  token: z.string().min(6).optional(), // Can be short code or long HMAC signed token
   staff_pin: z.string().optional(),
   type: z.enum(['regular', 'bonus_review']).optional().default('regular'),
 })

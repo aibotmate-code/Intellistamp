@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest } from 'next/server'
-import { generateToken } from '@/lib/token'
+process.env.QR_SECRET_KEY = 'test-secret-12345678901234567890123456789012'
+import { generateServerToken } from '@/lib/server/token'
 
 // ---------------------------------------------------------------------------
 // Supabase mock
@@ -12,9 +13,15 @@ function dequeue() {
   return mockQueue.shift() ?? { data: null, error: null }
 }
 
+jest.mock('@/lib/rateLimit', () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ ok: true }),
+  rateLimitResponse: jest.fn().mockReturnValue(new Response('Rate limit', { status: 429 }))
+}))
+
 // Build a single chainable mock object that is also thenable (for direct awaits)
 const mockChain: any = {
   from: jest.fn().mockReturnThis(),
+  rpc: jest.fn(() => Promise.resolve(dequeue())),
   select: jest.fn().mockReturnThis(),
   insert: jest.fn().mockReturnThis(),
   update: jest.fn().mockReturnThis(),
@@ -81,29 +88,20 @@ function makeRequest(body: object): NextRequest {
   })
 }
 
-// Queue a full successful stamp flow (mid-card, no completion, no milestone)
-function queueSuccessfulStamp(stampCount = 1) {
+function queueSuccessfulStamp(stampCount = 1, completes = false, milestoneHit = false) {
   // 1. businesses.single()
   mockQueue.push({ data: mockBusiness, error: null })
-  // 2. recent stamps.single() → null (no recent stamp)
-  mockQueue.push({ data: null, error: { code: 'PGRST116' } })
-  // 3. business_customers.upsert (direct await via .then)
-  mockQueue.push({ data: null, error: null })
-  // 4. stamps.insert.single()
-  mockQueue.push({ data: mockStamp, error: null })
-  // 5. stamps count (direct await via .then)
-  mockQueue.push({ count: stampCount, data: null, error: null })
-  // 6. milestones (direct await via .then, via Promise.all)
-  mockQueue.push({ data: [], error: null })
-  // 7. milestone_claims (direct await via .then, via Promise.all)
-  mockQueue.push({ data: [], error: null })
+  
+  // 2. issue_stamp_atomic rpc
+  const mockRpcResult = {
+    total_stamps: stampCount,
+    stamp: mockStamp,
+    reward_result: milestoneHit ? { type: 'milestone', badge: 'Silver' } : 
+                   completes ? { type: 'stamp' } : null
+  }
+  mockQueue.push({ data: mockRpcResult, error: null })
 }
 
-// ---------------------------------------------------------------------------
-// Import the route handler after mocks are set up
-// ---------------------------------------------------------------------------
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { POST } = require('../issue/route')
 
 beforeEach(() => {
@@ -160,7 +158,7 @@ describe('POST /api/stamp/issue', () => {
 
   test('valid token → 200 with stamp object', async () => {
     queueSuccessfulStamp(1)
-    const token = generateToken(BIZ_ID, 0)
+    const token = generateServerToken(BIZ_ID)
     const req = makeRequest({ customer_id: CUST_ID, business_id: BIZ_ID, token })
     const res = await POST(req)
     expect(res.status).toBe(200)
@@ -171,12 +169,8 @@ describe('POST /api/stamp/issue', () => {
 
   test('stamp within cooldown → 429 with cooldown_hours', async () => {
     mockQueue.push({ data: mockBusiness, error: null })
-    // Recent stamp 1 hour ago → still within 4-hour cooldown
-    mockQueue.push({
-      data: { stamped_at: new Date(Date.now() - 60 * 60 * 1000).toISOString() },
-      error: null,
-    })
-    const token = generateToken(BIZ_ID, 0)
+    mockQueue.push({ data: { error: 'cooldown', hours_left: 3 }, error: null })
+    const token = generateServerToken(BIZ_ID)
     const req = makeRequest({ customer_id: CUST_ID, business_id: BIZ_ID, token })
     const res = await POST(req)
     expect(res.status).toBe(429)
@@ -186,19 +180,17 @@ describe('POST /api/stamp/issue', () => {
 
   test('stamp after cooldown → 200 success', async () => {
     queueSuccessfulStamp(2)
-    const token = generateToken(BIZ_ID, 0)
+    const token = generateServerToken(BIZ_ID)
     const req = makeRequest({ customer_id: CUST_ID, business_id: BIZ_ID, token })
     const res = await POST(req)
     expect(res.status).toBe(200)
   })
 
   test('replay attack — same token same customer → 409', async () => {
-    mockQueue.push({ data: mockBusiness, error: null })            // business
-    mockQueue.push({ data: null, error: { code: 'PGRST116' } })   // no recent stamp
-    mockQueue.push({ data: null, error: null })                    // upsert
-    mockQueue.push({ data: null, error: { code: '23505' } })      // stamp INSERT → unique violation
+    mockQueue.push({ data: mockBusiness, error: null })
+    mockQueue.push({ data: { error: 'token_used' }, error: null })
 
-    const token = generateToken(BIZ_ID, 0)
+    const token = generateServerToken(BIZ_ID)
     const req = makeRequest({ customer_id: CUST_ID, business_id: BIZ_ID, token })
     const res = await POST(req)
     expect(res.status).toBe(409)
@@ -213,7 +205,7 @@ describe('POST /api/stamp/issue', () => {
       data: { ...mockBusiness, id: OTHER_BIZ, dynamic_qr_enabled: true },
       error: null,
     })
-    const tokenForBizA = generateToken(BIZ_ID, 0) // valid for BIZ_ID, not OTHER_BIZ
+    const tokenForBizA = generateServerToken(BIZ_ID) // valid for BIZ_ID, not OTHER_BIZ
     const req = makeRequest({ customer_id: CUST_ID, business_id: OTHER_BIZ, token: tokenForBizA })
     const res = await POST(req)
     expect(res.status).toBe(401)
@@ -221,7 +213,7 @@ describe('POST /api/stamp/issue', () => {
 
   test('reward_result null when no completion (mid-card stamp)', async () => {
     queueSuccessfulStamp(3) // 3 of 6 — no completion
-    const token = generateToken(BIZ_ID, 0)
+    const token = generateServerToken(BIZ_ID)
     const req = makeRequest({ customer_id: CUST_ID, business_id: BIZ_ID, token })
     const res = await POST(req)
     const body = await res.json()
@@ -230,15 +222,9 @@ describe('POST /api/stamp/issue', () => {
 
   test('reward_result.type=stamp when card completes', async () => {
     // Queue: 6 stamps → card complete
-    mockQueue.push({ data: mockBusiness, error: null })           // business
-    mockQueue.push({ data: null, error: { code: 'PGRST116' } })  // no recent stamp
-    mockQueue.push({ data: null, error: null })                   // upsert
-    mockQueue.push({ data: mockStamp, error: null })              // insert stamp
-    mockQueue.push({ count: 6, data: null, error: null })         // count = 6 → complete
-    mockQueue.push({ data: [], error: null })                     // no milestones
-    mockQueue.push({ data: [], error: null })                     // no claims
+    queueSuccessfulStamp(6, true, false)
 
-    const token = generateToken(BIZ_ID, 0)
+    const token = generateServerToken(BIZ_ID)
     const req = makeRequest({ customer_id: CUST_ID, business_id: BIZ_ID, token })
     const res = await POST(req)
     const body = await res.json()
@@ -247,16 +233,9 @@ describe('POST /api/stamp/issue', () => {
 
   test('reward_result.type=milestone when milestone hit', async () => {
     // Queue: 3 stamps → not complete, but milestone at visit 3
-    mockQueue.push({ data: mockBusiness, error: null })
-    mockQueue.push({ data: null, error: { code: 'PGRST116' } })
-    mockQueue.push({ data: null, error: null })                      // upsert
-    mockQueue.push({ data: mockStamp, error: null })                 // insert
-    mockQueue.push({ count: 3, data: null, error: null })            // count = 3
-    mockQueue.push({ data: [mockMilestone], error: null })           // eligible milestone
-    mockQueue.push({ data: [], error: null })                        // no prior claims
-    mockQueue.push({ data: null, error: null })                      // claimMilestone insert
+    queueSuccessfulStamp(3, false, true)
 
-    const token = generateToken(BIZ_ID, 0)
+    const token = generateServerToken(BIZ_ID)
     const req = makeRequest({ customer_id: CUST_ID, business_id: BIZ_ID, token })
     const res = await POST(req)
     const body = await res.json()

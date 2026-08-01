@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { generateToken, getSecondsUntilRotation } from '@/lib/token'
 import { cn } from '@/lib/utils'
 
 interface QRDisplayProps {
@@ -15,32 +14,53 @@ interface QRDisplayProps {
 export default function QRDisplay({ bizId, size = 200, showToken = true, className }: QRDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [token, setToken] = useState('')
-  const [seconds, setSeconds] = useState(getSecondsUntilRotation())
+  const [seconds, setSeconds] = useState(30)
 
   useEffect(() => {
-    const update = () => {
-      const newToken = generateToken(bizId, 0)
-      setToken(newToken)
-      setSeconds(getSecondsUntilRotation())
-      if (canvasRef.current) {
-        const url = `${window.location.origin}/scan/${bizId}?t=${newToken}`
-        QRCode.toCanvas(canvasRef.current, url, {
-          width: size,
-          color: { dark: '#000000', light: '#ffffff' },
-          margin: 2,
-        }).catch(() => {})
+    let mounted = true
+    let refreshTimer: NodeJS.Timeout
+    let countdownTimer: NodeJS.Timeout
+
+    const fetchToken = async () => {
+      try {
+        const res = await fetch(`/api/business/qr-token?bizId=${bizId}`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.token && mounted) {
+          setToken(data.token)
+          setSeconds(30)
+          
+          if (canvasRef.current) {
+            const url = `${window.location.origin}/scan/${bizId}?t=${data.token}`
+            QRCode.toCanvas(canvasRef.current, url, {
+              width: size,
+              color: { dark: '#000000', light: '#ffffff' },
+              margin: 2,
+            }).catch(() => {})
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch QR token', err)
       }
     }
 
-    update()
-    const interval = setInterval(() => {
-      setSeconds(getSecondsUntilRotation())
-      const currentToken = generateToken(bizId, 0)
-      if (currentToken !== token) update()
+    fetchToken()
+
+    countdownTimer = setInterval(() => {
+      setSeconds(s => {
+        if (s <= 1) {
+          fetchToken()
+          return 30
+        }
+        return s - 1
+      })
     }, 1000)
 
-    return () => clearInterval(interval)
-  }, [bizId, size, token])
+    return () => {
+      mounted = false
+      clearInterval(countdownTimer)
+    }
+  }, [bizId, size])
 
   return (
     <div className={cn('flex flex-col items-center gap-3', className)}>

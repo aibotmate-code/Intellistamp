@@ -6,6 +6,11 @@ import { hashPin } from '@/lib/pinHash'
 // Supabase mock
 // ---------------------------------------------------------------------------
 
+jest.mock('@/lib/rateLimit', () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ ok: true }),
+  rateLimitResponse: jest.fn().mockReturnValue(new Response('Rate limit', { status: 429 }))
+}))
+
 let mockQueue: any[] = []
 
 function dequeue() {
@@ -75,52 +80,6 @@ describe('POST /api/kiosk/review-bonus', () => {
     expect(data.error).toBe('Business not found')
   })
 
-  test('validates correct legacy plaintext PIN', async () => {
-    // 1. Business query
-    mockQueue.push({
-      data: {
-        staff_pin: '1234',
-        staff_pin_hash: null,
-        stamps_required: 10,
-        gmb_link: 'http://g.co/review',
-      },
-    })
-    // 2. Review claimed check
-    mockQueue.push({ data: null })
-    // 3. Stamp insert
-    mockQueue.push({ data: { id: 'stamp-1' } })
-    // 4. Update review_claimed
-    mockQueue.push({ data: {} })
-    // 5. Select stamp count
-    mockQueue.push({ count: 5 })
-
-    const req = makeRequest({ business_id: BIZ_ID, customer_id: CUST_ID, pin: '1234' })
-    const res = await POST(req)
-    const data = await res.json()
-
-    expect(res.status).toBe(200)
-    expect(data.success).toBe(true)
-    expect(data.card_state.total_stamps).toBe(5)
-  })
-
-  test('rejects wrong legacy plaintext PIN', async () => {
-    // 1. Business query
-    mockQueue.push({
-      data: {
-        staff_pin: '1234',
-        staff_pin_hash: null,
-        stamps_required: 10,
-        gmb_link: 'http://g.co/review',
-      },
-    })
-
-    const req = makeRequest({ business_id: BIZ_ID, customer_id: CUST_ID, pin: '9999' })
-    const res = await POST(req)
-    const data = await res.json()
-
-    expect(res.status).toBe(401)
-    expect(data.error).toBe('Invalid PIN')
-  })
 
   test('validates correct hashed bcrypt PIN', async () => {
     const pinHash = await hashPin('4321')
@@ -167,7 +126,7 @@ describe('POST /api/kiosk/review-bonus', () => {
     const res = await POST(req)
     const data = await res.json()
 
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(400)
     expect(data.error).toBe('Invalid PIN')
   })
 })

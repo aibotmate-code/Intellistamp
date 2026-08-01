@@ -8,13 +8,8 @@ export function hashPin(pin: string): Promise<string> {
 
 export async function verifyPin(
   pin: string,
-  hash: string | null | undefined,
-  plaintextFallback: string
+  hash: string | null | undefined
 ): Promise<boolean> {
-  if (hash) return bcryptjs.compare(pin, hash)
-  // Timing-safe plaintext fallback for rows that predate PIN hashing
-  if (pin.length !== plaintextFallback.length) return false
-  let diff = 0
-  for (let i = 0; i < pin.length; i++) diff |= pin.charCodeAt(i) ^ plaintextFallback.charCodeAt(i)
-  return diff === 0
+  if (!hash) return false
+  return bcryptjs.compare(pin, hash)
 }
