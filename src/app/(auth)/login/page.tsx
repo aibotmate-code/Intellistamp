@@ -1,22 +1,47 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  
+  const errParam = searchParams.get('error')
+  const errCode = searchParams.get('error_code')
+  const errDesc = searchParams.get('error_description') || ''
+  
+  const [errorDismissed, setErrorDismissed] = useState(false)
+  
+  let urlError: { message: string; isRecovery: boolean } | null = null
+  if (!errorDismissed && (errParam || errCode)) {
+    const isExpired = errCode === 'otp_expired' || 
+                      errParam === 'access_denied' || 
+                      errDesc.includes('expired') || 
+                      errDesc.includes('invalid') || 
+                      errDesc.includes('used')
+    
+    if (isExpired) {
+      urlError = {
+        message: 'Password reset link expired or already used. Request a new reset link to continue.',
+        isRecovery: true
+      }
+    }
+  }
 
   const handleLogin = async () => {
     setError('')
+    setErrorDismissed(true)
     if (!email || !password) { setError('Email and password are required'); return }
     setLoading(true)
     try {
@@ -26,11 +51,11 @@ export default function LoginPage() {
       )
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
       if (authError) {
-        // Generic error — do not expose whether the account exists
         setError('Incorrect email or password. Please try again.')
         setPassword('')
         return
       }
+      // Pushing to dashboard drops all query parameters, fulfilling the non-persistence requirement
       router.push('/dashboard')
       router.refresh()
     } catch {
@@ -57,6 +82,23 @@ export default function LoginPage() {
 
         {/* Form card */}
         <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
+          
+          {urlError && (
+            <div role="alert" className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-2 flex flex-col gap-3">
+              <p className="text-sm text-yellow-200/90 leading-relaxed">
+                {urlError.message}
+              </p>
+              {urlError.isRecovery && (
+                <Link
+                  href="/forgot-password"
+                  className="inline-flex items-center justify-center bg-yellow-400 text-yellow-950 text-sm font-semibold h-9 px-4 rounded-md hover:bg-yellow-500 transition-colors self-start"
+                >
+                  Request New Reset Link
+                </Link>
+              )}
+            </div>
+          )}
+
           <Input
             id="login-email"
             label="Email"
@@ -143,5 +185,21 @@ export default function LoginPage() {
 
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-zinc-900 rounded-2xl p-6 border border-zinc-800 flex justify-center py-12">
+            <div className="w-8 h-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
+      }
+    >
+      <LoginInner />
+    </Suspense>
   )
 }

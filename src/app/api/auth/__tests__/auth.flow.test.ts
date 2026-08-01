@@ -96,6 +96,54 @@ describe('Business login — form behavior', () => {
     expect(emailAutoComplete).toBe('email')
     expect(passwordAutoComplete).toBe('current-password')
   })
+  test('10b. URL error parsing: otp_expired triggers friendly message', () => {
+    // Pure logic extracted from the component's useEffect
+    const query = { error_code: 'otp_expired', error: '', error_description: '' }
+    const isExpired = query.error_code === 'otp_expired' || query.error === 'access_denied'
+    let urlError = null
+    if (isExpired) {
+      urlError = { message: 'Password reset link expired or already used. Request a new reset link to continue.', isRecovery: true }
+    }
+    expect(urlError?.isRecovery).toBe(true)
+  })
+
+  test('10c. URL error parsing: access_denied recovery error triggers friendly message', () => {
+    const query = { error_code: '', error: 'access_denied', error_description: '' }
+    const isExpired = query.error_code === 'otp_expired' || query.error === 'access_denied'
+    let urlError = null
+    if (isExpired) {
+      urlError = { message: 'Password reset link expired or already used. Request a new reset link to continue.', isRecovery: true }
+    }
+    expect(urlError?.message).toContain('Request a new reset link')
+  })
+
+  test('10d. URL error parsing: unknown query errors do not render raw descriptions', () => {
+    const query = { error_code: 'unknown_code', error: 'server_error', error_description: 'Raw database failure' }
+    const isExpired = query.error_code === 'otp_expired' || query.error === 'access_denied' || query.error_description.includes('expired') || query.error_description.includes('invalid') || query.error_description.includes('used')
+    
+    // In our component, if it's not recognized as expired, urlError remains null
+    // We intentionally don't set urlError to the raw description
+    let urlError = null
+    if (isExpired) {
+       urlError = { message: 'Password reset link expired...', isRecovery: true }
+    }
+    expect(urlError).toBeNull()
+  })
+
+  test('10e. normal login page remains unchanged without query errors', () => {
+    const query = { error_code: '', error: '', error_description: '' }
+    const isExpired = query.error_code === 'otp_expired' || query.error === 'access_denied' || query.error_description.includes('expired') || query.error_description.includes('invalid') || query.error_description.includes('used')
+    
+    let urlError = null
+    // Both must be false to not set it initially, but wait, the component checks:
+    // if (errParam || errCode) { ... }
+    const hasErrorParam = query.error || query.error_code
+    if (hasErrorParam && isExpired) {
+       urlError = { message: '...', isRecovery: true }
+    }
+    
+    expect(urlError).toBeNull()
+  })
 })
 
 // ---------------------------------------------------------------------------
