@@ -163,5 +163,15 @@ describe('Rate Limit & IP Extraction Tests', () => {
     test.todo('authenticated cannot execute (Permission denied)')
     test.todo('service_role can execute')
     test.todo('direct table access blocked for all (RLS enabled, no policies)')
+    
+    // Upgrade and Failure-only PIN behavior
+    test.todo('old three-column table upgrade preserves existing rows')
+    test.todo('null-value backfill correctly replaces nulls with 0 and expired timestamps')
+    test.todo('count default becomes 0 and both count/reset_at become NOT NULL')
+    test.todo('constraint check is table-specific')
+    test.todo('valid PIN attempts do not trigger brute-force lockout, failure-only design')
+    test.todo('failed PIN attempts do trigger lockout')
+    test.todo('successful PIN clears only its exact failure key via reset_rate_limit')
+    test.todo('unknown-client remains separated by action and business')
   })
 })

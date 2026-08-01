@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import type { RewardResult } from '@/types'
 import { verifyPin } from '@/lib/pinHash'
-import { checkRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
+import { checkRateLimit, peekRateLimit, resetRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
 
 const kioskStampSchema = z.object({
   business_id: z.string().uuid(),
@@ -45,15 +45,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    const pinRl = await checkRateLimit(`pin:kiosk:${business_id}:${clientHash}`, 10, 5 * 60 * 1000)
-    if (!pinRl.ok) {
-      if (pinRl.isError) return rateLimitErrorResponse()
-      return rateLimitResponse(pinRl.retryAfter || 60)
+    const pinKey = `pin:kiosk:${business_id}:${clientHash}`
+    const peekRl = await peekRateLimit(pinKey, 10)
+    if (!peekRl.ok) {
+      if (peekRl.isError) return rateLimitErrorResponse()
+      return rateLimitResponse(peekRl.retryAfter || 60)
     }
 
-    if (!await verifyPin(pin, business.staff_pin_hash)) {
+    const isValid = pin && await verifyPin(pin, business.staff_pin_hash)
+    if (!isValid) {
+      await checkRateLimit(pinKey, 10, 5 * 60 * 1000)
       return NextResponse.json({ error: 'Invalid PIN' }, { status: 400 })
     }
+    
+    await resetRateLimit(pinKey)
 
     // Find or create customer
     let customer = customerByPhone

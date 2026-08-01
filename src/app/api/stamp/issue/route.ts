@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { stampIssueSchema } from '@/lib/validators'
 import { validateServerToken } from '@/lib/server/token'
 import { verifyPin } from '@/lib/pinHash'
-import { checkRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
+import { checkRateLimit, peekRateLimit, resetRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
 import type { RewardResult } from '@/types'
 
 const supabase = createClient(
@@ -46,15 +46,20 @@ export async function POST(req: NextRequest) {
 
     // Validate staff PIN if required
     if (business.staff_pin_enabled) {
-      const pinRl = await checkRateLimit(`pin:stamp:${business_id}:${clientHash}`, 10, 5 * 60 * 1000)
-      if (!pinRl.ok) {
-        if (pinRl.isError) return rateLimitErrorResponse()
-        return rateLimitResponse(pinRl.retryAfter || 60)
+      const pinKey = `pin:stamp:${business_id}:${clientHash}`
+      const peekRl = await peekRateLimit(pinKey, 10)
+      if (!peekRl.ok) {
+        if (peekRl.isError) return rateLimitErrorResponse()
+        return rateLimitResponse(peekRl.retryAfter || 60)
       }
 
-      if (!staff_pin || !await verifyPin(staff_pin, business.staff_pin_hash)) {
+      const isValid = staff_pin && await verifyPin(staff_pin, business.staff_pin_hash)
+      if (!isValid) {
+        await checkRateLimit(pinKey, 10, 5 * 60 * 1000)
         return NextResponse.json({ error: 'Invalid staff PIN' }, { status: 400 })
       }
+      
+      await resetRateLimit(pinKey)
     }
 
     // Call atomic RPC

@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { customerLookupSchema } from '@/lib/validators'
 import { normalizeIndianPhone } from '@/lib/phone'
-import { checkRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
+import { checkRateLimit, peekRateLimit, resetRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,10 +47,12 @@ export async function POST(req: NextRequest) {
 
     const ip = getClientIp(req)
     const clientHash = generateHmacIdentity('ip', ip)
-    const rl = await checkRateLimit(`pin:lookup:${business_id}:${clientHash}`, 20, 15 * 60 * 1000)
-    if (!rl.ok) {
-      if (rl.isError) return rateLimitErrorResponse()
-      return rateLimitResponse(rl.retryAfter || 60)
+    const pinKey = `pin:lookup:${business_id}:${clientHash}`
+    
+    const peekRl = await peekRateLimit(pinKey, 20)
+    if (!peekRl.ok) {
+      if (peekRl.isError) return rateLimitErrorResponse()
+      return rateLimitResponse(peekRl.retryAfter || 60)
     }
 
     // Confirm business_id actually belongs to the authenticated owner
@@ -62,8 +64,12 @@ export async function POST(req: NextRequest) {
       .maybeSingle()
 
     if (!business) {
+      // Treating wrong owner/unknown business as an invalid PIN attempt to prevent scraping
+      await checkRateLimit(pinKey, 20, 15 * 60 * 1000)
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
+    
+    await resetRateLimit(pinKey)
 
     const { data: customer } = await supabase
       .from('customers')

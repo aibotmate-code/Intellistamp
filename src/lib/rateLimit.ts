@@ -70,6 +70,38 @@ export async function checkRateLimit(key: string, limit: number, windowMs: numbe
   }
 }
 
+export async function peekRateLimit(key: string, limit: number): Promise<RateLimitResult> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+  const { data, error } = await supabase
+    .from('rate_limits')
+    .select('count, reset_at')
+    .eq('key', key)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Rate limit peek DB error:', error)
+    return { ok: false, retryAfter: 60, isError: true } // Fail closed
+  }
+
+  if (data && data.count >= limit && new Date(data.reset_at) > new Date()) {
+    const retryAfter = Math.ceil((new Date(data.reset_at).getTime() - Date.now()) / 1000)
+    return { ok: false, retryAfter: Math.max(0, retryAfter) }
+  }
+
+  return { ok: true }
+}
+
+export async function resetRateLimit(key: string): Promise<void> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+  await supabase.rpc('reset_rate_limit', { p_key: key })
+}
+
 export function rateLimitResponse(retryAfter: number): NextResponse {
   return NextResponse.json(
     { error: 'Too many requests. Please try again later.' },

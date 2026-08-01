@@ -49,6 +49,8 @@ jest.mock('@/lib/pinHash', () => ({
 
 jest.mock('@/lib/rateLimit', () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ ok: true }),
+  peekRateLimit: jest.fn().mockResolvedValue({ ok: true }),
+  resetRateLimit: jest.fn().mockResolvedValue(undefined),
   rateLimitResponse: jest.fn(),
   rateLimitErrorResponse: jest.fn(),
   getClientIp: jest.fn().mockReturnValue('127.0.0.1'),

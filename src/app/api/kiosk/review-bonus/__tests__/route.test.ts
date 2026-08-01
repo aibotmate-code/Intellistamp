@@ -8,6 +8,8 @@ import { hashPin } from '@/lib/pinHash'
 
 jest.mock('@/lib/rateLimit', () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ ok: true }),
+  peekRateLimit: jest.fn().mockResolvedValue({ ok: true }),
+  resetRateLimit: jest.fn().mockResolvedValue(undefined),
   rateLimitResponse: jest.fn().mockReturnValue(new Response('Rate limit', { status: 429 })),
   rateLimitErrorResponse: jest.fn(),
   getClientIp: jest.fn().mockReturnValue('127.0.0.1'),

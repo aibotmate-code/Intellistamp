@@ -9,17 +9,30 @@ ALTER TABLE public.rate_limits
   ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now(),
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
+-- Normalize existing data before enforcing constraints
+UPDATE public.rate_limits SET count = 0 WHERE count IS NULL;
+UPDATE public.rate_limits SET reset_at = now() - interval '1 second' WHERE reset_at IS NULL;
+
+ALTER TABLE public.rate_limits
+  ALTER COLUMN count SET DEFAULT 0,
+  ALTER COLUMN count SET NOT NULL,
+  ALTER COLUMN reset_at SET NOT NULL;
+
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'chk_rate_limit_key_length'
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'chk_rate_limit_key_length' 
+    AND conrelid = 'public.rate_limits'::regclass
   ) THEN
     ALTER TABLE public.rate_limits 
       ADD CONSTRAINT chk_rate_limit_key_length CHECK (char_length(btrim(key)) BETWEEN 1 AND 256);
   END IF;
 
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'chk_rate_limit_count_positive'
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'chk_rate_limit_count_positive'
+    AND conrelid = 'public.rate_limits'::regclass
   ) THEN
     ALTER TABLE public.rate_limits 
       ADD CONSTRAINT chk_rate_limit_count_positive CHECK (count >= 0);
@@ -144,3 +157,28 @@ REVOKE ALL ON FUNCTION public.cleanup_expired_rate_limits(integer) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.cleanup_expired_rate_limits(integer) FROM anon;
 REVOKE ALL ON FUNCTION public.cleanup_expired_rate_limits(integer) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.cleanup_expired_rate_limits(integer) TO service_role;
+
+-- 6. Reset rate limit function
+CREATE OR REPLACE FUNCTION public.reset_rate_limit(
+  p_key text
+) RETURNS void
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_key text;
+BEGIN
+  v_key := btrim(p_key);
+  
+  IF v_key IS NULL OR v_key = '' OR char_length(v_key) > 256 THEN
+    RAISE EXCEPTION 'Invalid rate limit key';
+  END IF;
+
+  DELETE FROM public.rate_limits WHERE key = v_key;
+END;
+$$ LANGUAGE plpgsql;
+
+REVOKE ALL ON FUNCTION public.reset_rate_limit(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.reset_rate_limit(text) FROM anon;
+REVOKE ALL ON FUNCTION public.reset_rate_limit(text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.reset_rate_limit(text) TO service_role;
