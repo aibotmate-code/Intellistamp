@@ -62,6 +62,10 @@ export async function GET(req: NextRequest) {
         surface_color: data.surface_color,
         text_on_primary: data.text_on_primary,
         is_enabled: data.is_enabled,
+        card_text_color: data.card_text_color,
+        card_muted_text_color: data.card_muted_text_color,
+        empty_stamp_color: data.empty_stamp_color,
+        empty_stamp_border_color: data.empty_stamp_border_color,
       },
     })
   } catch {
@@ -97,16 +101,27 @@ export async function POST(req: NextRequest) {
     }
 
     // Extract and validate parameters
+    const parseOptionalColor = (val: FormDataEntryValue | null): string | null => {
+      if (val === null || val === undefined) return null
+      const s = String(val).trim()
+      return s === '' ? null : s
+    }
+
     const primaryColor = formData.get('primary_color') as string
     const primaryDarkColor = formData.get('primary_dark_color') as string
     const primaryLightColor = formData.get('primary_light_color') as string
-    const secondaryColor = formData.get('secondary_color') as string || null
-    const accentColor = formData.get('accent_color') as string || null
-    const backgroundColor = formData.get('background_color') as string || null
-    const surfaceColor = formData.get('surface_color') as string || null
+    const secondaryColor = parseOptionalColor(formData.get('secondary_color'))
+    const accentColor = parseOptionalColor(formData.get('accent_color'))
+    const backgroundColor = parseOptionalColor(formData.get('background_color'))
+    const surfaceColor = parseOptionalColor(formData.get('surface_color'))
     const textOnPrimary = formData.get('text_on_primary') as string
     const isEnabled = formData.get('is_enabled') === 'true'
     const logoFile = formData.get('logo') as File | null
+
+    const cardTextColor = parseOptionalColor(formData.get('card_text_color'))
+    const cardMutedTextColor = parseOptionalColor(formData.get('card_muted_text_color'))
+    const emptyStampColor = parseOptionalColor(formData.get('empty_stamp_color'))
+    const emptyStampBorderColor = parseOptionalColor(formData.get('empty_stamp_border_color'))
 
     // Validate colors (must be normalized #RRGGBB)
     const colorFields = [
@@ -122,7 +137,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const optionalColors = [secondaryColor, accentColor, backgroundColor, surfaceColor]
+    const optionalColors = [
+      secondaryColor,
+      accentColor,
+      backgroundColor,
+      surfaceColor,
+      cardTextColor,
+      cardMutedTextColor,
+      emptyStampColor,
+      emptyStampBorderColor,
+    ]
     for (const c of optionalColors) {
       if (c && !isValidHexColor(c)) {
         return NextResponse.json({ error: 'Invalid optional color format' }, { status: 400 })
@@ -193,6 +217,10 @@ export async function POST(req: NextRequest) {
       surface_color: surfaceColor,
       text_on_primary: textOnPrimary,
       is_enabled: isEnabled,
+      card_text_color: cardTextColor,
+      card_muted_text_color: cardMutedTextColor,
+      empty_stamp_color: emptyStampColor,
+      empty_stamp_border_color: emptyStampBorderColor,
       updated_at: new Date().toISOString(),
     }
 
@@ -238,6 +266,10 @@ export async function POST(req: NextRequest) {
         surface_color: surfaceColor,
         text_on_primary: textOnPrimary,
         is_enabled: isEnabled,
+        card_text_color: cardTextColor,
+        card_muted_text_color: cardMutedTextColor,
+        empty_stamp_color: emptyStampColor,
+        empty_stamp_border_color: emptyStampBorderColor,
       },
     })
   } catch {

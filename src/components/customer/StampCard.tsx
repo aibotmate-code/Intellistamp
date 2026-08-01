@@ -4,6 +4,7 @@ import { startTransition, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { MilestoneWithStatus, RewardResult } from '@/types'
 import BusinessVisual from '@/components/branding/BusinessVisual'
+import { resolveBrandingColors } from '@/lib/branding/palette'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -327,11 +328,12 @@ export default function StampCard({
     (rewardResult.deferred_milestone != null || rewardResult.deferred_stamp === true)
 
   const activeBranding = businessBranding || branding
-  const isBrandingEnabled = activeBranding && activeBranding.is_enabled !== false
+  const isBrandingEnabled = !!(activeBranding && activeBranding.is_enabled !== false)
 
-  const cardBgColor = isBrandingEnabled && activeBranding.surface_color ? activeBranding.surface_color : 'var(--color-surface)'
-  const primaryBrandColor = isBrandingEnabled && activeBranding.primary_color ? activeBranding.primary_color : 'var(--color-gold)'
-  const textOnPrimaryBrandColor = isBrandingEnabled && activeBranding.text_on_primary ? activeBranding.text_on_primary : '#000'
+  const resolved = resolveBrandingColors(activeBranding, isBrandingEnabled)
+  const cardBgColor = resolved.surface_color
+  const primaryBrandColor = resolved.primary_color
+  const textOnPrimaryBrandColor = resolved.text_on_primary
 
   return (
     <div
@@ -357,11 +359,11 @@ export default function StampCard({
         <div>
           <h3
             className="font-bold text-lg leading-tight"
-            style={{ color: 'var(--color-text)' }}
+            style={{ color: resolved.card_text_color }}
           >
             {businessName}
           </h3>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+          <p className="text-xs" style={{ color: resolved.card_muted_text_color }}>
             Collect {stampsRequired} stamps → {reward}
           </p>
         </div>
@@ -398,9 +400,9 @@ export default function StampCard({
                         minHeight: 48,
                       }
                     : {
-                        background: 'var(--color-elevated)',
-                        border: '2px solid var(--color-border)',
-                        color: 'var(--color-text-dim)',
+                        background: resolved.empty_stamp_color,
+                        border: `2px solid ${resolved.empty_stamp_border_color}`,
+                        color: resolved.card_muted_text_color,
                         minWidth: 48,
                         minHeight: 48,
                       }
@@ -424,11 +426,11 @@ export default function StampCard({
       <div className="flex items-center justify-between mt-4">
         <span
           className="text-sm font-medium count-up"
-          style={{ color: 'var(--color-text-muted)' }}
+          style={{ color: resolved.card_muted_text_color }}
         >
           {cardStamps}/{stampsRequired} stamps
           {totalVisits !== undefined && (
-            <span style={{ color: 'var(--color-text-dim)' }}>
+            <span style={{ color: resolved.card_muted_text_color + 'cc' }}>
               {' '}· {totalVisits} total visits
             </span>
           )}
@@ -469,7 +471,7 @@ export default function StampCard({
             style={{
               fontSize: 11,
               letterSpacing: '0.12em',
-              color: 'var(--color-text-muted)',
+              color: resolved.card_muted_text_color,
               textTransform: 'uppercase',
               fontWeight: 600,
               marginBottom: 10,
@@ -492,7 +494,9 @@ export default function StampCard({
                   <div
                     className="flex items-center gap-3 rounded-lg px-3 py-2.5"
                     style={{
-                      background: m.earned ? 'oklch(0.13 0.03 55)' : 'transparent',
+                      background: m.earned 
+                        ? (isBrandingEnabled && resolved.primary_color ? resolved.primary_color + '1A' : 'oklch(0.13 0.03 55)') 
+                        : 'transparent',
                     }}
                   >
                     {/* Icon */}
@@ -520,7 +524,7 @@ export default function StampCard({
                           letterSpacing: '0.02em',
                           color: m.earned
                             ? primaryBrandColor
-                            : 'var(--color-text-muted)',
+                            : resolved.card_muted_text_color,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
@@ -533,8 +537,8 @@ export default function StampCard({
                           fontSize: 13,
                           marginTop: 2,
                           color: m.earned
-                            ? 'var(--color-text-muted)'
-                            : 'var(--color-text-dim)',
+                            ? resolved.card_muted_text_color
+                            : resolved.card_muted_text_color + 'bb',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
@@ -565,7 +569,7 @@ export default function StampCard({
                       <span
                         style={{
                           fontSize: 12,
-                          color: 'var(--color-text-dim)',
+                          color: resolved.card_muted_text_color + 'bb',
                           flexShrink: 0,
                           whiteSpace: 'nowrap',
                         }}

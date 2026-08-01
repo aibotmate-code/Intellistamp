@@ -39,6 +39,10 @@ export interface BusinessBranding {
   surface_color?: string | null
   text_on_primary: string
   is_enabled: boolean
+  card_text_color?: string | null
+  card_muted_text_color?: string | null
+  empty_stamp_color?: string | null
+  empty_stamp_border_color?: string | null
   created_at?: string
   updated_at?: string
 }

@@ -33,6 +33,12 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
   const [surfaceColor, setSurfaceColor] = useState('#18181B')
   const [textOnPrimary, setTextOnPrimary] = useState('#000000')
 
+  // Semantic Loyalty-Card Colors state (empty string represents default fallback / use automatic resolver)
+  const [cardTextColor, setCardTextColor] = useState('')
+  const [cardMutedTextColor, setCardMutedTextColor] = useState('')
+  const [emptyStampColor, setEmptyStampColor] = useState('')
+  const [emptyStampBorderColor, setEmptyStampBorderColor] = useState('')
+
   const [suggestedPalette, setSuggestedPalette] = useState<ExtractedColors | null>(null)
   
   // UI states
@@ -70,6 +76,10 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
           setBackgroundColor(b.background_color || '#09090B')
           setSurfaceColor(b.surface_color || '#18181B')
           setTextOnPrimary(b.text_on_primary)
+          setCardTextColor(b.card_text_color || '')
+          setCardMutedTextColor(b.card_muted_text_color || '')
+          setEmptyStampColor(b.empty_stamp_color || '')
+          setEmptyStampBorderColor(b.empty_stamp_border_color || '')
         }
       } catch (err) {
         if (active) {
@@ -114,6 +124,10 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
     else if (key === 'bg') setBackgroundColor(normalized)
     else if (key === 'surface') setSurfaceColor(normalized)
     else if (key === 'text') setTextOnPrimary(normalized)
+    else if (key === 'cardText') setCardTextColor(normalized)
+    else if (key === 'cardMutedText') setCardMutedTextColor(normalized)
+    else if (key === 'emptyStamp') setEmptyStampColor(normalized)
+    else if (key === 'emptyStampBorder') setEmptyStampBorderColor(normalized)
   }
 
   // Process image for palette extraction
@@ -231,6 +245,10 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
       setBackgroundColor('#09090B')
       setSurfaceColor('#18181B')
       setTextOnPrimary('#000000')
+      setCardTextColor('')
+      setCardMutedTextColor('')
+      setEmptyStampColor('')
+      setEmptyStampBorderColor('')
       setSuggestedPalette(null)
       setSuccessMsg('Branding reset successfully')
       onUpdate()
@@ -260,6 +278,10 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
       formData.append('surface_color', surfaceColor)
       formData.append('text_on_primary', textOnPrimary)
       formData.append('is_enabled', String(isEnabled))
+      formData.append('card_text_color', cardTextColor.trim())
+      formData.append('card_muted_text_color', cardMutedTextColor.trim())
+      formData.append('empty_stamp_color', emptyStampColor.trim())
+      formData.append('empty_stamp_border_color', emptyStampBorderColor.trim())
       
       if (logoFile) {
         formData.append('logo', logoFile)
@@ -301,6 +323,10 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
     surface_color: surfaceColor,
     text_on_primary: textOnPrimary,
     is_enabled: isEnabled,
+    card_text_color: cardTextColor || null,
+    card_muted_text_color: cardMutedTextColor || null,
+    empty_stamp_color: emptyStampColor || null,
+    empty_stamp_border_color: emptyStampBorderColor || null,
     created_at: '',
     updated_at: '',
   }
@@ -551,6 +577,95 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
             </div>
           </div>
 
+        </div>
+
+        {/* ── Loyalty Card Typography & Stamp Colors ── */}
+        <div className="pt-4 border-t border-zinc-800">
+          <p className="text-xs text-zinc-400 font-semibold uppercase mb-3 tracking-wide">
+            Loyalty Card Colors
+          </p>
+          <p className="text-xs text-zinc-500 mb-4">
+            Leave blank to use automatic contrast-aware defaults based on your surface color.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-zinc-400 font-semibold uppercase">Card Heading Color</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={cardTextColor || '#111827'}
+                  onChange={(e) => handleColorChange('cardText', e.target.value)}
+                  className="w-10 h-10 p-0 border-0 bg-transparent rounded cursor-pointer"
+                />
+                <Input
+                  value={cardTextColor}
+                  onChange={(e) => handleColorChange('cardText', e.target.value)}
+                  placeholder="auto"
+                  maxLength={7}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-zinc-400 font-semibold uppercase">Supporting Text Color</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={cardMutedTextColor || '#6B7280'}
+                  onChange={(e) => handleColorChange('cardMutedText', e.target.value)}
+                  className="w-10 h-10 p-0 border-0 bg-transparent rounded cursor-pointer"
+                />
+                <Input
+                  value={cardMutedTextColor}
+                  onChange={(e) => handleColorChange('cardMutedText', e.target.value)}
+                  placeholder="auto"
+                  maxLength={7}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-zinc-400 font-semibold uppercase">Uncollected Stamp Color</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={emptyStampColor || '#E7EFEE'}
+                  onChange={(e) => handleColorChange('emptyStamp', e.target.value)}
+                  className="w-10 h-10 p-0 border-0 bg-transparent rounded cursor-pointer"
+                />
+                <Input
+                  value={emptyStampColor}
+                  onChange={(e) => handleColorChange('emptyStamp', e.target.value)}
+                  placeholder="auto"
+                  maxLength={7}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-zinc-400 font-semibold uppercase">Uncollected Stamp Border</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={emptyStampBorderColor || '#99BFBD'}
+                  onChange={(e) => handleColorChange('emptyStampBorder', e.target.value)}
+                  className="w-10 h-10 p-0 border-0 bg-transparent rounded cursor-pointer"
+                />
+                <Input
+                  value={emptyStampBorderColor}
+                  onChange={(e) => handleColorChange('emptyStampBorder', e.target.value)}
+                  placeholder="auto"
+                  maxLength={7}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+          </div>
         </div>
 
         {/* Buttons */}

@@ -1,6 +1,5 @@
-/**
- * Client-side utility for extracting color palettes from images and ensuring WCAG AA contrast.
- */
+import type { BusinessBranding } from '@/types'
+
 
 export interface ExtractedColors {
   primary_color: string
@@ -225,3 +224,77 @@ export function extractPaletteFromImage(
     text_on_primary,
   }
 }
+
+export function isLightColor(hex: string | null | undefined): boolean {
+  if (!hex) return false
+  const rgb = hexToRgb(hex)
+  if (!rgb) return false
+  
+  const white: [number, number, number] = [255, 255, 255]
+  const black: [number, number, number] = [24, 24, 27] // #18181B
+  
+  const contrastWithWhite = getContrastRatio(rgb, white)
+  const contrastWithBlack = getContrastRatio(rgb, black)
+  
+  return contrastWithBlack >= contrastWithWhite
+}
+
+export interface ResolvedBranding {
+  card_text_color: string
+  card_muted_text_color: string
+  empty_stamp_color: string
+  empty_stamp_border_color: string
+  primary_color: string
+  primary_dark_color: string
+  primary_light_color: string
+  secondary_color: string
+  accent_color: string
+  background_color: string
+  surface_color: string
+  text_on_primary: string
+  logo_url?: string | null
+}
+
+export function resolveBrandingColors(
+  branding: BusinessBranding | null | undefined,
+  isBrandingEnabled: boolean
+): ResolvedBranding {
+  if (!isBrandingEnabled || !branding) {
+    return {
+      card_text_color: 'var(--color-text)',
+      card_muted_text_color: 'var(--color-text-muted)',
+      empty_stamp_color: 'var(--color-elevated)',
+      empty_stamp_border_color: 'var(--color-border)',
+      primary_color: 'var(--color-gold)',
+      primary_dark_color: 'var(--color-gold-dark)',
+      primary_light_color: 'var(--color-gold-light)',
+      secondary_color: 'var(--color-border)',
+      accent_color: 'var(--color-gold)',
+      background_color: 'var(--color-bg)',
+      surface_color: 'var(--color-surface)',
+      text_on_primary: '#000000',
+      logo_url: null,
+    }
+  }
+
+  const surface = branding.surface_color || '#18181B'
+  const isLight = isLightColor(surface)
+
+  return {
+    primary_color: branding.primary_color,
+    primary_dark_color: branding.primary_dark_color,
+    primary_light_color: branding.primary_light_color,
+    secondary_color: branding.secondary_color || (isLight ? '#99BFBD' : '#3F3F46'),
+    accent_color: branding.accent_color || branding.primary_color,
+    background_color: branding.background_color || (isLight ? '#F9FAFB' : '#09090B'),
+    surface_color: surface,
+    text_on_primary: branding.text_on_primary,
+    logo_url: branding.logo_url || null,
+    
+    card_text_color: branding.card_text_color || (isLight ? '#111827' : '#F5F5F5'),
+    card_muted_text_color: branding.card_muted_text_color || (isLight ? '#6B7280' : '#A1A1AA'),
+    empty_stamp_color: branding.empty_stamp_color || (isLight ? '#E7EFEE' : '#18181B'),
+    empty_stamp_border_color: branding.empty_stamp_border_color || (isLight ? '#99BFBD' : '#3F3F46'),
+  }
+}
+

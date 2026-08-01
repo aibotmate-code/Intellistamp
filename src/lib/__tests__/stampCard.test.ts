@@ -3,6 +3,8 @@ import { calculateCardState } from '../utils'
 import type { Stamp } from '@/types'
 import StampCard from '@/components/customer/StampCard'
 import React from 'react'
+import { resolveBrandingColors } from '../branding/palette'
+import type { BusinessBranding } from '@/types'
 
 const STAMPS_REQUIRED = 8
 
@@ -60,13 +62,13 @@ describe('calculateCardState', () => {
   })
 
   test('cooldown: stamp within 4 hours → can_stamp=false', () => {
-    const stamps = [makeStamp(2)] // 2 hours ago — within cooldown
+    const stamps = [makeStamp(2)]
     const state = calculateCardState(stamps, STAMPS_REQUIRED)
     expect(state.can_stamp).toBe(false)
   })
 
   test('cooldown: stamp more than 4 hours ago → can_stamp=true', () => {
-    const stamps = [makeStamp(5)] // 5 hours ago — outside cooldown
+    const stamps = [makeStamp(5)]
     const state = calculateCardState(stamps, STAMPS_REQUIRED)
     expect(state.can_stamp).toBe(true)
   })
@@ -77,7 +79,7 @@ describe('calculateCardState', () => {
   })
 
   test('cooldown_remaining_hours is correct value', () => {
-    const stamps = [makeStamp(1)] // 1 hour ago → 3 hours remaining
+    const stamps = [makeStamp(1)]
     const state = calculateCardState(stamps, STAMPS_REQUIRED)
     expect(state.cooldown_remaining_hours).toBe(3)
   })
@@ -89,6 +91,100 @@ describe('calculateCardState', () => {
     }
   })
 })
+
+// ── resolveBrandingColors Resolver Tests ──────────────────────────────────────
+
+describe('resolveBrandingColors – resolver', () => {
+  const darkBase: BusinessBranding = {
+    business_id: 'biz-1',
+    primary_color: '#3A7874',
+    primary_dark_color: '#2B5A57',
+    primary_light_color: '#E1EAEA',
+    secondary_color: '#99BFBD',
+    accent_color: '#5D8F90',
+    surface_color: '#18181B',
+    background_color: '#09090B',
+    text_on_primary: '#FFFFFF',
+    is_enabled: true,
+  }
+
+  const lightBase: BusinessBranding = {
+    business_id: 'biz-2',
+    primary_color: '#3A7874',
+    primary_dark_color: '#2B5A57',
+    primary_light_color: '#E1EAEA',
+    secondary_color: '#99BFBD',
+    accent_color: '#5D8F90',
+    surface_color: '#F9FAFB',
+    background_color: '#FFFFFF',
+    text_on_primary: '#FFFFFF',
+    is_enabled: true,
+  }
+
+  test('dark surface card: falls back to light heading and muted light text', () => {
+    const resolved = resolveBrandingColors(darkBase, true)
+    expect(resolved.card_text_color).toBe('#F5F5F5')
+    expect(resolved.card_muted_text_color).toBe('#A1A1AA')
+    expect(resolved.empty_stamp_color).toBe('#18181B')
+    expect(resolved.empty_stamp_border_color).toBe('#3F3F46')
+  })
+
+  test('light surface card: falls back to dark heading and muted dark text', () => {
+    const resolved = resolveBrandingColors(lightBase, true)
+    expect(resolved.card_text_color).toBe('#111827')
+    expect(resolved.card_muted_text_color).toBe('#6B7280')
+    expect(resolved.empty_stamp_color).toBe('#E7EFEE')
+    expect(resolved.empty_stamp_border_color).toBe('#99BFBD')
+  })
+
+  test('explicit user override for dark surface: overrides automatic fallbacks', () => {
+    const brandingWithOverrides: BusinessBranding = {
+      ...darkBase,
+      card_text_color: '#AABBCC',
+      card_muted_text_color: '#DDEEFF',
+      empty_stamp_color: '#112233',
+      empty_stamp_border_color: '#445566',
+    }
+    const resolved = resolveBrandingColors(brandingWithOverrides, true)
+    expect(resolved.card_text_color).toBe('#AABBCC')
+    expect(resolved.card_muted_text_color).toBe('#DDEEFF')
+    expect(resolved.empty_stamp_color).toBe('#112233')
+    expect(resolved.empty_stamp_border_color).toBe('#445566')
+  })
+
+  test('explicit user override for light surface: overrides automatic fallbacks', () => {
+    const brandingWithOverrides: BusinessBranding = {
+      ...lightBase,
+      card_text_color: '#173B39',
+      card_muted_text_color: '#6B7C7A',
+      empty_stamp_color: '#E7EFEE',
+      empty_stamp_border_color: '#99BFBD',
+    }
+    const resolved = resolveBrandingColors(brandingWithOverrides, true)
+    expect(resolved.card_text_color).toBe('#173B39')
+    expect(resolved.card_muted_text_color).toBe('#6B7C7A')
+    expect(resolved.empty_stamp_color).toBe('#E7EFEE')
+    expect(resolved.empty_stamp_border_color).toBe('#99BFBD')
+  })
+
+  test('branding disabled: returns theme CSS variable strings', () => {
+    const resolved = resolveBrandingColors(darkBase, false)
+    expect(resolved.card_text_color).toBe('var(--color-text)')
+    expect(resolved.card_muted_text_color).toBe('var(--color-text-muted)')
+    expect(resolved.empty_stamp_color).toBe('var(--color-elevated)')
+    expect(resolved.empty_stamp_border_color).toBe('var(--color-border)')
+  })
+
+  test('null branding: returns theme CSS variable strings', () => {
+    const resolved = resolveBrandingColors(null, true)
+    expect(resolved.card_text_color).toBe('var(--color-text)')
+    expect(resolved.card_muted_text_color).toBe('var(--color-text-muted)')
+    expect(resolved.empty_stamp_color).toBe('var(--color-elevated)')
+    expect(resolved.empty_stamp_border_color).toBe('var(--color-border)')
+  })
+})
+
+// ── StampCard Component Integration Tests ────────────────────────────────────
 
 describe('StampCard Branding Integration', () => {
   let originalUseState: any
@@ -113,7 +209,7 @@ describe('StampCard Branding Integration', () => {
     reactAny.useRef = originalUseRef
   })
 
-  test('branding enabled → applies custom cardBgColor, primaryBrandColor, and textOnPrimaryBrandColor', () => {
+  test('branding enabled with dark surface → resolved empty stamp colors applied', () => {
     const mockBranding = {
       id: 'brand-1',
       business_id: 'biz-1',
@@ -136,28 +232,24 @@ describe('StampCard Branding Integration', () => {
       businessBranding: mockBranding,
     })
 
-    // Container background should use surfaceColor
     expect(element.props.style.background).toBe('#18181B')
 
-    // Find the stamp grid container (it should be the child with grid layout className)
     const gridChild = element.props.children.find(
       (child: any) => child && child.props && child.props.className && child.props.className.includes('grid')
     )
     expect(gridChild).toBeDefined()
 
-    // Retrieve children of the grid (individual stamp dots)
     const stampDots = gridChild.props.children
     expect(stampDots).toHaveLength(5)
 
-    // First two stamp dots are filled (index 0 and 1)
     const filledDot = stampDots[0].props.children[0]
     expect(filledDot.props.style.background).toBe('#3A7874')
     expect(filledDot.props.style.color).toBe('#FFFFFF')
 
-    // Third stamp dot is empty (index 2)
+    // Third stamp dot is empty — dark surface → dark fill + dark border
     const emptyDot = stampDots[2].props.children[0]
-    expect(emptyDot.props.style.background).toBe('var(--color-elevated)')
-    expect(emptyDot.props.style.color).toBe('var(--color-text-dim)')
+    expect(emptyDot.props.style.background).toBe('#18181B')
+    expect(emptyDot.props.style.border).toBe('2px solid #3F3F46')
   })
 
   test('branding disabled → falls back to theme defaults', () => {
@@ -183,7 +275,6 @@ describe('StampCard Branding Integration', () => {
       businessBranding: mockBranding,
     })
 
-    // Should fall back to default colors
     expect(element.props.style.background).toBe('var(--color-surface)')
 
     const gridChild = element.props.children.find(
@@ -191,7 +282,40 @@ describe('StampCard Branding Integration', () => {
     )
     const filledDot = gridChild.props.children[0].props.children[0]
     expect(filledDot.props.style.background).toBe('var(--color-gold)')
-    expect(filledDot.props.style.color).toBe('#000')
+    expect(filledDot.props.style.color).toBe('#000000')
+  })
+
+  test('explicit card colors on light surface → override fallbacks in rendered stamp dots', () => {
+    const mockBranding = {
+      id: 'brand-3',
+      business_id: 'biz-3',
+      primary_color: '#3A7874',
+      primary_dark_color: '#2B5A57',
+      primary_light_color: '#E1EAEA',
+      surface_color: '#F9FAFB',
+      text_on_primary: '#FFFFFF',
+      is_enabled: true,
+      card_text_color: '#173B39',
+      card_muted_text_color: '#6B7C7A',
+      empty_stamp_color: '#E7EFEE',
+      empty_stamp_border_color: '#99BFBD',
+    }
+
+    const element = StampCard({
+      stampsRequired: 5,
+      cardStamps: 1,
+      businessName: 'Coffea',
+      businessEmoji: '☕',
+      reward: 'Free Coffee',
+      businessBranding: mockBranding,
+    })
+
+    const gridChild = element.props.children.find(
+      (child: any) => child && child.props && child.props.className && child.props.className.includes('grid')
+    )
+    const emptyDot = gridChild.props.children[1].props.children[0]
+    expect(emptyDot.props.style.background).toBe('#E7EFEE')
+    expect(emptyDot.props.style.border).toBe('2px solid #99BFBD')
   })
 
   test('loyalty card attribution: powered by Intellical Labs', () => {
@@ -203,7 +327,6 @@ describe('StampCard Branding Integration', () => {
       reward: 'Free Cookie',
     })
 
-    // Find attribution section
     const attributionDiv = element.props.children.find(
       (child: any) => child && child.props && child.props.className && child.props.className.includes('border-t')
     )
