@@ -57,7 +57,7 @@ describe('Patch 2 Security Tests - Signed Server QR', () => {
     expect(validateServerToken(BIZ_ID, 'some.token')).toBe(false)
   })
 
-  describe('Time Windows', () => {
+  describe('Time Windows and Explicit Payload Validation', () => {
     let nowSpy: jest.SpyInstance
 
     beforeEach(() => {
@@ -68,37 +68,39 @@ describe('Patch 2 Security Tests - Signed Server QR', () => {
       nowSpy.mockRestore()
     })
 
-    test('6. Token from previous window succeeds (transit delay)', () => {
+    test('6. Token still valid right before expiry', () => {
       const BASE_TIME = 1000000000000
       nowSpy.mockReturnValue(BASE_TIME)
       
       const token = generateServerToken(BIZ_ID)
       
-      // Move time forward by 30 seconds (1 window)
-      nowSpy.mockReturnValue(BASE_TIME + 30000)
+      // Move time forward by 59 seconds (valid for 60s)
+      nowSpy.mockReturnValue(BASE_TIME + 59000)
       
       expect(validateServerToken(BIZ_ID, token)).toBe(true)
     })
 
-    test('7. Token from old window fails (expiry)', () => {
+    test('7. Token fails when expired', () => {
       const BASE_TIME = 1000000000000
       nowSpy.mockReturnValue(BASE_TIME)
       
       const token = generateServerToken(BIZ_ID)
       
-      // Move time forward by 61 seconds (2 windows)
+      // Move time forward by 61 seconds (expired)
       nowSpy.mockReturnValue(BASE_TIME + 61000)
       
       expect(validateServerToken(BIZ_ID, token)).toBe(false)
     })
 
-    test('8. Token from future window fails (manipulation)', () => {
+    test('8. Token issued too far in the future fails', () => {
       const BASE_TIME = 1000000000000
       nowSpy.mockReturnValue(BASE_TIME)
       
-      // Create a future token payload manually
-      const futureTimestamp = Math.floor(BASE_TIME / 30000) + 1
-      const payload = `${BIZ_ID}:${futureTimestamp}:nonce`
+      // Manually create token issued 10s in the future
+      const issuedAt = BASE_TIME + 10000
+      const expiresAt = issuedAt + 60000
+      const nonce = 'randomnonce'
+      const payload = `1:stamp:${BIZ_ID}:${issuedAt}:${expiresAt}:${nonce}`
       const hmac = crypto.createHmac('sha256', process.env.QR_SECRET_KEY!)
       hmac.update(payload)
       const sig = hmac.digest('hex').slice(0, 16)
@@ -106,6 +108,58 @@ describe('Patch 2 Security Tests - Signed Server QR', () => {
       const token = `${data}.${sig}`
       
       // Attempt to validate it NOW
+      expect(validateServerToken(BIZ_ID, token)).toBe(false)
+    })
+
+    test('9. Token with expiry window > 2 mins fails', () => {
+      const BASE_TIME = 1000000000000
+      nowSpy.mockReturnValue(BASE_TIME)
+      
+      // Expiry window 3 minutes
+      const issuedAt = BASE_TIME
+      const expiresAt = issuedAt + 180000
+      const nonce = 'randomnonce'
+      const payload = `1:stamp:${BIZ_ID}:${issuedAt}:${expiresAt}:${nonce}`
+      const hmac = crypto.createHmac('sha256', process.env.QR_SECRET_KEY!)
+      hmac.update(payload)
+      const sig = hmac.digest('hex').slice(0, 16)
+      const data = Buffer.from(payload).toString('base64url')
+      const token = `${data}.${sig}`
+      
+      expect(validateServerToken(BIZ_ID, token)).toBe(false)
+    })
+
+    test('10. Token with wrong version fails', () => {
+      const BASE_TIME = 1000000000000
+      nowSpy.mockReturnValue(BASE_TIME)
+      
+      const issuedAt = BASE_TIME
+      const expiresAt = issuedAt + 60000
+      const nonce = 'randomnonce'
+      const payload = `2:stamp:${BIZ_ID}:${issuedAt}:${expiresAt}:${nonce}` // Version 2
+      const hmac = crypto.createHmac('sha256', process.env.QR_SECRET_KEY!)
+      hmac.update(payload)
+      const sig = hmac.digest('hex').slice(0, 16)
+      const data = Buffer.from(payload).toString('base64url')
+      const token = `${data}.${sig}`
+      
+      expect(validateServerToken(BIZ_ID, token)).toBe(false)
+    })
+
+    test('11. Token with wrong purpose fails', () => {
+      const BASE_TIME = 1000000000000
+      nowSpy.mockReturnValue(BASE_TIME)
+      
+      const issuedAt = BASE_TIME
+      const expiresAt = issuedAt + 60000
+      const nonce = 'randomnonce'
+      const payload = `1:login:${BIZ_ID}:${issuedAt}:${expiresAt}:${nonce}` // Purpose login
+      const hmac = crypto.createHmac('sha256', process.env.QR_SECRET_KEY!)
+      hmac.update(payload)
+      const sig = hmac.digest('hex').slice(0, 16)
+      const data = Buffer.from(payload).toString('base64url')
+      const token = `${data}.${sig}`
+      
       expect(validateServerToken(BIZ_ID, token)).toBe(false)
     })
   })

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { customerRecoverSchema } from '@/lib/validators'
 import { normalizeIndianPhone } from '@/lib/phone'
-import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimit'
+import { checkRateLimit, rateLimitResponse, getClientIp } from '@/lib/rateLimit'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,7 +13,7 @@ const supabase = createClient(
 // "Found" requires both a global customers row AND a business_customers link for
 // business_id — a phone enrolled elsewhere must never be revealed here.
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+  const ip = getClientIp(req)
   const rl = await checkRateLimit(`recover:${ip}`, 10, 15 * 60 * 1000)
   if (!rl.ok) return rateLimitResponse(rl.retryAfter!)
 

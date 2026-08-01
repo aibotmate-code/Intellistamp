@@ -35,10 +35,11 @@ jest.mock('@/lib/server/token', () => ({
 
 jest.mock('@/lib/rateLimit', () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ ok: true }),
-  rateLimitResponse: jest.fn()
+  rateLimitResponse: jest.fn(),
+  getClientIp: jest.fn().mockReturnValue('127.0.0.1')
 }))
 
-const { __mocks: smocks } = require('@supabase/supabase-js')
+import { __mocks as smocks } from '@supabase/supabase-js'
 
 describe('Patch 1 Security Tests - Customer Token Exposure', () => {
   beforeEach(() => {
@@ -46,6 +47,7 @@ describe('Patch 1 Security Tests - Customer Token Exposure', () => {
   })
 
   describe('/api/customer/recover', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const makeReq = (body: any) => new NextRequest('http://localhost/api/customer/recover', {
       method: 'POST',
       body: JSON.stringify(body)
@@ -107,6 +109,7 @@ describe('Patch 1 Security Tests - Customer Token Exposure', () => {
   })
 
   describe('/api/customer/identify', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const makeReq = (body: any) => new NextRequest('http://localhost/api/customer/identify', {
       method: 'POST',
       body: JSON.stringify(body)

@@ -102,6 +102,7 @@ function queueSuccessfulStamp(stampCount = 1, completes = false, milestoneHit = 
   mockQueue.push({ data: mockRpcResult, error: null })
 }
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { POST } = require('../issue/route')
 
 beforeEach(() => {

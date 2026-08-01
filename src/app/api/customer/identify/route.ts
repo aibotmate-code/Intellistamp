@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimit'
+import { checkRateLimit, rateLimitResponse, getClientIp } from '@/lib/rateLimit'
 import { validateServerToken } from '@/lib/server/token'
 
 const schema = z.object({
@@ -17,7 +17,7 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+  const ip = getClientIp(req)
   const rl = await checkRateLimit(`identify:${ip}`, 10, 15 * 60 * 1000)
   if (!rl.ok) return rateLimitResponse(rl.retryAfter!)
 

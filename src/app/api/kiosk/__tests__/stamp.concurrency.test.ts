@@ -8,6 +8,7 @@ jest.mock('@supabase/supabase-js', () => {
   const mockEq = jest.fn()
   const mockOrder = jest.fn()
   const mockLimit = jest.fn()
+   
   const mockSingle = jest.fn()
   const mockMaybeSingle = jest.fn()
   const mockUpsert = jest.fn()
@@ -22,7 +23,9 @@ jest.mock('@supabase/supabase-js', () => {
 
   // Setup chains
   mockSelect.mockReturnValue({ eq: mockEq })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mockEq.mockReturnValue({ eq: mockEq, order: mockOrder, single: mockSingle, maybeSingle: mockMaybeSingle, limit: mockLimit, lte: mockEq, then: (res: any) => Promise.resolve({ data: [], count: 5 }).then(res) })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mockOrder.mockReturnValue({ limit: mockLimit, then: (res: any) => Promise.resolve({ data: [] }).then(res) })
   mockLimit.mockReturnValue({ single: mockSingle })
   
@@ -49,7 +52,7 @@ jest.mock('@/lib/rateLimit', () => ({
   rateLimitResponse: jest.fn().mockReturnValue(new Response('Rate limit', { status: 429 }))
 }))
 
-const { __mocks: smocks } = require('@supabase/supabase-js')
+import { __mocks as smocks } from '@supabase/supabase-js'
 
 describe('Concurrency Test - Kiosk Manual Stamping', () => {
   beforeEach(() => {
@@ -59,6 +62,7 @@ describe('Concurrency Test - Kiosk Manual Stamping', () => {
     // First call (business): returns business data
     // Second call (customer): returns customer data
     // Third call (lastStamp lookup): returns null (no cooldown)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     smocks.mockSingle.mockImplementation(async function(this: any) {
       // It's hard to know the table, so we just return valid objects for everything
       // The test only checks if insert was called twice.
@@ -77,7 +81,7 @@ describe('Concurrency Test - Kiosk Manual Stamping', () => {
   })
 
   test('prove race condition on manual stamping', async () => {
-    const createReq = () => new NextRequest('http://localhost/api/kiosk/stamp', {
+    const makeReq = () => new NextRequest('http://localhost/api/kiosk/stamp', {
       method: 'POST',
       body: JSON.stringify({
         business_id: '550e8400-e29b-41d4-a716-446655440000',
@@ -86,8 +90,8 @@ describe('Concurrency Test - Kiosk Manual Stamping', () => {
       })
     })
 
-    const req1 = createReq()
-    const req2 = createReq()
+    const req1 = makeReq()
+    const req2 = makeReq()
 
     const [res1, res2] = await Promise.all([
       POST(req1),

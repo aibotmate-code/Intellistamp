@@ -46,6 +46,7 @@ export default function QRDisplay({ bizId, size = 200, showToken = true, classNa
 
     fetchToken()
 
+    // eslint-disable-next-line prefer-const
     countdownTimer = setInterval(() => {
       setSeconds(s => {
         if (s <= 1) {

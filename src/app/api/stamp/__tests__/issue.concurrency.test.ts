@@ -25,7 +25,7 @@ jest.mock('@/lib/rateLimit', () => ({
   rateLimitResponse: jest.fn().mockReturnValue(new Response('Rate limit', { status: 429 }))
 }))
 
-const { __mocks: smocks } = require('@supabase/supabase-js')
+import { __mocks as smocks } from '@supabase/supabase-js'
 
 const VALID_BIZ = '550e8400-e29b-41d4-a716-446655440000'
 const VALID_CUST = '550e8400-e29b-41d4-a716-446655440001'

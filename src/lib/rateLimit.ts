@@ -1,5 +1,20 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 
+export function getClientIp(req: NextRequest): string {
+  const forwardedFor = req.headers.get('x-forwarded-for')
+  if (forwardedFor) {
+    // Extract the first IP address from a comma-separated list
+    // Vercel trusts the immediate connection but clients can spoof earlier IPs
+    // We strictly parse the first segment.
+    const firstSegment = forwardedFor.split(',')[0].trim()
+    // Basic validation for IPv4 or IPv6 format to reject malformed/arbitrary spoofing
+    if (/^[a-fA-F0-9.:]+$/.test(firstSegment)) {
+      return firstSegment
+    }
+  }
+  
+  return 'unknown'
+}
 export interface RateLimitResult {
   ok: boolean
   retryAfter?: number

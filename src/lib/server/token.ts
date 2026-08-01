@@ -4,10 +4,10 @@ export function generateServerToken(businessId: string): string {
   const secret = process.env.QR_SECRET_KEY
   if (!secret) throw new Error('QR_SECRET_KEY is not configured')
 
-  const timestamp = Math.floor(Date.now() / 30000)
-  // Short random nonce to ensure uniqueness even within the same window
-  const nonce = crypto.randomBytes(4).toString('hex')
-  const payload = `${businessId}:${timestamp}:${nonce}`
+  const issuedAt = Date.now()
+  const expiresAt = issuedAt + 60000 // 60 seconds
+  const nonce = crypto.randomBytes(8).toString('hex')
+  const payload = `1:stamp:${businessId}:${issuedAt}:${expiresAt}:${nonce}`
   
   const hmac = crypto.createHmac('sha256', secret)
   hmac.update(payload)
@@ -30,17 +30,25 @@ export function validateServerToken(businessId: string, token: string): boolean 
     if (!dataB64 || !signature) return false
 
     const payload = Buffer.from(dataB64, 'base64url').toString('utf-8')
-    const [tokenBizId, tokenTimestampStr, nonce] = payload.split(':')
+    const parts = payload.split(':')
+    if (parts.length !== 6) return false
     
+    const [version, purpose, tokenBizId, issuedAtStr, expiresAtStr, nonce] = parts
+    
+    // Explicit format checks
+    if (version !== '1') return false
+    if (purpose !== 'stamp') return false
     if (tokenBizId !== businessId) return false
     
-    const tokenTimestamp = parseInt(tokenTimestampStr, 10)
-    const currentWindow = Math.floor(Date.now() / 30000)
+    const issuedAt = parseInt(issuedAtStr, 10)
+    const expiresAt = parseInt(expiresAtStr, 10)
+    const now = Date.now()
 
-    // Allow current window and previous window (up to ~60s total validity)
-    if (tokenTimestamp !== currentWindow && tokenTimestamp !== currentWindow - 1) {
-      return false
-    }
+    // Expiry checks
+    if (isNaN(issuedAt) || isNaN(expiresAt)) return false
+    if (expiresAt <= now) return false // Expired
+    if (issuedAt > now + 5000) return false // Issued too far in the future
+    if (expiresAt - issuedAt > 120000) return false // Expiry window longer than permitted max (2 mins)
 
     // Verify signature
     const hmac = crypto.createHmac('sha256', secret)

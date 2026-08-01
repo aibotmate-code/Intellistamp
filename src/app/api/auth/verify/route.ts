@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { randomInt } from 'crypto'
 import { phoneSchema, otpVerifySchema } from '@/lib/validators'
-import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimit'
+import { checkRateLimit, rateLimitResponse, getClientIp } from '@/lib/rateLimit'
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
@@ -15,12 +15,14 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
 )
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
+    const ip = getClientIp(req)
 
     // ── Send OTP (phone only) ────────────────────────────────────────────────
     if (!body.otp) {
