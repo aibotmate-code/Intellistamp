@@ -1,19 +1,25 @@
 import { NextResponse, NextRequest } from 'next/server'
 
 export function getClientIp(req: NextRequest): string {
-  const forwardedFor = req.headers.get('x-forwarded-for')
-  if (forwardedFor) {
-    // Extract the first IP address from a comma-separated list
-    // Vercel trusts the immediate connection but clients can spoof earlier IPs
-    // We strictly parse the first segment.
-    const firstSegment = forwardedFor.split(',')[0].trim()
-    // Basic validation for IPv4 or IPv6 format to reject malformed/arbitrary spoofing
-    if (/^[a-fA-F0-9.:]+$/.test(firstSegment)) {
-      return firstSegment
+  // Prefer Vercel trusted IP header
+  let ip = req.headers.get('x-vercel-forwarded-for') || req.headers.get('x-real-ip')
+  
+  if (!ip) {
+    const forwardedFor = req.headers.get('x-forwarded-for')
+    if (forwardedFor) {
+      ip = forwardedFor.split(',')[0].trim()
+    }
+  }
+
+  if (ip) {
+    // Basic normalization/validation for IPv4 or IPv6
+    // Reject anything too long or containing bizarre characters
+    if (ip.length <= 45 && /^[a-fA-F0-9.:]+$/.test(ip)) {
+      return ip
     }
   }
   
-  return 'unknown'
+  return '127.0.0.1' // Stable fallback
 }
 export interface RateLimitResult {
   ok: boolean
@@ -38,7 +44,10 @@ export async function checkRateLimit(key: string, limit: number, windowMs: numbe
     return { ok: true } // Fail open on DB errors
   }
   
-  return data
+  return {
+    ok: data.ok,
+    retryAfter: data.retry_after
+  }
 }
 
 export function rateLimitResponse(retryAfter: number): NextResponse {
