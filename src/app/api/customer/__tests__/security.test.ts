@@ -39,6 +39,7 @@ jest.mock('@/lib/rateLimit', () => ({
   getClientIp: jest.fn().mockReturnValue('127.0.0.1')
 }))
 
+// @ts-expect-error Mocked module injection
 import { __mocks as smocks } from '@supabase/supabase-js'
 
 describe('Patch 1 Security Tests - Customer Token Exposure', () => {

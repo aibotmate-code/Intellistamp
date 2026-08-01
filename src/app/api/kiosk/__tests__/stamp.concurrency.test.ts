@@ -52,6 +52,7 @@ jest.mock('@/lib/rateLimit', () => ({
   rateLimitResponse: jest.fn().mockReturnValue(new Response('Rate limit', { status: 429 }))
 }))
 
+// @ts-expect-error Mocked module injection
 import { __mocks as smocks } from '@supabase/supabase-js'
 
 describe('Concurrency Test - Kiosk Manual Stamping', () => {

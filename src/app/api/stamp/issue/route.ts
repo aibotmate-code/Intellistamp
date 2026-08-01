@@ -57,8 +57,7 @@ export async function POST(req: NextRequest) {
       p_customer_id: customer_id,
       p_business_id: business_id,
       p_type: type ?? 'regular',
-      p_stamp_token: (business.dynamic_qr_enabled && token) ? token : null,
-      p_cooldown_hours: 4
+      p_stamp_token: (business.dynamic_qr_enabled && token) ? token : null
     })
 
     if (error) {
