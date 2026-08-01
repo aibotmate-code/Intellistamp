@@ -275,6 +275,7 @@ export default function ScanPage() {
                 const token = customer?.customer_token
                 if (token) router.push(`/card/${token}?biz=${bizId}`)
               }}
+              businessBranding={business.branding}
             />
             <Button
               onClick={() => {

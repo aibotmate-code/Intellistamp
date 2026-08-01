@@ -572,7 +572,13 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
       {/* Real-time Preview Pane */}
       <div className="lg:col-span-5 flex flex-col items-center justify-start space-y-4">
         <h3 className="text-sm font-semibold text-zinc-400 uppercase self-start">Live Card Preview</h3>
-        <div className="w-full flex justify-center items-center p-4 bg-zinc-900/30 rounded-2xl border border-zinc-900 min-h-[380px]">
+        <div 
+          className="w-full flex justify-center items-center p-4 rounded-2xl border min-h-[380px]"
+          style={{
+            background: isEnabled && backgroundColor ? backgroundColor : 'rgba(24, 24, 27, 0.3)',
+            borderColor: isEnabled && surfaceColor ? surfaceColor : '#27272a',
+          }}
+        >
           <BrandingWrapper branding={mockBranding} className="w-full max-w-sm">
             <StampCard
               stampsRequired={business.stamps_required}

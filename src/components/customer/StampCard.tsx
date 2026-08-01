@@ -3,6 +3,7 @@
 import { startTransition, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { MilestoneWithStatus, RewardResult } from '@/types'
+import BusinessVisual from '@/components/branding/BusinessVisual'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -276,6 +277,8 @@ export default function StampCard({
   milestones,
   rewardResult,
   totalVisits,
+  branding,
+  businessBranding,
 }: StampCardProps) {
   const [rippleIndex, setRippleIndex] = useState<number | null>(null)
   const [celebrateAll, setCelebrateAll] = useState(false)
@@ -323,10 +326,17 @@ export default function StampCard({
     rewardResult != null &&
     (rewardResult.deferred_milestone != null || rewardResult.deferred_stamp === true)
 
+  const activeBranding = businessBranding || branding
+  const isBrandingEnabled = activeBranding && activeBranding.is_enabled !== false
+
+  const cardBgColor = isBrandingEnabled && activeBranding.surface_color ? activeBranding.surface_color : 'var(--color-surface)'
+  const primaryBrandColor = isBrandingEnabled && activeBranding.primary_color ? activeBranding.primary_color : 'var(--color-gold)'
+  const textOnPrimaryBrandColor = isBrandingEnabled && activeBranding.text_on_primary ? activeBranding.text_on_primary : '#000'
+
   return (
     <div
       className="rounded-2xl p-5 border"
-      style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+      style={{ background: cardBgColor, borderColor: 'var(--color-border)' }}
     >
       {/* ── Milestone celebration banner — ABOVE stamp dots ── */}
       {activeMilestoneBanner && (
@@ -338,7 +348,12 @@ export default function StampCard({
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3 mb-5">
-        <span className="text-3xl">{businessEmoji}</span>
+        <BusinessVisual
+          logoUrl={activeBranding?.logo_url}
+          emoji={businessEmoji}
+          name={businessName}
+          className="text-3xl"
+        />
         <div>
           <h3
             className="font-bold text-lg leading-tight"
@@ -376,9 +391,9 @@ export default function StampCard({
                 style={
                   filled
                     ? {
-                        background: 'var(--color-gold)',
-                        color: '#000',
-                        boxShadow: '0 2px 8px oklch(0.72 0.18 55 / 0.25)',
+                        background: primaryBrandColor,
+                        color: textOnPrimaryBrandColor,
+                        boxShadow: `0 2px 8px ${isBrandingEnabled ? primaryBrandColor + '40' : 'oklch(0.72 0.18 55 / 0.25)'}`,
                         minWidth: 48,
                         minHeight: 48,
                       }
@@ -397,7 +412,7 @@ export default function StampCard({
               {isRippling && (
                 <div
                   className="stamp-dot-ripple absolute inset-0 rounded-full pointer-events-none"
-                  style={{ border: '2px solid var(--color-gold)', opacity: 1 }}
+                  style={{ border: `2px solid ${primaryBrandColor}`, opacity: 1 }}
                 />
               )}
             </div>
@@ -425,7 +440,7 @@ export default function StampCard({
         <button
           onClick={onClaim}
           className="btn btn-primary claim-btn-enter glow-pulse mt-4 w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl text-base"
-          style={{ background: 'var(--color-gold)', color: '#000', minHeight: 48 }}
+          style={{ background: primaryBrandColor, color: textOnPrimaryBrandColor, minHeight: 48 }}
         >
           🎁 CLAIM REWARD
         </button>
@@ -488,7 +503,7 @@ export default function StampCard({
                         lineHeight: 1,
                         flexShrink: 0,
                         filter: m.earned
-                          ? 'drop-shadow(0 0 6px oklch(0.72 0.18 55 / 0.5))'
+                          ? `drop-shadow(0 0 6px ${primaryBrandColor + '80'})`
                           : undefined,
                       }}
                     >
@@ -504,7 +519,7 @@ export default function StampCard({
                           lineHeight: 1.2,
                           letterSpacing: '0.02em',
                           color: m.earned
-                            ? 'var(--color-gold)'
+                            ? primaryBrandColor
                             : 'var(--color-text-muted)',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -535,9 +550,9 @@ export default function StampCard({
                         style={{
                           fontSize: 11,
                           fontWeight: 600,
-                          color: 'var(--color-gold)',
-                          background: 'var(--color-gold-bg)',
-                          border: '1px solid var(--color-gold-border)',
+                          color: primaryBrandColor,
+                          background: isBrandingEnabled ? primaryBrandColor + '1A' : 'var(--color-gold-bg)',
+                          border: `1px solid ${isBrandingEnabled ? primaryBrandColor + '33' : 'var(--color-gold-border)'}`,
                           borderRadius: 9999,
                           padding: '3px 10px',
                           flexShrink: 0,

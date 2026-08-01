@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
     const { data: business } = await supabase
       .from('businesses')
-      .select('stamps_required, reward, name, emoji, conflict_priority')
+      .select('stamps_required, reward, name, emoji, conflict_priority, branding:business_branding(*)')
       .eq('id', bizId)
       .single()
 
@@ -59,6 +59,27 @@ export async function GET(req: NextRequest) {
 
     const cardsRedeemed = (bcRow as { cards_redeemed?: number } | null)?.cards_redeemed ?? 0
 
+    let businessWithBranding = null
+    if (business) {
+      const rawBranding = (business as { branding?: { logo_path?: string | null } | null }).branding
+      let mappedBranding = null
+      if (rawBranding) {
+        let logo_url = null
+        if (rawBranding.logo_path) {
+          const { data } = supabase.storage.from('branding').getPublicUrl(rawBranding.logo_path)
+          logo_url = data?.publicUrl || null
+        }
+        mappedBranding = {
+          ...rawBranding,
+          logo_url
+        }
+      }
+      businessWithBranding = {
+        ...business,
+        branding: mappedBranding
+      }
+    }
+
     return NextResponse.json({
       customer,
       card_state: {
@@ -68,7 +89,7 @@ export async function GET(req: NextRequest) {
         cards_redeemed: cardsRedeemed,
         redeemable: cardsCompleted > cardsRedeemed,
       },
-      business,
+      business: businessWithBranding,
     })
   } catch {
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
