@@ -125,6 +125,41 @@ describe('GET /api/business/branding', () => {
     const body = await res.json()
     expect(body.branding).toBeNull()
   })
+
+  test('branding exists with all fields → 200 with exact matching fields and generated logo_url', async () => {
+    const savedRecord = {
+      business_id: BIZ_ID,
+      logo_path: 'uploads/demo-logo.png',
+      primary_color: '#3A7874',
+      primary_dark_color: '#2B5A57',
+      primary_light_color: '#E1EAEA',
+      secondary_color: '#99BFBD',
+      accent_color: '#5D8F90',
+      background_color: '#09090B',
+      surface_color: '#18181B',
+      text_on_primary: '#FFFFFF',
+      is_enabled: true,
+    }
+    
+    mockQueue.push({ data: savedRecord, error: null })
+
+    const req = new NextRequest(`http://localhost/api/business/branding?businessId=${BIZ_ID}`)
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.branding).toBeDefined()
+    expect(body.branding.business_id).toBe(BIZ_ID)
+    expect(body.branding.logo_url).toContain('uploads/demo-logo.png')
+    expect(body.branding.primary_color).toBe('#3A7874')
+    expect(body.branding.primary_dark_color).toBe('#2B5A57')
+    expect(body.branding.primary_light_color).toBe('#E1EAEA')
+    expect(body.branding.secondary_color).toBe('#99BFBD')
+    expect(body.branding.accent_color).toBe('#5D8F90')
+    expect(body.branding.background_color).toBe('#09090B')
+    expect(body.branding.surface_color).toBe('#18181B')
+    expect(body.branding.text_on_primary).toBe('#FFFFFF')
+    expect(body.branding.is_enabled).toBe(true)
+  })
 })
 
 describe('POST /api/business/branding', () => {
