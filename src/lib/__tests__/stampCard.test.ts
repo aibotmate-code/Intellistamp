@@ -193,4 +193,30 @@ describe('StampCard Branding Integration', () => {
     expect(filledDot.props.style.background).toBe('var(--color-gold)')
     expect(filledDot.props.style.color).toBe('#000')
   })
+
+  test('loyalty card attribution: powered by Intellical Labs', () => {
+    const element = StampCard({
+      stampsRequired: 5,
+      cardStamps: 2,
+      businessName: 'Staging Cafe',
+      businessEmoji: '☕',
+      reward: 'Free Cookie',
+    })
+
+    // Find attribution section
+    const attributionDiv = element.props.children.find(
+      (child: any) => child && child.props && child.props.className && child.props.className.includes('border-t')
+    )
+    expect(attributionDiv).toBeDefined()
+
+    const pText = attributionDiv.props.children
+    expect(pText.props.children[0]).toContain('Powered by')
+
+    const link = pText.props.children[2]
+    expect(link.type).toBe('a')
+    expect(link.props.href).toBe('https://intellicallabs.com')
+    expect(link.props.target).toBe('_blank')
+    expect(link.props.rel).toBe('noopener noreferrer')
+    expect(link.props.children).toBe('Intellical Labs')
+  })
 })

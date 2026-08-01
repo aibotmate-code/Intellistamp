@@ -1,5 +1,6 @@
+import { Icons } from '@/config/icons'
+import { Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react'
 
 interface AlertProps {
   type: 'success' | 'error' | 'warning' | 'info'
@@ -8,9 +9,9 @@ interface AlertProps {
 }
 
 const icons = {
-  success: CheckCircle,
-  error: XCircle,
-  warning: AlertTriangle,
+  success: Icons.Success,
+  error: Icons.Error,
+  warning: Icons.Warning,
   info: Info,
 }
 

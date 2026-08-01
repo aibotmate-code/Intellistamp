@@ -8,6 +8,7 @@ import Alert from '@/components/ui/Alert'
 import StampCard from '@/components/customer/StampCard'
 import BrandingWrapper from '@/components/branding/BrandingWrapper'
 import { extractPaletteFromImage, ensureWcagContrast, ExtractedColors } from '@/lib/branding/palette'
+import { Icons } from '@/config/icons'
 
 interface BrandingTabProps {
   business: Business
@@ -355,7 +356,7 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
               </div>
             ) : (
               <div className="text-center space-y-2">
-                <div className="text-4xl text-zinc-600">🖼️</div>
+                <Icons.UploadLogo size={32} className="text-zinc-600 mx-auto" aria-hidden="true" />
                 <p className="text-sm text-zinc-300 font-medium">Click, paste or drag logo here</p>
                 <p className="text-xs text-zinc-500">Supports PNG, JPEG, WebP. Max 2MB.</p>
               </div>
@@ -366,9 +367,9 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); void handleRemoveLogo() }}
-              className="text-xs text-red-400 hover:text-red-300 transition-colors"
+              className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1"
             >
-              Remove Logo
+              <Icons.RemoveLogo size={14} aria-hidden="true" /> Remove Logo
             </button>
           )}
         </div>
@@ -554,17 +555,17 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
 
         {/* Buttons */}
         <div className="flex gap-4 pt-4 border-t border-zinc-900">
-          <Button type="submit" loading={loading} className="flex-1">
-            Save Changes
+          <Button type="submit" loading={loading} className="flex-1 flex items-center justify-center gap-1.5">
+            <Icons.Save size={16} aria-hidden="true" /> Save Changes
           </Button>
           <Button 
             type="button" 
             variant="outline" 
             onClick={handleResetBranding}
             disabled={loading}
-            className="flex-1"
+            className="flex-1 flex items-center justify-center gap-1.5"
           >
-            Reset Branding
+            <Icons.ResetBranding size={16} aria-hidden="true" /> Reset Branding
           </Button>
         </div>
       </form>

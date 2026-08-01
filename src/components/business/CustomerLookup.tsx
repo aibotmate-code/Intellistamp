@@ -96,9 +96,16 @@ export default function CustomerLookup({ businessId, stampsRequired, onStamped }
     <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
       <h3 className="font-bold text-white">Find customer by mobile number</h3>
 
+      {/* Hidden dummy inputs to catch and prevent browser autofill hijack */}
+      <input type="text" name="prevent_autofill_username" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+      <input type="password" name="prevent_autofill_password" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
       <Input
         label="Customer Mobile Number"
         placeholder="9876543210"
+        type="tel"
+        name="customer-mobile-lookup"
+        autoComplete="off"
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
         error={phoneError}
@@ -109,6 +116,8 @@ export default function CustomerLookup({ businessId, stampsRequired, onStamped }
       <Input
         label="Staff PIN"
         type="password"
+        name="staff-pin-verification"
+        autoComplete="new-password"
         placeholder="4-digit PIN"
         value={pin}
         onChange={(e) => setPin(e.target.value)}

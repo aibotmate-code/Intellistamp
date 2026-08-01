@@ -14,6 +14,8 @@ import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
 import Alert from '@/components/ui/Alert'
 import Input from '@/components/ui/Input'
+import { Icons } from '@/config/icons'
+import BusinessVisual from '@/components/branding/BusinessVisual'
 import type { Business, Customer, BusinessCustomer, Milestone } from '@/types'
 
 const QRDisplay = dynamic(() => import('@/components/business/QRDisplay'), { ssr: false })
@@ -246,7 +248,7 @@ export default function DashboardPage() {
       <header className="border-b border-zinc-800 bg-zinc-950 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🏷️</span>
+            <Icons.Business size={18} className="text-zinc-400" aria-hidden="true" />
             <span className="font-black text-white">IntelliStamp</span>
             <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-medium">Business</span>
           </div>
@@ -258,21 +260,22 @@ export default function DashboardPage() {
               variant="outline"
               size="sm"
               onClick={() => setKioskMode(true)}
-              className="hidden sm:flex"
+              className="hidden sm:flex items-center gap-1.5"
             >
-              ⛶ Kiosk Mode
+              <Icons.KioskMode size={16} aria-hidden="true" /> Kiosk Mode
             </Button>
             <button
               onClick={() => setKioskMode(true)}
-              className="sm:hidden text-zinc-400 hover:text-white px-3 py-1.5 text-lg"
+              className="sm:hidden text-zinc-400 hover:text-white px-3 py-1.5 text-lg flex items-center justify-center"
+              aria-label="Enter Kiosk Mode"
             >
-              ⛶
+              <Icons.KioskMode size={18} aria-hidden="true" />
             </button>
-            <Button variant="ghost" size="sm" onClick={() => setActiveTab('settings')}>
-              Settings
+            <Button variant="ghost" size="sm" onClick={() => setActiveTab('settings')} className="flex items-center gap-1">
+              <Icons.Settings size={16} aria-hidden="true" /> Settings
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              Logout
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="flex items-center gap-1">
+              <Icons.Logout size={16} aria-hidden="true" /> Logout
             </Button>
           </div>
         </div>
@@ -280,45 +283,94 @@ export default function DashboardPage() {
 
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* Business header */}
-        <div className="flex items-center gap-3 mb-6">
-          <span className="text-3xl">{business.emoji}</span>
+        <div className="flex items-center gap-4 mb-6">
+          <BusinessVisual 
+            logoUrl={business.branding?.logo_url} 
+            emoji={business.emoji} 
+            name={business.name} 
+            className="text-3xl max-h-12 w-auto max-w-[120px]" 
+          />
           <div>
-            <h1 className="text-xl font-black text-white">{business.name}</h1>
-            <p className="text-sm text-zinc-400">{business.category}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-black text-white">{business.name}</h1>
+              {process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && business.branding?.is_enabled !== false && (
+                <span 
+                  className="text-xs px-2 py-0.5 rounded-full font-bold whitespace-nowrap"
+                  style={{
+                    background: (business.branding?.primary_color || '#FACC15') + '1A',
+                    color: business.branding?.primary_color || '#FACC15',
+                    border: '1px solid ' + (business.branding?.primary_color || '#FACC15') + '33'
+                  }}
+                >
+                  Co-Branded
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-400 mt-1">
+              <span>{business.category}</span>
+              {process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && business.branding?.is_enabled !== false && (
+                <button 
+                  onClick={() => setActiveTab('branding')}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1 underline cursor-pointer"
+                >
+                  👁️ Preview Customer Card
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <StatsCard icon="👥" label="Total Customers" value={stats.total_customers} />
-          <StatsCard icon="🔖" label="Stamps Issued" value={stats.total_stamps} />
-          <StatsCard icon="🎁" label="Rewards Redeemed" value={stats.rewards_redeemed} />
+          <StatsCard 
+            icon={<Icons.TotalCustomers size={24} />} 
+            label="Total Customers" 
+            value={stats.total_customers} 
+          />
+          <StatsCard 
+            icon={<Icons.StampsIssued size={24} />} 
+            label="Stamps Issued" 
+            value={stats.total_stamps} 
+          />
+          <StatsCard 
+            icon={<Icons.RewardsRedeemed size={24} />} 
+            label="Rewards Redeemed" 
+            value={stats.rewards_redeemed} 
+          />
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-zinc-800 mb-6 overflow-x-auto">
           {([
-            { id: 'qr' as Tab,        label: 'QR Stamper' },
-            { id: 'customers' as Tab, label: `Customers (${customers.length})` },
-            { id: 'rewards' as Tab,   label: 'Rewards' },
-            { id: 'campaigns' as Tab, label: 'Campaigns' },
-            { id: 'settings' as Tab,  label: 'Settings' },
+            { id: 'qr' as Tab,        label: 'QR Stamper', icon: <Icons.QrStamper size={16} /> },
+            { id: 'customers' as Tab, label: `Customers (${customers.length})`, icon: <Icons.Customers size={16} /> },
+            { id: 'rewards' as Tab,   label: 'Rewards', icon: <Icons.Rewards size={16} /> },
+            { id: 'campaigns' as Tab, label: 'Campaigns', icon: <Icons.Campaigns size={16} /> },
+            { id: 'settings' as Tab,  label: 'Settings', icon: <Icons.Settings size={16} /> },
             ...(process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true'
-              ? [{ id: 'branding' as Tab, label: '🎨 Branding' }]
+              ? [{ id: 'branding' as Tab, label: 'Branding', icon: <Icons.Branding size={16} /> }]
               : []),
-          ]).map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-yellow-400 text-yellow-400'
-                  : 'border-transparent text-zinc-400 hover:text-white'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          ]).map((tab) => {
+            const isTabActive = activeTab === tab.id
+            const isBrandingActive = process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && business.branding?.is_enabled !== false
+            const brandColor = isBrandingActive && business.branding?.primary_color ? business.branding.primary_color : '#FACC15'
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-2`}
+                style={
+                  isTabActive
+                    ? { borderColor: brandColor, color: brandColor }
+                    : { borderColor: 'transparent', color: '#a1a1aa' }
+                }
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Tab: QR Stamper */}

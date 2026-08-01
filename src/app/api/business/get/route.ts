@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser, adminClient } from '@/lib/auth'
+import type { BusinessBranding } from '@/types'
 
 const BUSINESS_FIELDS =
   'id, name, slug, emoji, category, stamps_required, reward, gmb_link, dynamic_qr_enabled, staff_pin_enabled, staff_pin, staff_pin_hash, whatsapp_enabled, plan, conflict_priority, owner_id, owner_phone, created_at'
@@ -23,14 +24,31 @@ export async function GET(req: NextRequest) {
 
     const { data: businesses, error: bizError } = await adminClient
       .from('businesses')
-      .select(BUSINESS_FIELDS)
+      .select(`${BUSINESS_FIELDS}, branding:business_branding(*)`)
       .eq('owner_id', ownerId)
 
     if (bizError || !businesses || businesses.length === 0) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    const business = businesses[0] as unknown as typeof businesses[number] & { id: string; stamps_required: number }
+    const rawBiz = businesses[0]
+    let mappedBranding = null
+    if (rawBiz.branding) {
+      const rawBranding = rawBiz.branding as unknown as BusinessBranding
+      let logo_url = null
+      if (rawBranding.logo_path) {
+        const { data } = adminClient.storage.from('branding').getPublicUrl(rawBranding.logo_path)
+        logo_url = data?.publicUrl || null
+      }
+      mappedBranding = {
+        ...rawBranding,
+        logo_url
+      }
+    }
+    const business = {
+      ...rawBiz,
+      branding: mappedBranding
+    } as unknown as typeof businesses[number] & { id: string; stamps_required: number; branding?: BusinessBranding | null }
 
     const [stampsResult, customersResult] = await Promise.all([
       adminClient.from('stamps').select('id', { count: 'exact' }).eq('business_id', business.id),

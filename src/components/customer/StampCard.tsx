@@ -587,6 +587,21 @@ export default function StampCard({
           </div>
         </div>
       )}
+
+      {/* ── Visual Attribution ── */}
+      <div className="mt-6 pt-4 border-t border-zinc-800/60 flex justify-center text-center">
+        <p className="text-[10px] text-zinc-500 font-medium tracking-wide uppercase">
+          Powered by{' '}
+          <a
+            href="https://intellicallabs.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-zinc-300 transition-colors font-bold underline decoration-zinc-600 hover:decoration-zinc-400"
+          >
+            Intellical Labs
+          </a>
+        </p>
+      </div>
     </div>
   )
 }
