@@ -136,7 +136,8 @@ export default function CardsPage() {
             </p>
           </div>
 
-          <div className="text-center mt-4">
+          <div className="text-center mt-4 flex flex-col items-center gap-1.5">
+            <Link href="/login" className="text-xs text-zinc-500 hover:text-zinc-300">🏪 Business Login</Link>
             <Link href="/" className="text-xs text-zinc-600 hover:text-zinc-400">← Back to home</Link>
           </div>
         </div>
@@ -159,6 +160,7 @@ export default function CardsPage() {
           >
             Try again
           </button>
+          <Link href="/login" className="text-zinc-400 text-sm hover:text-zinc-200 mr-4">🏪 Business Login</Link>
           <Link href="/" className="text-zinc-500 text-sm hover:text-zinc-300">← Home</Link>
         </div>
       </div>
