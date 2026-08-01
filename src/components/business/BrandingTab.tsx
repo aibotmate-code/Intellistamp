@@ -41,24 +41,52 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Initialize form from existing business branding
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // Initialize form by fetching branding from the server on mount
   useEffect(() => {
-    if (business.branding) {
-      const b = business.branding
-      setIsEnabled(b.is_enabled)
-      setLogoPreview(b.logo_url ?? null)
-      setPrimaryColor(b.primary_color)
-      setPrimaryDarkColor(b.primary_dark_color)
-      setPrimaryLightColor(b.primary_light_color)
-      setSecondaryColor(b.secondary_color || '#E2E8F0')
-      setAccentColor(b.accent_color || '#3B82F6')
-      setBackgroundColor(b.background_color || '#09090B')
-      setSurfaceColor(b.surface_color || '#18181B')
-      setTextOnPrimary(b.text_on_primary)
+    let active = true
+    const loadBranding = async () => {
+      if (!business?.id) return
+      setLoading(true)
+      setErrorMsg('')
+      try {
+        const res = await fetch(`/api/business/branding?businessId=${business.id}`, {
+          cache: 'no-store'
+        })
+        if (!res.ok) {
+          throw new Error('Failed to load branding settings')
+        }
+        const data = await res.json()
+        if (!active) return
+        if (data.branding) {
+          const b = data.branding
+          setIsEnabled(b.is_enabled)
+          setLogoPreview(b.logo_url ?? null)
+          setPrimaryColor(b.primary_color)
+          setPrimaryDarkColor(b.primary_dark_color)
+          setPrimaryLightColor(b.primary_light_color)
+          setSecondaryColor(b.secondary_color || '#E2E8F0')
+          setAccentColor(b.accent_color || '#3B82F6')
+          setBackgroundColor(b.background_color || '#09090B')
+          setSurfaceColor(b.surface_color || '#18181B')
+          setTextOnPrimary(b.text_on_primary)
+        }
+      } catch (err) {
+        if (active) {
+          const msg = err instanceof Error ? err.message : 'Failed to load branding settings. Please try again.'
+          setErrorMsg(msg)
+        }
+      } finally {
+        if (active) {
+          setLoading(false)
+        }
+      }
     }
-  }, [business])
-  /* eslint-enable react-hooks/set-state-in-effect */
+
+    loadBranding()
+    return () => {
+      active = false
+    }
+  }, [business.id])
 
   if (!isFeatureEnabled) {
     return (

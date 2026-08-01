@@ -116,6 +116,15 @@ describe('GET /api/business/branding', () => {
     expect(body.branding.primary_color).toBe('#FF0000')
     expect(body.branding.logo_url).toContain('path/to/logo.png')
   })
+
+  test('branding does not exist → returns 200 with branding: null', async () => {
+    mockQueue.push({ data: null, error: null })
+    const req = new NextRequest(`http://localhost/api/business/branding?businessId=${BIZ_ID}`)
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.branding).toBeNull()
+  })
 })
 
 describe('POST /api/business/branding', () => {
