@@ -36,7 +36,9 @@ jest.mock('@/lib/server/token', () => ({
 jest.mock('@/lib/rateLimit', () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ ok: true }),
   rateLimitResponse: jest.fn(),
-  getClientIp: jest.fn().mockReturnValue('127.0.0.1')
+  rateLimitErrorResponse: jest.fn(),
+  getClientIp: jest.fn().mockReturnValue('127.0.0.1'),
+  generateHmacIdentity: jest.fn((prefix, val) => 'mock_hash')
 }))
 
 // @ts-expect-error Mocked module injection
