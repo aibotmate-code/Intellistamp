@@ -71,9 +71,9 @@ export default function QRDisplay({ bizId, size = 200, showToken = true, classNa
 
       {showToken && (
         <>
-          <div className="text-center">
-            <p className="text-3xl font-black tracking-widest text-yellow-400 font-mono">
-              {token}
+          <div className="text-center w-full max-w-full px-2 overflow-hidden">
+            <p className="text-xs font-mono text-zinc-500 bg-zinc-900/50 p-2 rounded truncate" title={token}>
+              {token ? `${token.substring(0, 16)}...${token.slice(-16)}` : ''}
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm">

@@ -128,9 +128,8 @@ describe('Patch 1 Security Tests - Customer Token Exposure', () => {
       const res = await identifyHandler(req)
       const data = await res.json()
 
-      expect(res.status).toBe(200)
-      expect(data.isNew).toBe(false)
-      expect(data.customer).toBeUndefined()
+      expect(res.status).toBe(400)
+      expect(data.error).toContain('Invalid or expired QR code')
       expect(smocks.mockInsert).not.toHaveBeenCalled()
     })
 
@@ -147,6 +146,7 @@ describe('Patch 1 Security Tests - Customer Token Exposure', () => {
       expect(data.isNew).toBe(true)
       expect(data.customer.customer_token).toBe('tok_123')
       expect(smocks.mockInsert).toHaveBeenCalledWith({ phone: '9000000000', name: 'Test' })
+      expect(smocks.mockUpsert).toHaveBeenCalledWith({ business_id: '550e8400-e29b-41d4-a716-446655440000', customer_id: 'c1' })
     })
 
     test('7. bearer tokens do not appear in errors or logs for existing customers even with qr_token', async () => {
@@ -163,6 +163,30 @@ describe('Patch 1 Security Tests - Customer Token Exposure', () => {
       expect(data.customer).toBeUndefined()
       expect(data.customer_token).toBeUndefined()
       expect(data.message).toContain('ask the business staff')
+    })
+
+    test('8. cross-business existing customer scanning valid QR is associated but token is protected', async () => {
+      smocks.mockMaybeSingle.mockResolvedValueOnce({ data: { id: 'c1' } }) // existing customer
+      
+      const req = makeReq({ business_id: '550e8400-e29b-41d4-a716-446655440000', phone: '9000000000', name: 'Test', qr_token: 'valid_token' })
+      const res = await identifyHandler(req)
+      const data = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(data.isNew).toBe(false)
+      expect(data.customer_token).toBeUndefined()
+      expect(smocks.mockUpsert).toHaveBeenCalledWith({ business_id: '550e8400-e29b-41d4-a716-446655440000', customer_id: 'c1' })
+      expect(data.message).toContain('ask the business staff')
+    })
+
+    test('9. Indian phone numbers normalize consistently', async () => {
+      smocks.mockMaybeSingle.mockResolvedValue({ data: null }) // new customer
+      smocks.mockSingle.mockResolvedValue({ data: { id: 'c1', customer_token: 'tok_123', name: 'Test' } }) // created
+      
+      const req = makeReq({ business_id: '550e8400-e29b-41d4-a716-446655440000', phone: '+919000000000', name: 'Test', qr_token: 'valid_token' })
+      await identifyHandler(req)
+      
+      expect(smocks.mockInsert).toHaveBeenCalledWith({ phone: '9000000000', name: 'Test' })
     })
   })
 })

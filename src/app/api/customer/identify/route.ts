@@ -45,7 +45,15 @@ export async function POST(req: NextRequest) {
       .eq('phone', phone)
       .maybeSingle()
 
+    // If they belong to another business but scan THIS business's valid QR, associate them.
+    // They still cannot recover their token automatically, but they will be linked.
     if (existing) {
+      if (qr_token && validateServerToken(business_id, qr_token)) {
+        await supabase
+          .from('business_customers')
+          .upsert({ business_id, customer_id: existing.id })
+      }
+
       // CRITICAL LEAK PATCH: Never return the bearer token for an existing customer.
       // Phone + QR is not proof of phone ownership (no OTP).
       return NextResponse.json({
@@ -57,11 +65,9 @@ export async function POST(req: NextRequest) {
 
     // 2. New Customer Creation
     if (!qr_token || !validateServerToken(business_id, qr_token)) {
-      return NextResponse.json({
-        success: true,
-        isNew: false,
-        message: 'This card cannot be recovered automatically. Please ask the business staff to restore access.',
-      })
+      return NextResponse.json({ 
+        error: 'Invalid or expired QR code. Please scan the QR code again.' 
+      }, { status: 400 })
     }
 
     // If name is not provided yet, the UI is just checking if they exist to prompt for name

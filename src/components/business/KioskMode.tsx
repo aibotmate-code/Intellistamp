@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { generateToken, getSecondsUntilRotation } from '@/lib/token'
 import QRCode from 'qrcode'
 import { cn } from '@/lib/utils'
 
@@ -16,7 +15,7 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [token, setToken] = useState('')
-  const [seconds, setSeconds] = useState(getSecondsUntilRotation())
+  const [seconds, setSeconds] = useState(30)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
 
   useEffect(() => {
@@ -41,29 +40,47 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
   }, [])
 
   useEffect(() => {
-    const update = () => {
-      const newToken = generateToken(bizId, 0)
-      setToken(newToken)
-      setSeconds(getSecondsUntilRotation())
-      if (canvasRef.current) {
-        const url = `${window.location.origin}/scan/${bizId}?t=${newToken}`
-        QRCode.toCanvas(canvasRef.current, url, {
-          width: 240,
-          color: { dark: '#000000', light: '#ffffff' },
-          margin: 2,
-        }).catch(() => {})
+    let mounted = true
+
+    const fetchToken = async () => {
+      try {
+        const res = await fetch(`/api/business/qr-token?bizId=${bizId}`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.token && mounted) {
+          setToken(data.token)
+          setSeconds(30)
+          if (canvasRef.current) {
+            const url = `${window.location.origin}/scan/${bizId}?t=${data.token}`
+            QRCode.toCanvas(canvasRef.current, url, {
+              width: 240,
+              color: { dark: '#000000', light: '#ffffff' },
+              margin: 2,
+            }).catch(() => {})
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch QR token', err)
       }
     }
 
-    update()
-    const interval = setInterval(() => {
-      setSeconds(getSecondsUntilRotation())
-      const currentToken = generateToken(bizId, 0)
-      if (currentToken !== token) update()
+    fetchToken()
+
+    const countdownTimer = setInterval(() => {
+      setSeconds(s => {
+        if (s <= 1) {
+          fetchToken()
+          return 30
+        }
+        return s - 1
+      })
     }, 1000)
 
-    return () => clearInterval(interval)
-  }, [bizId, token])
+    return () => {
+      mounted = false
+      clearInterval(countdownTimer)
+    }
+  }, [bizId])
 
   const handleExit = () => {
     if (document.fullscreenElement) {
@@ -98,8 +115,8 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
           <canvas ref={canvasRef} width={240} height={240} />
         </div>
 
-        <p className="text-5xl font-black tracking-[12px] text-yellow-400 font-mono">
-          {token}
+        <p className="text-xs font-mono text-zinc-500 break-all w-full max-w-sm text-center bg-zinc-900/50 p-2 rounded">
+          {token ? `${token.substring(0, 16)}...${token.slice(-16)}` : ''}
         </p>
       </div>
 

@@ -107,7 +107,7 @@ export default function ScanPage() {
     } finally {
       setLoadingStamp(false)
     }
-  }, [bizId, business, customer])
+  }, [bizId, business, customer, qrToken])
 
   useEffect(() => {
     if (flowState === 'stamping' && customer && business) {
