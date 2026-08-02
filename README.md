@@ -1,36 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IntelliStamp
 
-## Getting Started
+IntelliStamp is a frictionless, web-based digital loyalty platform allowing local businesses to issue stamps securely via QR codes without requiring app downloads or passwords for end customers.
 
-First, run the development server:
+## Documentation Index
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+| Document | Audience | Purpose |
+|---|---|---|
+| [BRD](docs/01_BRD.md) | Business stakeholders | Business goals and rules |
+| [PRD](docs/02_PRD.md) | Product and design | Product behavior and acceptance criteria |
+| [TRD](docs/03_TRD.md) | Developers and architects | Technical implementation |
+| [API Reference](docs/04_API_REFERENCE.md) | Developers | API contracts |
+| [Database and Migrations](docs/05_DATABASE_AND_MIGRATIONS.md) | Backend/DB | Schema and migration history |
+| [Security Model](docs/06_SECURITY_MODEL.md) | Security/developers | Threats and controls |
+| [Test Cases](docs/07_TEST_CASES.md) | QA/developers | Verification coverage |
+| [Staging Guide](docs/08_STAGING_ENVIRONMENT_GUIDE.md) | Developers/QA | Setup and operate staging |
+| [Operations Runbook](docs/09_OPERATIONS_RUNBOOK.md) | Operators | Repeatable procedures |
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Current Status
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Current branch:** `claude/new-session-lld42`
+- **Current documentation version:** 2.0.0
+- **Last verified commit:** `1eab29104887260b55a7f0f558ed66b366d612f6`
+- **Current test totals:** 29 test suites passed, 288 tests passed, 28 todo, 0 skipped, 0 failed.
+- **Production readiness status:** Pending final manual pilot and explicit owner approval. Production remains untouched.
