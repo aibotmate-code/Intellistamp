@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { stampIssueSchema } from '@/lib/validators'
 import { validateServerToken } from '@/lib/server/token'
+import { generateAccessGrant } from '@/lib/server/grant'
 import { verifyPin } from '@/lib/pinHash'
 import {
   checkRateLimit,
@@ -142,6 +143,7 @@ export async function POST(req: NextRequest) {
         redeemable: stampComplete,
       },
       reward_result: data.reward_result,
+      access_grant: tokenIsVerified ? generateAccessGrant(customer_id, business_id) : undefined
     })
   } catch (err) {
     console.error('stamp issue error:', err)

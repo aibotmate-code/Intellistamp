@@ -22,6 +22,7 @@ export default function ScanPage() {
   const [customer, setCustomer] = useState<{ id: string; phone: string; customer_token?: string; name?: string } | null>(null)
   const [cardState, setCardState] = useState<StampCardState | null>(null)
   const [newStampIndex, setNewStampIndex] = useState<number | undefined>()
+  const [accessGrant, setAccessGrant] = useState<string | null>(null)
 
   const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
@@ -98,6 +99,9 @@ export default function ScanPage() {
         try {
           sessionStorage.setItem('intellistamp_pending_reward', JSON.stringify(data.reward_result))
         } catch { /* sessionStorage unavailable */ }
+      }
+      if (data.access_grant) {
+        setAccessGrant(data.access_grant)
       }
       setFlowState('success')
       showToast('Stamp added! 🎉')
@@ -300,14 +304,22 @@ export default function ScanPage() {
               redeemable={cardState.redeemable}
               onClaim={() => {
                 const token = customer?.customer_token
-                if (token) router.push(`/card/${token}?biz=${bizId}`)
+                if (token) {
+                  router.push(`/card/${token}?biz=${bizId}`)
+                } else if (accessGrant) {
+                  router.push(`/api/customer/grant-exchange?grant=${accessGrant}&bizId=${bizId}`)
+                }
               }}
               businessBranding={business.branding}
             />
             <Button
               onClick={() => {
                 const token = customer?.customer_token
-                if (token) router.push(`/card/${token}?biz=${bizId}`)
+                if (token) {
+                  router.push(`/card/${token}?biz=${bizId}`)
+                } else if (accessGrant) {
+                  router.push(`/api/customer/grant-exchange?grant=${accessGrant}&bizId=${bizId}`)
+                }
               }}
               variant="outline"
               className="w-full"
