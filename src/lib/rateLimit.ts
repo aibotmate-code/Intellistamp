@@ -94,12 +94,17 @@ export async function peekRateLimit(key: string, limit: number): Promise<RateLim
   return { ok: true }
 }
 
-export async function resetRateLimit(key: string): Promise<void> {
+export async function resetRateLimit(key: string): Promise<{ ok: boolean, isError?: boolean }> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
-  await supabase.rpc('reset_rate_limit', { p_key: key })
+  const { error } = await supabase.rpc('reset_rate_limit', { p_key: key })
+  if (error) {
+    console.error('Rate limit reset DB error:', error)
+    return { ok: false, isError: true }
+  }
+  return { ok: true }
 }
 
 export function rateLimitResponse(retryAfter: number): NextResponse {

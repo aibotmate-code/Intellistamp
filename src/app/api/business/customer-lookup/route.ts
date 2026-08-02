@@ -65,11 +65,14 @@ export async function POST(req: NextRequest) {
 
     if (!business) {
       // Treating wrong owner/unknown business as an invalid PIN attempt to prevent scraping
-      await checkRateLimit(pinKey, 20, 15 * 60 * 1000)
+      const failedRl = await checkRateLimit(pinKey, 20, 15 * 60 * 1000)
+      if (failedRl.isError) return rateLimitErrorResponse()
+      if (!failedRl.ok) return rateLimitResponse(failedRl.retryAfter || 60)
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
     
-    await resetRateLimit(pinKey)
+    const resetResult = await resetRateLimit(pinKey)
+    if (resetResult.isError) return rateLimitErrorResponse()
 
     const { data: customer } = await supabase
       .from('customers')

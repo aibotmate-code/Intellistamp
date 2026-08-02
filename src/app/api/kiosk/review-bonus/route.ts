@@ -46,11 +46,14 @@ export async function POST(req: NextRequest) {
 
     const isValid = pin && await verifyPin(pin, business.staff_pin_hash)
     if (!isValid) {
-      await checkRateLimit(pinKey, 10, 5 * 60 * 1000)
+      const failedRl = await checkRateLimit(pinKey, 10, 5 * 60 * 1000)
+      if (failedRl.isError) return rateLimitErrorResponse()
+      if (!failedRl.ok) return rateLimitResponse(failedRl.retryAfter || 60)
       return NextResponse.json({ error: 'Invalid PIN' }, { status: 400 })
     }
     
-    await resetRateLimit(pinKey)
+    const resetResult = await resetRateLimit(pinKey)
+    if (resetResult.isError) return rateLimitErrorResponse()
 
     if (!business.gmb_link) {
       return NextResponse.json({ error: 'No GMB link configured' }, { status: 400 })
