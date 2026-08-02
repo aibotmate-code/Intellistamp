@@ -45,7 +45,11 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
     const fetchToken = async () => {
       try {
         setDiagnostic(d => ({ ...d, status: 'fetching' }))
-        const res = await fetch(`/api/business/qr-token?bizId=${bizId}`)
+        const res = await fetch(`/api/business/qr-token?bizId=${bizId}`, {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store',
+        })
         if (!res.ok) {
           if (mounted) setDiagnostic(d => ({ ...d, status: `error_${res.status}` }))
           return

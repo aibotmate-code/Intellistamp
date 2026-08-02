@@ -53,4 +53,31 @@ describe('KioskMode Component', () => {
     expect(svg).toHaveAttribute('data-fg', '#000000')
     expect(svg.getAttribute('data-bg')).not.toEqual(svg.getAttribute('data-fg'))
   })
+
+  test('KioskMode fetch includes credentials:include and cache:no-store', async () => {
+    const mockFetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ token: 'kiosk_tok' })
+    })
+    global.fetch = mockFetch
+
+    render(
+      <KioskMode
+        bizId="kiosk-biz-id"
+        businessName="Test"
+        businessEmoji="☕"
+        onExit={jest.fn()}
+      />
+    )
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+
+    const [url, options] = mockFetch.mock.calls[0]
+    expect(url).toContain('/api/business/qr-token')
+    expect(url).toContain('bizId=kiosk-biz-id')
+    expect(options?.credentials).toBe('include')
+    expect(options?.cache).toBe('no-store')
+    // No secret in headers
+    expect(options?.headers?.Authorization).toBeUndefined()
+  })
 })

@@ -75,4 +75,35 @@ describe('QRDisplay Component', () => {
     })
     expect(screen.queryByTestId('qr-svg')).not.toBeInTheDocument()
   })
+
+  test('fetch includes credentials:include and cache:no-store for session cookies', async () => {
+    const mockFetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ token: 'tok123' })
+    })
+    global.fetch = mockFetch
+
+    render(<QRDisplay bizId="biz-99" />)
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled())
+
+    const [url, options] = mockFetch.mock.calls[0]
+    expect(url).toContain('/api/business/qr-token')
+    expect(url).toContain('bizId=biz-99')
+    expect(options?.credentials).toBe('include')
+    expect(options?.cache).toBe('no-store')
+    // Ensure no Authorization header or secret is passed
+    expect(options?.headers?.Authorization).toBeUndefined()
+  })
+
+  test('API 401 shows error state (not a silent blank)', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401 })
+
+    render(<QRDisplay bizId="biz-99" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Error: error_401')).toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('qr-svg')).not.toBeInTheDocument()
+  })
 })
