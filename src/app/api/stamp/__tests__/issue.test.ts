@@ -161,7 +161,7 @@ describe('POST /api/stamp/issue', () => {
       customer_id: CUST_ID,
       business_id: BIZ_ID,
       token: 'ZZZZZZ', // deliberately wrong
-    })
+    });
     const res = await POST(req)
     expect(res.status).toBe(401)
   })
@@ -214,7 +214,7 @@ describe('POST /api/stamp/issue', () => {
     mockQueue.push({
       data: { ...mockBusiness, id: OTHER_BIZ, dynamic_qr_enabled: true },
       error: null,
-    })
+    });
     const tokenForBizA = generateServerToken(BIZ_ID) // valid for BIZ_ID, not OTHER_BIZ
     const req = makeRequest({ customer_id: CUST_ID, business_id: OTHER_BIZ, token: tokenForBizA })
     const res = await POST(req)
@@ -269,7 +269,7 @@ describe('Fail-Closed PIN Behavior', () => {
     mockQueue.push({
       data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false },
       error: null,
-    })
+    });
     
     (verifyPin as jest.Mock).mockResolvedValueOnce(false);
     (checkRateLimit as jest.Mock).mockResolvedValueOnce({ ok: false, retryAfter: 60, isError: true });
@@ -282,7 +282,7 @@ describe('Fail-Closed PIN Behavior', () => {
   })
 
   test('2. The protected action does not continue after the increment RPC fails', async () => {
-    mockQueue.push({ data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false }, error: null })
+    mockQueue.push({ data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false }, error: null });
     (verifyPin as jest.Mock).mockResolvedValueOnce(false);
     (checkRateLimit as jest.Mock).mockResolvedValueOnce({ ok: false, retryAfter: 60, isError: true });
     
@@ -294,7 +294,7 @@ describe('Fail-Closed PIN Behavior', () => {
   })
 
   test('3. Valid PIN + reset_rate_limit RPC failure returns 503', async () => {
-    mockQueue.push({ data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false }, error: null })
+    mockQueue.push({ data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false }, error: null });
     (verifyPin as jest.Mock).mockResolvedValueOnce(true);
     (resetRateLimit as jest.Mock).mockResolvedValueOnce({ ok: false, isError: true });
     
@@ -304,7 +304,7 @@ describe('Fail-Closed PIN Behavior', () => {
   })
 
   test('4. The protected action does not continue after reset failure', async () => {
-    mockQueue.push({ data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false }, error: null })
+    mockQueue.push({ data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false }, error: null });
     (verifyPin as jest.Mock).mockResolvedValueOnce(true);
     (resetRateLimit as jest.Mock).mockResolvedValueOnce({ ok: false, isError: true });
     
@@ -316,7 +316,7 @@ describe('Fail-Closed PIN Behavior', () => {
 
   test('5. A successfully recorded failed attempt returns the intended 400 or 429 response', async () => {
     // Attempt 1: recorded successfully -> 400 Invalid PIN
-    mockQueue.push({ data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false }, error: null })
+    mockQueue.push({ data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false }, error: null });
     (verifyPin as jest.Mock).mockResolvedValueOnce(false);
     (checkRateLimit as jest.Mock).mockResolvedValueOnce({ ok: true });
     const req = makeRequest({ customer_id: CUST_ID, business_id: BIZ_ID, staff_pin: '0000' })
@@ -326,7 +326,7 @@ describe('Fail-Closed PIN Behavior', () => {
     expect(body.error).toBe('Invalid staff PIN')
 
     // Attempt 2: threshold exceeded -> peek returns ok: false -> 429 Rate limit
-    mockQueue.push({ data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false }, error: null })
+    mockQueue.push({ data: { ...mockBusiness, staff_pin_enabled: true, dynamic_qr_enabled: false }, error: null });
     (peekRateLimit as jest.Mock).mockResolvedValueOnce({ ok: false, retryAfter: 30 });
     const req2 = makeRequest({ customer_id: CUST_ID, business_id: BIZ_ID, staff_pin: '0000' })
     const res2 = await POST(req2)
