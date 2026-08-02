@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import QRCode from 'qrcode'
+import { QRCodeSVG } from 'qrcode.react'
 import { cn } from '@/lib/utils'
 
 interface KioskModeProps {
@@ -12,11 +12,11 @@ interface KioskModeProps {
 }
 
 export default function KioskMode({ bizId, businessName, businessEmoji, onExit }: KioskModeProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [token, setToken] = useState('')
   const [seconds, setSeconds] = useState(30)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
+  const [diagnostic, setDiagnostic] = useState({ tokenPresent: false, tokenLength: 0, status: 'loading' })
 
   useEffect(() => {
     // Request fullscreen
@@ -44,23 +44,25 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
 
     const fetchToken = async () => {
       try {
+        setDiagnostic(d => ({ ...d, status: 'fetching' }))
         const res = await fetch(`/api/business/qr-token?bizId=${bizId}`)
-        if (!res.ok) return
+        if (!res.ok) {
+          if (mounted) setDiagnostic(d => ({ ...d, status: `error_${res.status}` }))
+          return
+        }
         const data = await res.json()
-        if (data.token && mounted) {
-          setToken(data.token)
-          setSeconds(30)
-          if (canvasRef.current) {
-            const url = `${window.location.origin}/scan/${bizId}?t=${data.token}`
-            QRCode.toCanvas(canvasRef.current, url, {
-              width: 240,
-              color: { dark: '#000000', light: '#ffffff' },
-              margin: 2,
-            }).catch(() => {})
+        if (mounted) {
+          if (data.token) {
+            setToken(data.token)
+            setSeconds(30)
+            setDiagnostic({ tokenPresent: true, tokenLength: data.token.length, status: 'success' })
+          } else {
+            setDiagnostic(d => ({ ...d, status: 'no_token_in_response' }))
           }
         }
       } catch (err) {
         console.error('Failed to fetch QR token', err)
+        if (mounted) setDiagnostic(d => ({ ...d, status: 'fetch_failed' }))
       }
     }
 
@@ -90,6 +92,8 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
     onExit()
   }
 
+  const qrUrl = token ? `${window.location.origin}/scan/${bizId}?t=${token}` : ''
+
   return (
     <div
       ref={containerRef}
@@ -111,13 +115,32 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
 
       {/* Center: QR */}
       <div className="flex flex-col items-center gap-4">
-        <div className="bg-white rounded-2xl p-4 shadow-2xl">
-          <canvas ref={canvasRef} width={240} height={240} />
+        <div className="bg-white rounded-2xl p-4 shadow-2xl flex items-center justify-center" style={{ width: 272, height: 272 }}>
+          {token ? (
+            <QRCodeSVG
+              value={qrUrl}
+              size={240}
+              bgColor="#ffffff"
+              fgColor="#000000"
+              level="M"
+              includeMargin={false}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center text-zinc-400 text-sm">
+              {diagnostic.status === 'loading' || diagnostic.status === 'fetching' ? (
+                <span className="animate-pulse">Loading QR...</span>
+              ) : (
+                <span className="text-red-500">Error: {diagnostic.status}</span>
+              )}
+            </div>
+          )}
         </div>
 
-        <p className="text-xs font-mono text-zinc-500 break-all w-full max-w-sm text-center bg-zinc-900/50 p-2 rounded">
-          {token ? `${token.substring(0, 16)}...${token.slice(-16)}` : ''}
-        </p>
+        <div className="text-center w-full max-w-full px-2 overflow-hidden flex justify-center">
+          <p className="text-xs font-mono text-zinc-500 bg-zinc-900/50 p-2 rounded truncate max-w-[300px]" title={token}>
+            {token ? `${token.substring(0, 16)}...${token.slice(-16)}` : '...'}
+          </p>
+        </div>
       </div>
 
       {/* Bottom */}
@@ -135,6 +158,13 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
         <p className="text-zinc-600 text-xs mt-4">
           Powered by IntelliStamp · stamp.intellicallabs.com
         </p>
+        
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-2 text-[10px] font-mono text-zinc-500 text-center bg-black/20 p-2 rounded max-w-xs mx-auto flex gap-4 justify-center">
+            <span>status: {diagnostic.status}</span>
+            <span>tok: {diagnostic.tokenLength}</span>
+          </div>
+        )}
       </div>
     </div>
   )
