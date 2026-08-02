@@ -8,7 +8,7 @@ const schema = z.object({
   business_id: z.string().uuid(),
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
   name: z.string().min(1).max(100).optional(),
-  qr_token: z.string().optional(), // We'll enforce this strictly in Patch 2
+  qr_token: z.string().optional(),
 })
 
 const supabase = createClient(
@@ -38,39 +38,56 @@ export async function POST(req: NextRequest) {
 
     const { business_id, phone, name, qr_token } = result.data
 
-    // 1. Perform lookup
+    // Verify QR token first — determines what paths are available
+    const qrIsValid = qr_token ? validateServerToken(business_id, qr_token) : false
+
+    // Look up existing customer by phone
     const { data: existing } = await supabase
       .from('customers')
-      .select('id')
+      .select('id, customer_token, name')
       .eq('phone', phone)
       .maybeSingle()
 
-    // If they belong to another business but scan THIS business's valid QR, associate them.
-    // They still cannot recover their token automatically, but they will be linked.
+    // ── RETURNING CUSTOMER ────────────────────────────────────────────────────
     if (existing) {
-      if (qr_token && validateServerToken(business_id, qr_token)) {
+      if (qrIsValid) {
+        // Valid signed QR: associate the customer with this business (idempotent)
+        // and tell the client to proceed to stamp — do NOT return customer_token
+        // (phone alone is not proof of ownership without OTP)
         await supabase
           .from('business_customers')
-          .upsert({ business_id, customer_id: existing.id })
+          .upsert(
+            { business_id, customer_id: existing.id },
+            { onConflict: 'business_id,customer_id', ignoreDuplicates: true }
+          )
+
+        return NextResponse.json({
+          success: true,
+          isNew: false,
+          readyToStamp: true,         // ← client: skip recovery wall, proceed to stamp
+          customer_id: existing.id,   // ← needed for stamp call, not a bearer secret
+          name: existing.name,
+        })
       }
 
-      // CRITICAL LEAK PATCH: Never return the bearer token for an existing customer.
-      // Phone + QR is not proof of phone ownership (no OTP).
+      // No valid QR — cannot recover automatically without staff assistance
+      // CRITICAL: Never return customer_token here (no proof of phone ownership)
       return NextResponse.json({
         success: true,
         isNew: false,
+        readyToStamp: false,
         message: 'This card cannot be recovered automatically. Please ask the business staff to restore access.',
       })
     }
 
-    // 2. New Customer Creation
-    if (!qr_token || !validateServerToken(business_id, qr_token)) {
-      return NextResponse.json({ 
-        error: 'Invalid or expired QR code. Please scan the QR code again.' 
+    // ── NEW CUSTOMER ──────────────────────────────────────────────────────────
+    if (!qrIsValid) {
+      return NextResponse.json({
+        error: 'Invalid or expired QR code. Please scan the QR code again.'
       }, { status: 400 })
     }
 
-    // If name is not provided yet, the UI is just checking if they exist to prompt for name
+    // Need name before we can create the account
     if (!name) {
       return NextResponse.json({
         success: true,
@@ -79,7 +96,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Since they have a QR token and provided a name, we can create a new customer.
+    // Create the customer with a QR-verified phone and name
     const { data: customer, error } = await supabase
       .from('customers')
       .insert({ phone, name })
@@ -90,12 +107,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to create account. Please try again.' }, { status: 500 })
     }
 
-    // Also link them to the business
+    // Link to the business immediately
     await supabase
       .from('business_customers')
       .upsert({ business_id, customer_id: customer.id })
 
-    // Safe to return the newly generated token since they just registered
+    // Safe to return the token — customer just registered, this is their first session
     return NextResponse.json({ customer, isNew: true })
   } catch {
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })

@@ -149,24 +149,43 @@ describe('Patch 1 Security Tests - Customer Token Exposure', () => {
       expect(smocks.mockUpsert).toHaveBeenCalledWith({ business_id: '550e8400-e29b-41d4-a716-446655440000', customer_id: 'c1' })
     })
 
-    test('7. bearer tokens do not appear in errors or logs for existing customers even with qr_token', async () => {
-      smocks.mockMaybeSingle.mockResolvedValueOnce({ data: { id: 'c1', customer_token: 'tok_123' } }) // existing customer
+    test('7. returning customer with valid QR gets readyToStamp:true, no bearer token exposed', async () => {
+      smocks.mockMaybeSingle.mockResolvedValueOnce({ data: { id: 'c1', customer_token: 'tok_123', name: 'Priya' } }) // existing customer
       
-      // Request WITH qr_token, but customer already exists
-      const req = makeReq({ business_id: '550e8400-e29b-41d4-a716-446655440000', phone: '9000000000', name: 'Test', qr_token: 'valid_token' })
+      // Request WITH valid qr_token and existing customer
+      const req = makeReq({ business_id: '550e8400-e29b-41d4-a716-446655440000', phone: '9000000000', qr_token: 'valid_token' })
       const res = await identifyHandler(req)
       const data = await res.json()
       if (res.status !== 200) console.error(data)
 
       expect(res.status).toBe(200)
       expect(data.isNew).toBe(false)
+      // Customer can proceed to stamping without staff involvement
+      expect(data.readyToStamp).toBe(true)
+      expect(data.customer_id).toBe('c1')      // needed for stamp call
+      expect(data.name).toBe('Priya')           // for display
+      // CRITICAL: bearer token must NEVER be returned
+      expect(data.customer_token).toBeUndefined()
       expect(data.customer).toBeUndefined()
+    })
+
+    test('8. returning customer WITHOUT valid QR gets recovery wall (not readyToStamp)', async () => {
+      smocks.mockMaybeSingle.mockResolvedValueOnce({ data: { id: 'c1', customer_token: 'tok_123' } }) // existing customer
+      
+      // Request WITHOUT qr_token (or expired token)
+      const req = makeReq({ business_id: '550e8400-e29b-41d4-a716-446655440000', phone: '9000000000' })
+      const res = await identifyHandler(req)
+      const data = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(data.isNew).toBe(false)
+      expect(data.readyToStamp).toBe(false)
       expect(data.customer_token).toBeUndefined()
       expect(data.message).toContain('ask the business staff')
     })
 
-    test('8. cross-business existing customer scanning valid QR is associated but token is protected', async () => {
-      smocks.mockMaybeSingle.mockResolvedValueOnce({ data: { id: 'c1' } }) // existing customer
+    test('8b. cross-business existing customer scanning valid QR is associated and gets readyToStamp:true', async () => {
+      smocks.mockMaybeSingle.mockResolvedValueOnce({ data: { id: 'c1', name: 'Ravi' } }) // existing customer
       
       const req = makeReq({ business_id: '550e8400-e29b-41d4-a716-446655440000', phone: '9000000000', name: 'Test', qr_token: 'valid_token' })
       const res = await identifyHandler(req)
@@ -174,9 +193,13 @@ describe('Patch 1 Security Tests - Customer Token Exposure', () => {
 
       expect(res.status).toBe(200)
       expect(data.isNew).toBe(false)
+      expect(data.readyToStamp).toBe(true)
       expect(data.customer_token).toBeUndefined()
-      expect(smocks.mockUpsert).toHaveBeenCalledWith({ business_id: '550e8400-e29b-41d4-a716-446655440000', customer_id: 'c1' })
-      expect(data.message).toContain('ask the business staff')
+      // Business association was upserted
+      expect(smocks.mockUpsert).toHaveBeenCalledWith(
+        { business_id: '550e8400-e29b-41d4-a716-446655440000', customer_id: 'c1' },
+        { onConflict: 'business_id,customer_id', ignoreDuplicates: true }
+      )
     })
 
     test('9. Indian phone numbers normalize consistently', async () => {

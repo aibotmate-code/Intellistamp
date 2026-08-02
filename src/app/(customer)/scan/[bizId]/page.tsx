@@ -135,18 +135,26 @@ export default function ScanPage() {
         return
       }
 
+      // RETURNING CUSTOMER — valid QR: associate + proceed to stamp
+      if (data.isNew === false && data.readyToStamp === true) {
+        setCustomer({ id: data.customer_id, phone, name: data.name })
+        setFlowState('stamping')
+        return
+      }
+
+      // RETURNING CUSTOMER — no valid QR: show recovery message
       if (data.isNew === false) {
-        // Existing customer, they must recover via staff or they already have session
         setPhoneError(data.message || 'Cannot recover card automatically.')
         return
       }
 
+      // NEW CUSTOMER — needs name
       if (data.needsName) {
         setFlowState('name')
         return
       }
 
-      // If we somehow got a customer object immediately
+      // NEW CUSTOMER — identify returned customer immediately (shouldn't normally happen)
       const c = data.customer
       localStorage.setItem('customer_session', JSON.stringify({
         id: c.id,
