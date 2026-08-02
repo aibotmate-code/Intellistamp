@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 import { stampIssueSchema } from '@/lib/validators'
 import { validateServerToken } from '@/lib/server/token'
 import { verifyPin } from '@/lib/pinHash'
-import { checkRateLimit, peekRateLimit, resetRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
-import type { RewardResult } from '@/types'
+import {
+  checkRateLimit,
+  peekRateLimit,
+  resetRateLimit,
+  rateLimitResponse,
+  rateLimitErrorResponse,
+  getClientIp,
+  generateHmacIdentity,
+} from '@/lib/rateLimit'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,18 +41,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    // Validate token — 401 because the token IS the authorization credential
+    // ─── Flow Separation ────────────────────────────────────────────────────────
+    //
+    // SIGNED QR CUSTOMER FLOW:
+    //   The signed HMAC token is the authorization credential. The server
+    //   independently verifies the cryptographic signature and expiry.
+    //   Staff PIN is NOT required — the token's validity proves the customer
+    //   was physically present at the business counter when the QR was shown.
+    //   This path CANNOT be triggered by a client-supplied boolean flag.
+    //
+    // MANUAL DASHBOARD / STAFF FLOW:
+    //   No trusted signed token is present. The route falls back to staff PIN
+    //   verification when staff_pin_enabled is true. Rate limiting remains active.
+    //
+    // The decision is made solely by the server based on cryptographic token validity.
+    // ────────────────────────────────────────────────────────────────────────────
+
+    let tokenIsVerified = false
+
     if (business.dynamic_qr_enabled) {
       if (!token) {
-        return NextResponse.json({ error: 'Token missing.' }, { status: 401 })
-      }
-      if (!validateServerToken(business_id, token)) {
-        return NextResponse.json({ error: 'Invalid or expired token. Please scan the QR again.' }, { status: 401 })
+        // Dynamic QR is enabled but no token supplied → must be a manual flow
+        // Fall through to staff PIN check below
+      } else if (!validateServerToken(business_id, token)) {
+        // Token was supplied but is invalid or expired — reject, do not fall back to PIN
+        return NextResponse.json(
+          { error: 'Invalid or expired token. Please scan the QR again.' },
+          { status: 401 }
+        )
+      } else {
+        // Token is cryptographically valid — this is an authenticated customer QR scan
+        tokenIsVerified = true
       }
     }
 
-    // Validate staff PIN if required
-    if (business.staff_pin_enabled) {
+    // Staff PIN check — only required when:
+    //   1. staff_pin_enabled is true on the business, AND
+    //   2. The request did NOT arrive with a valid server-signed QR token
+    if (business.staff_pin_enabled && !tokenIsVerified) {
       const pinKey = `pin:stamp:${business_id}:${clientHash}`
       const peekRl = await peekRateLimit(pinKey, 10)
       if (!peekRl.ok) {
@@ -60,17 +93,17 @@ export async function POST(req: NextRequest) {
         if (!failedRl.ok) return rateLimitResponse(failedRl.retryAfter || 60)
         return NextResponse.json({ error: 'Invalid staff PIN' }, { status: 400 })
       }
-      
+
       const resetResult = await resetRateLimit(pinKey)
       if (resetResult.isError) return rateLimitErrorResponse()
     }
 
-    // Call atomic RPC
+    // Call atomic RPC — passes token for replay-protection only when valid
     const { data, error } = await supabase.rpc('issue_stamp_atomic', {
       p_customer_id: customer_id,
       p_business_id: business_id,
       p_type: type ?? 'regular',
-      p_stamp_token: (business.dynamic_qr_enabled && token) ? token : null
+      p_stamp_token: tokenIsVerified ? token : null
     })
 
     if (error) {
@@ -115,4 +148,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
-
