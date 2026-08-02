@@ -11,7 +11,7 @@ export interface Business {
   slug: string
   stamps_required: number
   reward: string
-  staff_pin: string
+  has_staff_pin?: boolean
   gmb_link?: string
   dynamic_qr_enabled: boolean
   staff_pin_enabled: boolean

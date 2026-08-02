@@ -10,6 +10,7 @@ import CustomerLookup from '@/components/business/CustomerLookup'
 import FeatureToggles from '@/components/business/FeatureToggles'
 import RewardsTab from '@/components/business/RewardsTab'
 import BrandingTab from '@/components/business/BrandingTab'
+import StaffPinManager from '@/components/business/StaffPinManager'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
 import Alert from '@/components/ui/Alert'
@@ -65,6 +66,10 @@ export default function DashboardPage() {
   const [gmbSaving, setGmbSaving] = useState(false)
   const [gmbError, setGmbError] = useState('')
   const [gmbSaved, setGmbSaved] = useState(false)
+
+  // PIN Manager state
+  const [pinManagerOpen, setPinManagerOpen] = useState(false)
+  const [pinManagerAction, setPinManagerAction] = useState<'set' | 'change'>('set')
 
   const fetchData = useCallback(async () => {
     const supabase = createBrowserClient(
@@ -564,9 +569,26 @@ export default function DashboardPage() {
                   <span className="text-zinc-400">Reward</span>
                   <span className="text-white">{business.reward}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-zinc-400">Staff PIN</span>
-                  <span className="text-white">••••</span>
+                  <div className="flex items-center gap-2">
+                    {business.has_staff_pin ? (
+                      <span className="text-white">••••</span>
+                    ) : (
+                      <span className="text-zinc-500 italic">Not set</span>
+                    )}
+                    {business.plan === 'pro' && (
+                      <button
+                        onClick={() => {
+                          setPinManagerAction(business.has_staff_pin ? 'change' : 'set')
+                          setPinManagerOpen(true)
+                        }}
+                        className="text-xs text-yellow-400 hover:text-yellow-300 ml-2"
+                      >
+                        {business.has_staff_pin ? 'Change' : 'Set PIN'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -597,7 +619,14 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <FeatureToggles business={business} onSave={handleSaveToggles} />
+            <FeatureToggles 
+              business={business} 
+              onSave={handleSaveToggles} 
+              onOpenPinManager={(action) => {
+                setPinManagerAction(action)
+                setPinManagerOpen(true)
+              }}
+            />
           </div>
         )}
       </div>
@@ -661,6 +690,23 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Staff PIN Modal */}
+      {pinManagerOpen && data && (
+        <StaffPinManager
+          business={data.business}
+          initialAction={pinManagerAction}
+          onSuccess={async (hasPin) => {
+            // Optimistically update the UI to reflect the new state
+            if (hasPin && !data.business.has_staff_pin && pinManagerAction === 'set') {
+              // Automatically enable the toggle locally once PIN is set
+              setData((prev) => prev ? { ...prev, business: { ...prev.business, has_staff_pin: true, staff_pin_enabled: true } } : prev)
+              await handleSaveToggles({ staff_pin_enabled: true })
+            }
+          }}
+          onClose={() => setPinManagerOpen(false)}
+        />
       )}
     </div>
   )

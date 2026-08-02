@@ -3,7 +3,7 @@ import { requireUser, adminClient } from '@/lib/auth'
 import type { BusinessBranding } from '@/types'
 
 const BUSINESS_FIELDS =
-  'id, name, slug, emoji, category, stamps_required, reward, gmb_link, dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, conflict_priority, owner_id, owner_phone, created_at'
+  'id, name, slug, emoji, category, stamps_required, reward, gmb_link, dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, conflict_priority, owner_id, owner_phone, created_at, staff_pin_hash'
 
 export async function GET(req: NextRequest) {
   try {
@@ -47,8 +47,10 @@ export async function GET(req: NextRequest) {
     }
     const business = {
       ...rawBiz,
-      branding: mappedBranding
-    } as unknown as typeof businesses[number] & { id: string; stamps_required: number; branding?: BusinessBranding | null }
+      branding: mappedBranding,
+      has_staff_pin: !!(rawBiz as { staff_pin_hash?: string }).staff_pin_hash,
+      staff_pin_hash: undefined // strict exclusion
+    } as unknown as typeof businesses[number] & { id: string; stamps_required: number; branding?: BusinessBranding | null; has_staff_pin: boolean }
 
     const [stampsResult, customersResult] = await Promise.all([
       adminClient.from('stamps').select('id', { count: 'exact' }).eq('business_id', business.id),

@@ -7,9 +7,10 @@ import type { Business } from '@/types'
 interface FeatureTogglesProps {
   business: Business
   onSave: (updates: Partial<Business>) => Promise<void>
+  onOpenPinManager: (action: 'set' | 'change') => void
 }
 
-export default function FeatureToggles({ business, onSave }: FeatureTogglesProps) {
+export default function FeatureToggles({ business, onSave, onOpenPinManager }: FeatureTogglesProps) {
   const [dynamicQr, setDynamicQr] = useState(business.dynamic_qr_enabled)
   const [staffPin, setStaffPin] = useState(business.staff_pin_enabled)
   const [whatsapp, setWhatsapp] = useState(business.whatsapp_enabled)
@@ -18,8 +19,19 @@ export default function FeatureToggles({ business, onSave }: FeatureTogglesProps
   const [saving, setSaving] = useState(false)
 
   const handleToggle = async (key: keyof Business, value: boolean) => {
-    if (key === 'staff_pin_enabled' && value) setShowPinNudge(true)
     if (key === 'whatsapp_enabled' && value) setShowWaNudge(true)
+
+    if (key === 'staff_pin_enabled') {
+      if (business.plan === 'free') {
+        setShowPinNudge(true)
+        return
+      }
+      if (value && !business.has_staff_pin) {
+        // Enforce setting PIN before enabling
+        onOpenPinManager('set')
+        return
+      }
+    }
 
     setSaving(true)
     if (key === 'dynamic_qr_enabled') setDynamicQr(value)
