@@ -11,6 +11,7 @@ import FeatureToggles from '@/components/business/FeatureToggles'
 import RewardsTab from '@/components/business/RewardsTab'
 import BrandingTab from '@/components/business/BrandingTab'
 import StaffPinManager from '@/components/business/StaffPinManager'
+import SocialLinksSettings from '@/components/business/SocialLinksSettings'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
 import Alert from '@/components/ui/Alert'
@@ -618,6 +619,8 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
+
+            <SocialLinksSettings business={business} />
 
             <FeatureToggles 
               business={business} 

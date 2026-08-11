@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 import Alert from '@/components/ui/Alert'
 import StampCard from '@/components/customer/StampCard'
+import { SocialLinks } from '@/components/customer/SocialLinks'
 import type { Business, MilestoneWithStatus, RewardResult } from '@/types'
 
 interface CardState {
@@ -132,6 +133,8 @@ export default function GuestCardPage({ params }: PageParams) {
                 🎁 Verify Phone to Claim Reward
               </Button>
             )}
+
+            <SocialLinks links={business.social_links} />
           </div>
         )}
 

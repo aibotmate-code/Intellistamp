@@ -23,6 +23,29 @@ export interface Business {
   stamps_required_updated_at?: string
   milestones?: Milestone[]
   branding?: BusinessBranding | null
+  social_links?: BusinessSocialLinks | null
+}
+
+export interface BusinessSocialLinks {
+  business_id: string
+  google_review_url?: string | null
+  instagram_url?: string | null
+  facebook_url?: string | null
+  youtube_url?: string | null
+  x_url?: string | null
+  whatsapp_number?: string | null
+  whatsapp_message?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PublicSocialLinks {
+  google_review_url: string | null
+  instagram_url: string | null
+  facebook_url: string | null
+  youtube_url: string | null
+  x_url: string | null
+  whatsapp_url: string | null
 }
 
 export interface BusinessBranding {

@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
     const { data: business } = await supabase
       .from('businesses')
-      .select('stamps_required, reward, name, emoji, conflict_priority, branding:business_branding(*)')
+      .select('stamps_required, reward, name, emoji, conflict_priority, branding:business_branding(*), social_links:business_social_links(*)')
       .eq('id', bizId)
       .single()
 
@@ -74,9 +74,15 @@ export async function GET(req: NextRequest) {
           logo_url
         }
       }
+
+      // map social links using the new helper
+      const { mapPublicSocialLinks } = await import('@/lib/server/social')
+      const mappedSocialLinks = mapPublicSocialLinks((business as any).social_links)
+
       businessWithBranding = {
         ...business,
-        branding: mappedBranding
+        branding: mappedBranding,
+        social_links: mappedSocialLinks
       }
     }
 
