@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
 
       // map social links using the new helper
       const { mapPublicSocialLinks } = await import('@/lib/server/social')
-      const mappedSocialLinks = mapPublicSocialLinks((business as any).social_links)
+      const mappedSocialLinks = mapPublicSocialLinks((business as unknown as { social_links?: import('@/types').BusinessSocialLinks }).social_links)
 
       businessWithBranding = {
         ...business,

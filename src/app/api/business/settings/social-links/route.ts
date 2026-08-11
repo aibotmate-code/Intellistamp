@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireUser, adminClient } from '@/lib/auth'
 import { 
   validateSocialUrl, 
   validateWhatsAppNumber, 
@@ -21,15 +21,25 @@ const linkSchema = z.object({
   whatsapp_message: z.string().optional().nullable()
 })
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const { supabase, business } = await requireUser()
+    const userOrError = await requireUser()
+    if (userOrError instanceof NextResponse) return userOrError
+    const user = userOrError
     
-    if (!business) {
+    const { data: businesses, error: bizError } = await adminClient
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+      .limit(1)
+
+    if (bizError || !businesses || businesses.length === 0) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
-    const { data, error } = await supabase
+    const business = businesses[0]
+
+    const { data, error } = await adminClient
       .from('business_social_links')
       .select('google_review_url, instagram_url, facebook_url, youtube_url, x_url, whatsapp_number, whatsapp_message')
       .eq('business_id', business.id)
@@ -41,7 +51,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ social_links: data || {} })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[social-links GET]', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
@@ -49,11 +59,21 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const { supabase, business } = await requireUser()
+    const userOrError = await requireUser()
+    if (userOrError instanceof NextResponse) return userOrError
+    const user = userOrError
     
-    if (!business) {
+    const { data: businesses, error: bizError } = await adminClient
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+      .limit(1)
+
+    if (bizError || !businesses || businesses.length === 0) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
+
+    const business = businesses[0]
 
     const body = await req.json()
     const parsed = linkSchema.safeParse(body)
@@ -64,7 +84,6 @@ export async function PUT(req: NextRequest) {
 
     const input = parsed.data
     
-    // Normalization helper
     const normalize = (val: string | null | undefined) => val && val.trim() ? val.trim() : null
 
     const google_review_url = validateSocialUrl(normalize(input.google_review_url), ALLOWED_GOOGLE_HOSTS)
@@ -87,7 +106,7 @@ export async function PUT(req: NextRequest) {
       updated_at: new Date().toISOString()
     }
 
-    const { error } = await supabase
+    const { error } = await adminClient
       .from('business_social_links')
       .upsert(payload, { onConflict: 'business_id' })
 
@@ -97,7 +116,7 @@ export async function PUT(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, social_links: payload })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[social-links PUT]', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }

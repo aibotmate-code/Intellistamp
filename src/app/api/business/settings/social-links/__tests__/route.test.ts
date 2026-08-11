@@ -1,48 +1,58 @@
 import { NextRequest } from 'next/server'
 import { GET, PUT } from '../route'
-import { requireUser } from '@/lib/auth'
+import { requireUser, adminClient } from '@/lib/auth'
 
 jest.mock('@/lib/auth', () => ({
-  requireUser: jest.fn()
+  requireUser: jest.fn(),
+  adminClient: {
+    from: jest.fn()
+  }
 }))
 
-// @ts-expect-error Mocked module injection
 const mockRequireUser = requireUser as jest.Mock
+const mockAdminClientFrom = adminClient.from as jest.Mock
 
 describe('Social Links Settings API', () => {
-  let mockSupabase: any
-  let mockSelect: any
-  let mockEq: any
-  let mockMaybeSingle: any
-  let mockUpsert: any
+  let mockSelect: jest.Mock
+  let mockEq: jest.Mock
+  let mockLimit: jest.Mock
+  let mockMaybeSingle: jest.Mock
+  let mockUpsert: jest.Mock
 
   beforeEach(() => {
     jest.clearAllMocks()
 
     mockMaybeSingle = jest.fn()
+    mockLimit = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    
+    // For the business lookup
+    const mockBizEq = jest.fn().mockReturnValue({ limit: mockLimit })
+    const mockBizSelect = jest.fn().mockReturnValue({ eq: mockBizEq })
+
+    // For the social links lookup
     mockEq = jest.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
     mockSelect = jest.fn().mockReturnValue({ eq: mockEq })
+    
     mockUpsert = jest.fn()
 
-    mockSupabase = {
-      from: jest.fn(() => ({
-        select: mockSelect,
-        upsert: mockUpsert
-      }))
-    }
-
-    mockRequireUser.mockResolvedValue({
-      supabase: mockSupabase,
-      user: { id: 'user-1' },
-      business: { id: 'biz-1' }
+    mockAdminClientFrom.mockImplementation((table: string) => {
+      if (table === 'businesses') {
+        return { select: mockBizSelect }
+      }
+      return { select: mockSelect, upsert: mockUpsert }
     })
+
+    // Mock business lookup to return biz-1
+    mockLimit.mockResolvedValue({ data: [{ id: 'biz-1' }], error: null })
+
+    mockRequireUser.mockResolvedValue({ id: 'user-1' })
   })
 
   describe('GET', () => {
     it('returns empty object if no links found', async () => {
       mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null })
       const req = new NextRequest('http://localhost/api')
-      const res = await GET(req)
+      const res = await GET()
       const data = await res.json()
       
       expect(res.status).toBe(200)
@@ -53,7 +63,7 @@ describe('Social Links Settings API', () => {
       const mockLinks = { instagram_url: 'https://instagram.com/test' }
       mockMaybeSingle.mockResolvedValueOnce({ data: mockLinks, error: null })
       const req = new NextRequest('http://localhost/api')
-      const res = await GET(req)
+      const res = await GET()
       const data = await res.json()
       
       expect(data.social_links).toEqual(mockLinks)
@@ -61,7 +71,7 @@ describe('Social Links Settings API', () => {
   })
 
   describe('PUT validation', () => {
-    const makeReq = (body: any) => new NextRequest('http://localhost/api', {
+    const makeReq = (body: Record<string, unknown>) => new NextRequest('http://localhost/api', {
       method: 'PUT',
       body: JSON.stringify(body)
     })
