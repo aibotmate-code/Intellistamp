@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
     // Get enrollments with stamps
     const { data: enrollments } = await supabase
       .from('business_customers')
-      .select('*, business:businesses(*)')
+      .select('*, business:businesses(*, branding:business_branding(*))')
       .eq('customer_id', customer.id)
       .order('enrolled_at', { ascending: false })
 
@@ -82,13 +82,36 @@ export async function GET(req: NextRequest) {
     const cards = (enrollments ?? []).map((bc) => {
       const bizStamps = stampsByBiz.get(bc.business_id) ?? []
       const total = bizStamps.length
-      const stampsRequired = (bc.business as { stamps_required: number }).stamps_required
+      const business = bc.business as {
+        stamps_required: number
+        branding?: { logo_path?: string | null } | { logo_path?: string | null }[] | null
+      }
+      const stampsRequired = business.stamps_required
       const cardStamps = total % stampsRequired
       const cardsCompleted = Math.floor(total / stampsRequired)
       const cardsRedeemed = (bc as { cards_redeemed?: number }).cards_redeemed ?? 0
 
+      // Extract and map branding
+      const rawBranding = Array.isArray(business.branding) ? business.branding[0] : business.branding
+      let mappedBranding = null
+      if (rawBranding) {
+        let logo_url = null
+        if (rawBranding.logo_path) {
+          const { data } = supabase.storage.from('branding').getPublicUrl(rawBranding.logo_path)
+          logo_url = data?.publicUrl || null
+        }
+        mappedBranding = {
+          ...rawBranding,
+          logo_url
+        }
+      }
+
       return {
         ...bc,
+        business: {
+          ...business,
+          branding: mappedBranding
+        },
         total_stamps: total,
         card_stamps: cardStamps,
         cards_completed: cardsCompleted,

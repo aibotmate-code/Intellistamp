@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { Business } from '@/types'
+import BusinessVisual from '@/components/branding/BusinessVisual'
+import { resolveBrandingColors } from '@/lib/branding/palette'
 
 interface CardItem {
   business_id: string
@@ -203,22 +205,40 @@ export default function CardsPage() {
               const redeemable = cards_completed > (cards_redeemed ?? 0)
               const segCount = business.stamps_required
 
+              const activeBranding = business.branding
+              const isBrandingEnabled = !!(activeBranding && activeBranding.is_enabled !== false)
+              const resolved = resolveBrandingColors(activeBranding, isBrandingEnabled)
+
               return (
                 <Link
                   key={card.business_id}
                   href={customerToken ? `/card/${customerToken}?biz=${card.business_id}` : '#'}
-                  className="block bg-zinc-900 rounded-2xl p-4 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                  className="block rounded-2xl p-4 border transition-colors hover:brightness-110"
+                  style={{
+                    background: resolved.surface_color,
+                    borderColor: resolved.empty_stamp_border_color,
+                  }}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">{business.emoji}</span>
+                    <BusinessVisual
+                      logoUrl={activeBranding?.logo_url}
+                      emoji={business.emoji}
+                      name={business.name}
+                      className="text-3xl"
+                    />
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-white truncate">{business.name}</p>
-                      <p className="text-xs text-zinc-400">
+                      <p
+                        className="font-bold truncate"
+                        style={{ color: resolved.card_text_color }}
+                      >
+                        {business.name}
+                      </p>
+                      <p className="text-xs" style={{ color: resolved.card_muted_text_color }}>
                         Free {business.reward} after {business.stamps_required} stamps
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-2xl font-black text-yellow-400">
+                      <p className="text-2xl font-black" style={{ color: resolved.primary_color }}>
                         {card_stamps}/{business.stamps_required}
                       </p>
                       {cards_completed > 0 && (
@@ -233,13 +253,17 @@ export default function CardsPage() {
                       <div
                         key={i}
                         className="h-1.5 flex-1 rounded-full"
-                        style={{ background: i < card_stamps ? '#facc15' : '#27272a' }}
+                        style={{
+                          background: i < card_stamps ? resolved.primary_color : resolved.empty_stamp_color,
+                        }}
                       />
                     ))}
                   </div>
 
                   {redeemable && (
-                    <p className="text-xs font-semibold mt-2 text-yellow-400">🎁 Ready to redeem!</p>
+                    <p className="text-xs font-semibold mt-2" style={{ color: resolved.primary_color }}>
+                      🎁 Ready to redeem!
+                    </p>
                   )}
                 </Link>
               )
