@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function AdminBusinessForm({ business }: { business: any }) {
+export default function AdminBusinessForm({ business }: { business: { id: string; approval_status: string; plan: string; plan_expires_at: string | null } }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -37,8 +37,12 @@ export default function AdminBusinessForm({ business }: { business: any }) {
 
       setSuccess('Business updated successfully')
       router.refresh()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('An unknown error occurred')
+      }
     } finally {
       setLoading(false)
     }

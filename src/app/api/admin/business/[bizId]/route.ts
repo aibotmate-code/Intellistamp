@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ bi
     const body = await req.json()
     const { approval_status, plan, plan_expires_at } = body
 
-    const updates: any = {}
+    const updates: Record<string, string | null> = {}
     
     if (approval_status !== undefined) {
       if (!['pending', 'approved', 'suspended', 'rejected'].includes(approval_status)) {
