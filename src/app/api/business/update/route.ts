@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserAndBusiness, adminClient } from '@/lib/auth'
+import { requireUserAndActiveBusiness, adminClient } from '@/lib/auth'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest) {
 
     const { id, ...updates } = result.data
 
-    const business = await requireUserAndBusiness(id)
+    const business = await requireUserAndActiveBusiness(id)
     if (business instanceof NextResponse) return business
 
     const { data: updated, error } = await adminClient

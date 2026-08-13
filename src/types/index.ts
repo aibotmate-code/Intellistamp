@@ -1,4 +1,5 @@
 export type Plan = 'free' | 'pro'
+export type ApprovalStatus = 'pending' | 'approved' | 'suspended' | 'rejected'
 export type StampType = 'regular' | 'bonus_review'
 export type CampaignAudience = 'all' | 'inactive' | 'near_reward'
 export type ConflictPriority = 'stamp' | 'milestone'
@@ -17,6 +18,8 @@ export interface Business {
   staff_pin_enabled: boolean
   whatsapp_enabled: boolean
   plan: Plan
+  approval_status: ApprovalStatus
+  plan_expires_at: string | null
   owner_phone?: string
   created_at: string
   conflict_priority: ConflictPriority

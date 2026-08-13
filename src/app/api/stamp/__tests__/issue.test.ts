@@ -70,6 +70,8 @@ const mockBusiness = {
   staff_pin_enabled: false,
   staff_pin: '1234',
   conflict_priority: 'stamp',
+  approval_status: 'approved',
+  plan_expires_at: null,
 }
 
 const mockStamp = {

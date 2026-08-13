@@ -44,7 +44,9 @@ describe('Concurrency Test - Manual Stamping', () => {
         id: VALID_BIZ, 
         dynamic_qr_enabled: false, 
         staff_pin_enabled: false, 
-        stamps_required: 10 
+        stamps_required: 10,
+        approval_status: 'approved',
+        plan_expires_at: null
       }, 
       error: null 
     })

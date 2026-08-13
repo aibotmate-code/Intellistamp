@@ -69,6 +69,8 @@ export interface AuthorizedBusiness {
   emoji: string
   category: string
   owner_id: string
+  approval_status: string
+  plan_expires_at: string | null
 }
 
 /**
@@ -87,7 +89,7 @@ export async function requireBusiness(
 
   const { data: business, error } = await adminClient
     .from('businesses')
-    .select('id, name, slug, stamps_required, reward, staff_pin, staff_pin_hash, gmb_link, dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, conflict_priority, emoji, category, owner_id')
+    .select('id, name, slug, stamps_required, reward, staff_pin, staff_pin_hash, gmb_link, dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, conflict_priority, emoji, category, owner_id, approval_status, plan_expires_at')
     .eq('id', businessId)
     .maybeSingle()
 
@@ -104,6 +106,40 @@ export async function requireBusiness(
   return biz
 }
 
+/**
+ * Returns an authorized active business.
+ * Ensures the business is approved and its plan is not expired.
+ * Use for operational actions (settings update, issue stamps, etc.).
+ */
+export async function requireActiveBusiness(
+  userOrError: AuthUser | NextResponse,
+  businessId: string
+): Promise<AuthorizedBusiness | NextResponse> {
+  const bizOrError = await requireBusiness(userOrError, businessId)
+  if (bizOrError instanceof NextResponse) return bizOrError
+  
+  const biz = bizOrError
+  
+  if (biz.approval_status !== 'approved') {
+    return NextResponse.json({ error: `Business is ${biz.approval_status}` }, { status: 403 })
+  }
+  
+  if (biz.plan_expires_at && new Date(biz.plan_expires_at).getTime() < Date.now()) {
+    return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
+  }
+  
+  return biz
+}
+
+/** Convenience: require user + active business in one call. */
+export async function requireUserAndActiveBusiness(
+  businessId: string
+): Promise<AuthorizedBusiness | NextResponse> {
+  const user = await requireUser()
+  if (user instanceof NextResponse) return user
+  return requireActiveBusiness(user, businessId)
+}
+
 /** Convenience: require user + business in one call. */
 export async function requireUserAndBusiness(
   businessId: string
@@ -111,4 +147,19 @@ export async function requireUserAndBusiness(
   const user = await requireUser()
   if (user instanceof NextResponse) return user
   return requireBusiness(user, businessId)
+}
+
+/**
+ * Validates Intellical Admin access using env allowlist.
+ */
+export async function requireIntellicalAdmin(): Promise<AuthUser | NextResponse> {
+  const userOrError = await requireUser()
+  if (userOrError instanceof NextResponse) return userOrError
+
+  const adminEmails = (process.env.INTELLICAL_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase())
+  if (!userOrError.email || !adminEmails.includes(userOrError.email.toLowerCase())) {
+    return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+  }
+
+  return userOrError
 }

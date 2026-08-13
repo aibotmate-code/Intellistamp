@@ -43,7 +43,7 @@ describe('Social Links Settings API', () => {
     })
 
     // Mock business lookup to return biz-1
-    mockLimit.mockResolvedValue({ data: [{ id: 'biz-1' }], error: null })
+    mockLimit.mockResolvedValue({ data: [{ id: 'biz-1', approval_status: 'approved', plan_expires_at: null }], error: null })
 
     mockRequireUser.mockResolvedValue({ id: 'user-1' })
   })

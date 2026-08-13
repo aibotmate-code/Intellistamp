@@ -74,6 +74,8 @@ const PIN_ENABLED_BUSINESS = {
   staff_pin_enabled: true,        // ← PIN is ON
   staff_pin_hash: '$2a$10$mock',
   conflict_priority: 'stamp',
+  approval_status: 'approved',
+  plan_expires_at: null,
 }
 
 const STAMP_RPC_RESULT = {

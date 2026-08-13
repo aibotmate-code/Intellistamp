@@ -48,7 +48,7 @@ describe('/api/business/qr-token', () => {
     generateServerToken.mockReturnValue('mock_signed_token_abc')
 
     // Chain eq twice (for id and owner_id), then maybeSingle
-    const maybeSingleFn = jest.fn().mockResolvedValue({ data: { id: BIZ_ID } })
+    const maybeSingleFn = jest.fn().mockResolvedValue({ data: { id: BIZ_ID, approval_status: 'approved', plan_expires_at: null } })
     const eqFn = jest.fn().mockReturnThis()
     const selectFn = jest.fn().mockReturnValue({ eq: eqFn, maybeSingle: maybeSingleFn })
     eqFn.mockReturnValue({ eq: eqFn, maybeSingle: maybeSingleFn })
@@ -93,7 +93,7 @@ describe('/api/business/qr-token', () => {
     delete process.env.QR_SECRET_KEY
     requireUser.mockResolvedValue({ id: USER_ID })
 
-    const maybeSingleFn = jest.fn().mockResolvedValue({ data: { id: BIZ_ID } })
+    const maybeSingleFn = jest.fn().mockResolvedValue({ data: { id: BIZ_ID, approval_status: 'approved', plan_expires_at: null } })
     const eqFn = jest.fn().mockReturnThis()
     const selectFn = jest.fn().mockReturnValue({ eq: eqFn, maybeSingle: maybeSingleFn })
     eqFn.mockReturnValue({ eq: eqFn, maybeSingle: maybeSingleFn })

@@ -52,7 +52,7 @@ describe('Business Settings PIN Route', () => {
     // For select().eq().limit()
     mockDbChain.limit.mockReturnValue({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      then: (resolve: any) => resolve({ data: [business], error: null })
+      then: (resolve: any) => resolve({ data: [{ ...business, approval_status: 'approved', plan_expires_at: null }], error: null })
     })
     // For update().eq()
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

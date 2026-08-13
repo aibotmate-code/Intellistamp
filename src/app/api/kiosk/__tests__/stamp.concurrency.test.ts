@@ -79,7 +79,9 @@ describe('Concurrency Test - Kiosk Manual Stamping', () => {
           staff_pin: '1234',
           staff_pin_hash: 'hash',
           stamps_required: 10,
-          phone: '9000000000'
+          phone: '9000000000',
+          approval_status: 'approved',
+          plan_expires_at: null
         },
         count: 5
       }

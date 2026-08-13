@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     // Resolve business server-side (ignoring any client business_id)
     const { data: businesses, error: bizError } = await adminClient
       .from('businesses')
-      .select('id, plan, staff_pin_hash')
+      .select('id, plan, staff_pin_hash, approval_status, plan_expires_at')
       .eq('owner_id', user.id)
       .limit(1)
 
@@ -42,6 +42,14 @@ export async function POST(req: NextRequest) {
     }
 
     const business = businesses[0]
+
+    if (business.approval_status !== 'approved') {
+      return NextResponse.json({ error: `Business is ${business.approval_status}` }, { status: 403 })
+    }
+    
+    if (business.plan_expires_at && new Date(business.plan_expires_at).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
+    }
 
     if (business.plan === 'free') {
       return NextResponse.json({ error: 'Staff PIN feature requires Pro plan' }, { status: 403 })

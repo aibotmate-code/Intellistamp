@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       // Auto-resolve: look up the business owned by this user (no bizId needed)
       const { data: business } = await adminClient
         .from('businesses')
-        .select('id')
+        .select('id, approval_status, plan_expires_at')
         .eq('owner_id', user.id)
         .maybeSingle()
 
@@ -35,6 +35,14 @@ export async function GET(req: NextRequest) {
 
       if (!business) {
         return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+      }
+      
+      if (business.approval_status !== 'approved') {
+        return NextResponse.json({ error: `Business is ${business.approval_status}` }, { status: 403 })
+      }
+      
+      if (business.plan_expires_at && new Date(business.plan_expires_at).getTime() < Date.now()) {
+        return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
       }
 
       if (!qrSecretConfigured) {
@@ -53,7 +61,7 @@ export async function GET(req: NextRequest) {
     // bizId supplied: verify ownership before using it
     const { data: business } = await adminClient
       .from('businesses')
-      .select('id')
+      .select('id, approval_status, plan_expires_at')
       .eq('id', bizId)
       .eq('owner_id', user.id)
       .maybeSingle()
@@ -64,6 +72,14 @@ export async function GET(req: NextRequest) {
     if (!business) {
       // Return 404 (not 403) to avoid confirming a business exists to non-owners
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+    }
+    
+    if (business.approval_status !== 'approved') {
+      return NextResponse.json({ error: `Business is ${business.approval_status}` }, { status: 403 })
+    }
+    
+    if (business.plan_expires_at && new Date(business.plan_expires_at).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
     }
 
     if (!qrSecretConfigured) {

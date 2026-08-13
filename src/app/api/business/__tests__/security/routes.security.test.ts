@@ -86,6 +86,8 @@ const mockBusiness = {
   owner_id: OWNER_ID,
   owner_phone: '9876543210',
   created_at: new Date().toISOString(),
+  approval_status: 'approved',
+  plan_expires_at: null,
 }
 
 function makeGet(url: string): NextRequest {
@@ -446,7 +448,7 @@ const { POST: redeemHandler } = require('../../../stamp/redeem/route')
 describe('POST /api/stamp/redeem — cryptographic code', () => {
   test('no completed card → 400', async () => {
     // business + bc + customer-token-verify in parallel (Promise.all order)
-    mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee' }, error: null })
+      mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee', approval_status: 'approved', plan_expires_at: null }, error: null })
     mockQueue.push({ data: { cards_redeemed: 0 }, error: null })
     mockQueue.push({ data: { id: CUST_ID }, error: null })  // customer token verified
     // stamp count
@@ -462,7 +464,7 @@ describe('POST /api/stamp/redeem — cryptographic code', () => {
 
   test('successful redemption returns a 6-char alphanumeric code', async () => {
     // business + bc + customer-token-verify in parallel
-    mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee' }, error: null })
+      mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee', approval_status: 'approved', plan_expires_at: null }, error: null })
     mockQueue.push({ data: { cards_redeemed: 0 }, error: null })
     mockQueue.push({ data: { id: CUST_ID }, error: null })
     // stamp count
@@ -480,7 +482,7 @@ describe('POST /api/stamp/redeem — cryptographic code', () => {
 
   test('concurrent redemption attempt → 409 conflict', async () => {
     // business + bc + customer-token-verify in parallel
-    mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee' }, error: null })
+      mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee', approval_status: 'approved', plan_expires_at: null }, error: null })
     mockQueue.push({ data: { cards_redeemed: 0 }, error: null })
     mockQueue.push({ data: { id: CUST_ID }, error: null })
     // stamp count
@@ -497,7 +499,7 @@ describe('POST /api/stamp/redeem — cryptographic code', () => {
   test('code is hex format (not Math.random base-36) — sequential calls', async () => {
     // Verify two sequential redemptions each return a 6-char uppercase hex code
     for (let i = 0; i < 2; i++) {
-      mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee' }, error: null })
+      mockQueue.push({ data: { stamps_required: 6, reward: 'Free coffee', approval_status: 'approved', plan_expires_at: null }, error: null })
       mockQueue.push({ data: { cards_redeemed: i }, error: null })
       mockQueue.push({ data: { id: CUST_ID }, error: null })
       mockQueue.push({ count: 6 * (i + 1), data: null, error: null })

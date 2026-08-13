@@ -95,6 +95,8 @@ describe('POST /api/kiosk/review-bonus', () => {
         staff_pin_hash: pinHash,
         stamps_required: 10,
         gmb_link: 'http://g.co/review',
+        approval_status: 'approved',
+        plan_expires_at: null,
       },
     })
     // 2. Review claimed check
@@ -124,6 +126,8 @@ describe('POST /api/kiosk/review-bonus', () => {
         staff_pin_hash: pinHash,
         stamps_required: 10,
         gmb_link: 'http://g.co/review',
+        approval_status: 'approved',
+        plan_expires_at: null,
       },
     })
 

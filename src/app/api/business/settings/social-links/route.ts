@@ -65,7 +65,7 @@ export async function PUT(req: NextRequest) {
     
     const { data: businesses, error: bizError } = await adminClient
       .from('businesses')
-      .select('id')
+      .select('id, approval_status, plan_expires_at')
       .eq('owner_id', user.id)
       .limit(1)
 
@@ -74,6 +74,14 @@ export async function PUT(req: NextRequest) {
     }
 
     const business = businesses[0]
+
+    if (business.approval_status !== 'approved') {
+      return NextResponse.json({ error: `Business is ${business.approval_status}` }, { status: 403 })
+    }
+    
+    if (business.plan_expires_at && new Date(business.plan_expires_at).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
+    }
 
     const body = await req.json()
     const parsed = linkSchema.safeParse(body)

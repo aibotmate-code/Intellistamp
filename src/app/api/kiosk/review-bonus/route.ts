@@ -29,12 +29,20 @@ export async function POST(req: NextRequest) {
 
     const { data: business } = await supabase
       .from('businesses')
-      .select('staff_pin_hash, stamps_required, gmb_link')
+      .select('staff_pin_hash, stamps_required, gmb_link, approval_status, plan_expires_at')
       .eq('id', business_id)
       .single()
 
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+    }
+
+    if (business.approval_status !== 'approved') {
+      return NextResponse.json({ error: `Business is ${business.approval_status}` }, { status: 403 })
+    }
+    
+    if (business.plan_expires_at && new Date(business.plan_expires_at).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
     }
 
     const pinKey = `pin:review:${business_id}:${clientHash}`

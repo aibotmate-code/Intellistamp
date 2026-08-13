@@ -34,12 +34,20 @@ export async function POST(req: NextRequest) {
     // Fetch business details
     const { data: business, error: bizError } = await supabase
       .from('businesses')
-      .select('id, dynamic_qr_enabled, staff_pin_enabled, staff_pin_hash, stamps_required, conflict_priority, reward')
+      .select('id, dynamic_qr_enabled, staff_pin_enabled, staff_pin_hash, stamps_required, conflict_priority, reward, approval_status, plan_expires_at')
       .eq('id', business_id)
       .single()
 
     if (bizError || !business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+    }
+
+    if (business.approval_status !== 'approved') {
+      return NextResponse.json({ error: `Business is ${business.approval_status}` }, { status: 403 })
+    }
+    
+    if (business.plan_expires_at && new Date(business.plan_expires_at).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
     }
 
     // ─── Flow Separation ────────────────────────────────────────────────────────

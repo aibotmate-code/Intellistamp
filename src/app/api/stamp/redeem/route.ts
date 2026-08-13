@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     ] = await Promise.all([
       adminClient
         .from('businesses')
-        .select('stamps_required, reward')
+        .select('stamps_required, reward, approval_status, plan_expires_at')
         .eq('id', business_id)
         .single(),
       adminClient
@@ -43,6 +43,14 @@ export async function POST(req: NextRequest) {
 
     if (bizError || !business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+    }
+
+    if (business.approval_status !== 'approved') {
+      return NextResponse.json({ error: `Business is ${business.approval_status}` }, { status: 403 })
+    }
+    
+    if (business.plan_expires_at && new Date(business.plan_expires_at).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
     }
 
     const { count: stampCount } = await adminClient
