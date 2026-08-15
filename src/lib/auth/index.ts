@@ -157,7 +157,15 @@ export async function requireIntellicalAdmin(): Promise<AuthUser | NextResponse>
   if (userOrError instanceof NextResponse) return userOrError
 
   const adminEmails = (process.env.INTELLICAL_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase())
-  if (!userOrError.email || !adminEmails.includes(userOrError.email.toLowerCase())) {
+  const isIntellicalAdmin = !!userOrError.email && adminEmails.includes(userOrError.email.toLowerCase())
+  
+  console.log('[DIAGNOSTIC] requireIntellicalAdmin result:', {
+    email: userOrError.email,
+    isIntellicalAdmin,
+    result: isIntellicalAdmin ? 'authorized' : 'denied'
+  })
+
+  if (!isIntellicalAdmin) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
   }
 
