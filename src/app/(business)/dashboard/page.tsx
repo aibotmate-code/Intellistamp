@@ -286,17 +286,20 @@ export default function DashboardPage() {
               onClick={() => setKioskMode(true)}
               className="hidden sm:flex items-center gap-1.5"
             >
-              <Icons.KioskMode size={16} aria-hidden="true" /> Kiosk Mode
+              <Icons.KioskMode size={16} aria-hidden="true" /> Open Counter Display
             </Button>
             <button
               onClick={() => setKioskMode(true)}
               className="sm:hidden text-zinc-400 hover:text-white px-3 py-1.5 text-lg flex items-center justify-center"
-              aria-label="Enter Kiosk Mode"
+              aria-label="Open Counter Display"
             >
               <Icons.KioskMode size={18} aria-hidden="true" />
             </button>
             <Button variant="ghost" size="sm" onClick={() => setActiveTab('settings')} className="flex items-center gap-1">
               <Icons.Settings size={16} aria-hidden="true" /> Settings
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => router.push('/account')} className="flex items-center gap-1">
+              <Icons.Customers size={16} aria-hidden="true" /> Account
             </Button>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="flex items-center gap-1">
               <Icons.Logout size={16} aria-hidden="true" /> Logout
@@ -366,13 +369,13 @@ export default function DashboardPage() {
         {/* Tabs */}
         <div className="flex gap-1 border-b border-zinc-800 mb-6 overflow-x-auto">
           {([
-            { id: 'qr' as Tab,        label: 'QR Stamper', icon: <Icons.QrStamper size={16} /> },
+            { id: 'qr' as Tab,        label: 'Stamp QR', icon: <Icons.QrStamper size={16} /> },
             { id: 'customers' as Tab, label: `Customers (${customers.length})`, icon: <Icons.Customers size={16} /> },
             { id: 'rewards' as Tab,   label: 'Rewards', icon: <Icons.Rewards size={16} /> },
-            { id: 'campaigns' as Tab, label: 'Campaigns', icon: <Icons.Campaigns size={16} /> },
+            { id: 'campaigns' as Tab, label: 'Messages', icon: <Icons.Campaigns size={16} /> },
             { id: 'settings' as Tab,  label: 'Settings', icon: <Icons.Settings size={16} /> },
             ...(process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true'
-              ? [{ id: 'branding' as Tab, label: 'Branding', icon: <Icons.Branding size={16} /> }]
+              ? [{ id: 'branding' as Tab, label: 'Card Design', icon: <Icons.Branding size={16} /> }]
               : []),
           ]).map((tab) => {
             const isTabActive = activeTab === tab.id
@@ -397,15 +400,15 @@ export default function DashboardPage() {
           })}
         </div>
 
-        {/* Tab: QR Stamper */}
+        {/* Tab: Stamp QR */}
         {activeTab === 'qr' && (
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Left: Customer Display */}
             <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
               <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">
-                CUSTOMER SCANS THIS
+                Customer QR Code
               </p>
-              <p className="text-xs text-zinc-500 mb-6">Keep this screen visible at your counter</p>
+              <p className="text-xs text-zinc-500 mb-6">Show this to your customers so they can collect stamps.</p>
 
               <div className="flex flex-col items-center">
                 <QRDisplay bizId={business.id} size={200} showToken={true} />
@@ -417,7 +420,7 @@ export default function DashboardPage() {
                   variant="outline"
                   className="w-full"
                 >
-                  ⛶ Enter Kiosk Mode
+                  ⛶ Open Counter Display
                 </Button>
               </div>
             </div>
@@ -427,7 +430,7 @@ export default function DashboardPage() {
               {!business.staff_pin_enabled ? (
                 <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 h-full flex flex-col items-center justify-center text-center gap-3 py-8">
                   <div className="text-4xl">⚡</div>
-                  <h3 className="font-bold text-white">Smart Mode Active</h3>
+                  <h3 className="font-bold text-white">Auto-Refresh QR Active</h3>
                   <p className="text-sm text-zinc-400">
                     Customers stamp themselves by scanning the QR
                   </p>

@@ -222,8 +222,19 @@ export default function OnboardingPage() {
 
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-2">🏷️</div>
+        <div className="relative text-center mb-8">
+          <button 
+            onClick={() => {
+              createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+              ).auth.signOut().then(() => router.push('/login'))
+            }}
+            className="absolute right-0 top-0 text-xs font-medium text-zinc-500 hover:text-white px-2 py-1 rounded hover:bg-zinc-800 transition-colors"
+          >
+            Sign Out
+          </button>
+          <div className="text-4xl mb-2 mt-4">🏷️</div>
           <h1 className="text-2xl font-black text-white">IntelliStamp</h1>
           <p className="text-zinc-400 text-sm">Set up your loyalty card in 5 steps</p>
         </div>
@@ -365,7 +376,7 @@ export default function OnboardingPage() {
             />
 
             <Input
-              label="Google My Business Link (optional)"
+              label="Google Review Link (optional)"
               placeholder="https://g.page/your-business"
               value={form.gmb_link}
               onChange={(e) => set('gmb_link', e.target.value)}
@@ -382,28 +393,28 @@ export default function OnboardingPage() {
         {/* Step 3 — Security Mode */}
         {step === 3 && (
           <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
-            <h2 className="text-lg font-bold text-white">Security Mode</h2>
-            <p className="text-xs text-zinc-400">94% of IntelliStamp businesses use Smart mode</p>
+            <h2 className="text-lg font-bold text-white">Stamp Verification</h2>
+            <p className="text-xs text-zinc-400">94% of IntelliStamp businesses use Auto-Refresh QR mode</p>
 
             {[
               {
                 id: 'basic' as const,
-                label: 'Basic',
-                desc: 'Static behaviour, 4-hour cooldown only',
+                label: 'Simple',
+                desc: 'Basic QR code. 4-hour time between stamps.',
                 badge: 'FREE',
                 badgeColor: 'bg-zinc-700 text-zinc-300',
               },
               {
                 id: 'smart' as const,
-                label: 'Smart',
-                desc: 'Dynamic QR rotates every 30s',
+                label: 'Auto-Refresh QR',
+                desc: 'QR refreshes automatically to prevent sharing',
                 badge: '⚡ RECOMMENDED',
                 badgeColor: 'bg-yellow-400/20 text-yellow-400',
               },
               {
                 id: 'strict' as const,
-                label: 'Strict',
-                desc: 'Dynamic QR + Staff PIN required',
+                label: 'Staff Verified',
+                desc: 'Auto-Refresh QR + Staff PIN required',
                 badge: '🔒 PRO — ₹2,499/mo',
                 badgeColor: 'bg-purple-500/20 text-purple-400',
               },
@@ -438,7 +449,7 @@ export default function OnboardingPage() {
             {form.security_mode === 'strict' && (
               <Alert
                 type="info"
-                message="Staff PIN Validator requires IntelliStamp Pro. You can still complete setup and upgrade later."
+                message="Staff PIN Verification requires IntelliStamp Pro. You can still complete setup and upgrade later."
               />
             )}
 
@@ -532,13 +543,12 @@ export default function OnboardingPage() {
 
             {milestonesError && <Alert type="error" message={milestonesError} />}
 
-            <Button
-              onClick={handleMilestoneContinue}
-              loading={milestonesLoading}
-              className="w-full"
-            >
-              CONTINUE →
-            </Button>
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={() => setStep(3)} className="flex-1">← Back</Button>
+              <Button onClick={handleMilestoneContinue} loading={milestonesLoading} className="flex-1">
+                CONTINUE →
+              </Button>
+            </div>
 
             <button
               type="button"
@@ -575,13 +585,13 @@ export default function OnboardingPage() {
             
             <div className={`space-y-2 ${visibleChecks[3] ? '_ob_check' : 'opacity-0'}`}>
               <div className="bg-yellow-400/10 text-yellow-400 text-sm font-semibold py-2 px-4 rounded-lg inline-block mb-2">
-                ⏳ Awaiting Approval
+                ⏳ Review in progress
               </div>
               <p className="text-sm text-zinc-400">
-                Your IntelliStamp account is awaiting approval from Intellical Labs.
+                Your setup is complete. Intellical Labs is reviewing your account.
               </p>
               <p className="text-xs text-zinc-500">
-                Once approved, your QR code, customer loyalty card, kiosk mode, rewards and other features will be activated.
+                Once approved, you can start using your stamp QR and loyalty features.
               </p>
             </div>
 

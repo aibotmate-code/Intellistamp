@@ -62,9 +62,25 @@ function LifecycleBaseView({ business, title, message, badgeText, badgeColor, pr
                 {primaryAction.label}
               </Button>
             )}
-            <p className="text-sm text-zinc-500">
-              Need help? <a href="mailto:support@intellical.com" className="text-yellow-400 hover:underline">Contact Support</a>
-            </p>
+            <div className="pt-4 border-t border-zinc-800">
+              <p className="text-sm text-zinc-500 font-medium mb-3">Need help?</p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <a 
+                  href="https://wa.me/919286799934?text=Hi%20Intellical%20Labs%2C%20I%20need%20help%20with%20my%20IntelliStamp%20account." 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto text-sm font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-4 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  WhatsApp Support
+                </a>
+                <a 
+                  href="mailto:hello@intellicallabs.com"
+                  className="w-full sm:w-auto text-sm font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-4 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  Email Support
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -76,9 +92,9 @@ export function PendingView({ business, onRefresh }: { business: Business, onRef
   return (
     <LifecycleBaseView
       business={business}
-      title="Your account is awaiting approval"
-      message="Your business setup is complete. Intellical Labs is reviewing your account before activation. Once approved, your QR code and dashboard features will become available."
-      badgeText="⏳ Pending Approval"
+      title="Review in progress"
+      message="Your setup is complete. Intellical Labs is reviewing your account. Once approved, you can start using your stamp QR and loyalty features."
+      badgeText="⏳ Review in progress"
       badgeColor="bg-yellow-400/10 text-yellow-400"
       primaryAction={{ label: 'Refresh Status', onClick: onRefresh }}
     />

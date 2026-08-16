@@ -20,8 +20,8 @@ export default async function Home() {
     }
   )
   const { data: { session } } = await supabase.auth.getSession()
-  const businessHref = session ? '/dashboard' : '/login'
-  const businessLabel = session ? 'Go to Dashboard' : 'Business Login'
+  const businessHref = session ? '/account' : '/login'
+  const businessLabel = session ? 'My Account' : 'Business Login'
 
   return (
     <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6">

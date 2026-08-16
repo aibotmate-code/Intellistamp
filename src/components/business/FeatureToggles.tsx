@@ -50,16 +50,16 @@ export default function FeatureToggles({ business, onSave, onOpenPinManager }: F
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">Security</h3>
+      <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">Stamp Verification</h3>
 
       <div className="bg-zinc-900 rounded-xl border border-zinc-800 divide-y divide-zinc-800">
         <div className="p-4">
           <Toggle
             checked={dynamicQr}
             onChange={(v) => handleToggle('dynamic_qr_enabled', v)}
-            label="Dynamic QR"
-            description="QR rotates every 30s. Physical presence required."
-            badge="⚡ Smart"
+            label="Auto-Refresh QR"
+            description="QR refreshes automatically to prevent sharing."
+            badge="⚡ Recommended"
             badgeColor="yellow"
           />
         </div>
@@ -68,7 +68,7 @@ export default function FeatureToggles({ business, onSave, onOpenPinManager }: F
           <Toggle
             checked={staffPin}
             onChange={(v) => handleToggle('staff_pin_enabled', v)}
-            label="Staff PIN Validator"
+            label="Staff PIN Verification"
             description="Staff manually verifies each stamp. Max control."
             badge="🔒 Pro Feature"
             badgeColor="purple"
@@ -76,7 +76,7 @@ export default function FeatureToggles({ business, onSave, onOpenPinManager }: F
           {showPinNudge && (
             <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
               <p className="text-sm text-purple-300">
-                Staff PIN requires IntelliStamp Pro (₹2,499/mo)
+                Staff PIN Verification requires IntelliStamp Pro (₹2,499/mo)
               </p>
               <button className="mt-2 text-xs text-purple-400 underline">Upgrade</button>
             </div>
@@ -85,20 +85,9 @@ export default function FeatureToggles({ business, onSave, onOpenPinManager }: F
 
         <div className="p-4">
           <Toggle
-            checked={true}
-            onChange={() => {}}
-            label="4-Hour Cooldown"
-            description="Prevents stamping twice within 4 hours."
-            badge="Free"
-            badgeColor="green"
-          />
-        </div>
-
-        <div className="p-4">
-          <Toggle
             checked={whatsapp}
             onChange={(v) => handleToggle('whatsapp_enabled', v)}
-            label="WhatsApp Campaigns"
+            label="WhatsApp Reminders"
             description="Send automated reminders and offers to customers."
             badge="Pro Feature"
             badgeColor="purple"
@@ -106,11 +95,25 @@ export default function FeatureToggles({ business, onSave, onOpenPinManager }: F
           {showWaNudge && (
             <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
               <p className="text-sm text-purple-300">
-                WhatsApp Campaigns require IntelliStamp Pro (₹2,499/mo)
+                WhatsApp Reminders require IntelliStamp Pro (₹2,499/mo)
               </p>
               <button className="mt-2 text-xs text-purple-400 underline">Upgrade</button>
             </div>
           )}
+        </div>
+      </div>
+
+      <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide pt-4">Advanced Settings</h3>
+      <div className="bg-zinc-900 rounded-xl border border-zinc-800 divide-y divide-zinc-800">
+        <div className="p-4">
+          <Toggle
+            checked={true}
+            onChange={() => {}}
+            label="Time Between Stamps"
+            description="Prevent customers from receiving another stamp for 4 hours."
+            badge="Free"
+            badgeColor="green"
+          />
         </div>
       </div>
 

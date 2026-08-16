@@ -149,7 +149,7 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
 
       {/* Bottom */}
       <div className="text-center space-y-2">
-        <p className="text-zinc-300 font-medium">Scan with your phone to collect a stamp</p>
+        <p className="text-zinc-300 font-medium">Scan this with your camera to get a stamp!</p>
         <div className="flex items-center justify-center gap-2 text-sm">
           <span className={cn(
             'w-2 h-2 rounded-full animate-pulse-dot',
