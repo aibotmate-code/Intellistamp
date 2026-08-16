@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     const qrSecretConfigured = Boolean(process.env.QR_SECRET_KEY)
 
     // Safe Vercel diagnostics — never log the secret, token, or cookies
-    console.log('[qr-token] sessionPresent:', sessionPresent, 'userIdPresent:', userIdPresent, 'qrSecretConfigured:', qrSecretConfigured)
+
 
     if (!bizId) {
       // Auto-resolve: look up the business owned by this user (no bizId needed)
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
         .maybeSingle()
 
       businessFound = Boolean(business)
-      console.log('[qr-token] businessFound (auto-resolve):', businessFound)
+
 
       if (!business) {
         return NextResponse.json({ error: 'Business not found' }, { status: 404 })
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle()
 
     businessFound = Boolean(business)
-    console.log('[qr-token] businessFound (by bizId):', businessFound)
+
 
     if (!business) {
       // Return 404 (not 403) to avoid confirming a business exists to non-owners

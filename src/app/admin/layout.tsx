@@ -10,14 +10,14 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  console.log('[DIAGNOSTIC] AdminLayout: Request received for /admin')
+
   const adminOrError = await requireIntellicalAdmin()
   if (adminOrError instanceof Response) {
-    console.log('[DIAGNOSTIC] AdminLayout: Redirecting to /login due to unauthorized access')
+
     redirect('/login')
   }
   
-  console.log('[DIAGNOSTIC] AdminLayout: Rendering admin dashboard')
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
