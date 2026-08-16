@@ -40,14 +40,15 @@ export default function HomeAuthMenu({ email }: HomeAuthMenuProps) {
         🏪 Go to Business Dashboard
       </Link>
       
-      <Button 
-        variant="outline" 
-        onClick={handleSignOutAndSwitch} 
-        loading={loading}
-        className="w-full text-zinc-400 hover:text-white"
-      >
-        Switch Business Account
-      </Button>
+      <div className="pt-2 text-center">
+        <button 
+          onClick={handleSignOutAndSwitch} 
+          disabled={loading}
+          className="text-sm text-zinc-500 hover:text-white transition-colors underline underline-offset-4 decoration-zinc-800 hover:decoration-zinc-500 disabled:opacity-50"
+        >
+          {loading ? 'Switching...' : 'Switch account'}
+        </button>
+      </div>
     </div>
   )
 }

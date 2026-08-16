@@ -38,7 +38,7 @@ describe('HomeAuthMenu Component', () => {
   test('Sign out and switch calls signOut and redirects', async () => {
     render(<HomeAuthMenu email="test@example.com" />)
     
-    const btn = screen.getByText('Switch Business Account')
+    const btn = screen.getByText('Switch account')
     fireEvent.click(btn)
 
     await waitFor(() => {
