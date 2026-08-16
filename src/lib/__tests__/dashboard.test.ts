@@ -30,6 +30,8 @@ describe('Merchant Dashboard Co-Branding and Icons Integration', () => {
     category: 'Coffee Shop',
     emoji: '☕',
     stamps_required: 8,
+    approval_status: 'approved',
+    plan_expires_at: null,
     branding: {
       id: 'brand-123',
       is_enabled: true,

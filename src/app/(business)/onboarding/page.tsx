@@ -41,10 +41,9 @@ const initialForm: FormData = {
 }
 
 const CHECKLIST_ITEMS = [
-  '✅ Loyalty card created',
-  '✅ QR code ready',
-  '✅ Kiosk mode available',
-  '✅ Customers can earn stamps',
+  '✅ Business profile created',
+  '✅ Stamp card configured',
+  '✅ Security mode set',
 ]
 
 export default function OnboardingPage() {
@@ -558,29 +557,46 @@ export default function OnboardingPage() {
 
             <h2
               className="text-white tracking-wide"
-              style={{ fontFamily: 'var(--font-display)', fontSize: '2rem' }}
+              style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem' }}
             >
-              {form.name} IS READY!
+              SETUP COMPLETE!
             </h2>
 
-            <div className="space-y-3 text-left">
+            <div className="space-y-3 text-left bg-zinc-800/50 p-4 rounded-xl">
               {CHECKLIST_ITEMS.map((item, i) => (
                 <div
                   key={i}
-                  className={`text-white font-medium ${visibleChecks[i] ? '_ob_check' : 'opacity-0'}`}
+                  className={`text-zinc-300 font-medium text-sm ${visibleChecks[i] ? '_ob_check' : 'opacity-0'}`}
                 >
                   {item}
                 </div>
               ))}
             </div>
+            
+            <div className={`space-y-2 ${visibleChecks[3] ? '_ob_check' : 'opacity-0'}`}>
+              <div className="bg-yellow-400/10 text-yellow-400 text-sm font-semibold py-2 px-4 rounded-lg inline-block mb-2">
+                ⏳ Awaiting Approval
+              </div>
+              <p className="text-sm text-zinc-400">
+                Your IntelliStamp account is awaiting approval from Intellical Labs.
+              </p>
+              <p className="text-xs text-zinc-500">
+                Once approved, your QR code, customer loyalty card, kiosk mode, rewards and other features will be activated.
+              </p>
+            </div>
 
-            <Button
-              onClick={() => router.push('/dashboard')}
-              className={`w-full ${showPulse ? '_ob_pulse' : ''}`}
-              size="lg"
-            >
-              OPEN DASHBOARD →
-            </Button>
+            <div className={`space-y-3 ${showPulse ? '_ob_check' : 'opacity-0'}`}>
+              <Button
+                onClick={() => router.push('/dashboard')}
+                className={`w-full ${showPulse ? '_ob_pulse' : ''}`}
+                size="lg"
+              >
+                Go to Dashboard →
+              </Button>
+              <p className="text-xs text-zinc-500">
+                Need help? <a href="mailto:support@intellical.com" className="text-yellow-400 hover:underline">Contact Intellical Labs</a>
+              </p>
+            </div>
           </div>
         )}
       </div>

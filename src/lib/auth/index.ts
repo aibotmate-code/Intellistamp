@@ -18,13 +18,6 @@ export const adminClient = createClient(
 export async function buildAuthClient() {
   const cookieStore = await cookies()
   const allCookies = cookieStore.getAll()
-  const cookieNames = allCookies.map(c => c.name)
-  console.log('[DIAGNOSTIC] buildAuthClient cookies:', {
-    count: cookieNames.length,
-    names: cookieNames,
-    hasSupabaseAuth: cookieNames.some(n => n.includes('sb-') && n.includes('-auth-token'))
-  })
-  
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -50,22 +43,13 @@ export async function requireUser(): Promise<AuthUser | NextResponse> {
   try {
     const client = await buildAuthClient()
     const { data: { session }, error } = await client.auth.getSession()
-    
-    console.log('[DIAGNOSTIC] requireUser session check:', {
-      hasSession: !!session,
-      email: session?.user?.email || null,
-      authError: error?.message || null
-    })
 
     if (!session?.user) {
-      console.log('[DIAGNOSTIC] requireUser returning 401')
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
-    console.log('[DIAGNOSTIC] requireUser returning AuthUser')
     return { id: session.user.id, email: session.user.email }
   } catch (e) {
     console.error('requireUser failed with error:', e)
-    console.log('[DIAGNOSTIC] requireUser returning 401 (catch)')
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
   }
 }
@@ -176,12 +160,6 @@ export async function requireIntellicalAdmin(): Promise<AuthUser | NextResponse>
 
   const adminEmails = (process.env.INTELLICAL_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase())
   const isIntellicalAdmin = !!userOrError.email && adminEmails.includes(userOrError.email.toLowerCase())
-  
-  console.log('[DIAGNOSTIC] requireIntellicalAdmin result:', {
-    email: userOrError.email,
-    isIntellicalAdmin,
-    result: isIntellicalAdmin ? 'authorized' : 'denied'
-  })
 
   if (!isIntellicalAdmin) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 })

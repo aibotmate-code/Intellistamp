@@ -1,0 +1,160 @@
+docs/01_BRD.md:Uses the business dashboard to lookup customers by phone number. If Staff PIN Validator is enabled, the staff member must enter the 4-digit PIN to manually issue a stamp or process a redemption.
+docs/01_BRD.md:- **Implemented but awaiting wider pilot**: Full Staff PIN enforcement on all manual dashboard routes.
+docs/01_PRD.md:3. **Retention:** Business returns to the dashboard at least twice a week to view new stamps and customer activity.
+docs/01_PRD.md:I want to see all my customers in a dashboard
+docs/01_PRD.md:I want to see rewards redeemed on my dashboard
+docs/01_PRD.md:### Feature 10: Customer Loyalty Dashboard (/cards)
+docs/01_PRD.md:3. **Single business per owner.** Dashboard shows one business per auth account.
+docs/02_PRD.md:- Accesses Dashboard Settings.
+docs/02_PRD.md:- Accesses authenticated business dashboard.
+docs/02_PRD.md:- Staff member manually validates and processes redemption on the dashboard.
+docs/02_PRD.md:- Dashboard shows "Not set" when Staff PIN is absent.
+docs/02_PRD.md:- **PIN Validator ON**: Dashboard prompts for PIN before manual stamp.
+docs/02_PRD.md:- **PIN Validator OFF**: Dashboard allows manual stamp without PIN.
+docs/02_TRD.md:│   │   │   ├── dashboard/page.tsx # Main business dashboard
+docs/02_TRD.md:│   proxy.ts      │  ← Checks session for /dashboard, /onboarding
+docs/02_TRD.md:│  /(business)  → dashboard, onboarding   │
+docs/02_TRD.md:| Route protection | `proxy.ts` reads session from cookie before rendering `/dashboard`, `/onboarding`. |
+docs/02_TRD.md:| Dashboard data load | Single fetch for all customers on mount | Medium — could be slow for >500 customers |
+docs/03_ARCHITECTURE.md:│  │   • Protects /dashboard + /onboarding                     │    │
+docs/03_ARCHITECTURE.md:│  │  /dashboard                 /api/kiosk/*                  │    │
+docs/03_ARCHITECTURE.md:/dashboard  /login ──▶ /signup
+docs/03_ARCHITECTURE.md:          /dashboard    signInWithPassword
+docs/03_ARCHITECTURE.md:  Step 5: Success → /dashboard
+docs/03_ARCHITECTURE.md:/dashboard
+docs/03_ARCHITECTURE.md:   │──router.push('/dashboard')         │
+docs/03_ARCHITECTURE.md:   │──GET /dashboard▶│                      │
+docs/03_TRD.md:- `/src/app/(business)`: Dashboard routes.
+docs/03_TRD.md:    A[Business Dashboard] -->|Generates| B[Rotating QR Token]
+docs/04_API_REFERENCE.md:- **Purpose**: Manual staff stamping from the dashboard.
+docs/04_API_REFERENCE.md:- **Purpose**: Generates the rotating QR code payload for display on the dashboard.
+docs/05_DATABASE_AND_MIGRATIONS.md:- Schema updates via the Supabase dashboard.
+docs/06_DEPLOYMENT.md:- Supabase Dashboard → Project Settings → API
+docs/06_DEPLOYMENT.md:In the Supabase Dashboard:
+docs/06_DEPLOYMENT.md:3. Apply in Supabase Dashboard → SQL Editor
+docs/06_DEPLOYMENT.md:1. Supabase Dashboard → Table Editor → Delete all rows, or
+docs/06_DEPLOYMENT.md:1. Import the repository in Vercel Dashboard
+docs/06_DEPLOYMENT.md:1. Vercel Dashboard → Project → Domains
+docs/06_DEPLOYMENT.md:1. Vercel Dashboard → Deployments
+docs/06_DEPLOYMENT.md:**Symptom:** Dashboard redirects to `/login` on refresh  
+docs/06_DEPLOYMENT.md:**Check:** Supabase Dashboard → Authentication → Cookies settings  
+docs/06_DEPLOYMENT.md:| Supabase Dashboard | DB query performance, connection counts |
+docs/06_SECURITY_MODEL.md:- **Generation**: The dashboard fetches a signed token containing `businessId`, `timestamp`, and a `nonce`, hashed with `QR_SECRET_KEY`.
+docs/07_ROADMAP.md:| Customer `/cards` dashboard | ✅ Live | All loyalty cards in one view, phone lookup |
+docs/07_ROADMAP.md:| Business dashboard (stats + roster) | ✅ Live | Total customers, stamps, rewards redeemed |
+docs/07_ROADMAP.md:| GMB link management | ✅ Live | Set/edit from onboarding and dashboard Settings |
+docs/07_ROADMAP.md:| Owner email in dashboard header | ✅ Live | — |
+docs/07_ROADMAP.md:**Solution:** Allow `owner_id` to have multiple businesses. Update dashboard to support business selector.  
+docs/07_ROADMAP.md:**Solution:** Add "Undo last stamp" option (within 5 minutes) on dashboard QR stamper tab.  
+docs/07_ROADMAP.md:### P1.3 — Advanced Dashboard Analytics
+docs/07_ROADMAP.md:| v1.0 (current) | Foundation | QR stamping, kiosk, milestones, dashboard |
+docs/07_TEST_CASES.md:| CUST-04 | Customer | Staff Dashboard | Lookup customer | Phone matches return masked data | Automated | Passed |
+docs/08_KNOWN_BUGS.md:**Area:** Dashboard / Business creation  
+docs/08_KNOWN_BUGS.md:**Description:** Each Supabase auth account can only manage one business. If a business already exists for `owner_id`, the dashboard shows it; there is no way to create a second business.  
+docs/08_KNOWN_BUGS.md:**Root cause:** Architectural decision — dashboard fetches business by `ownerId` and assumes one result. No multi-business UI exists.  
+docs/08_KNOWN_BUGS.md:### FIXED-003 — Dashboard 404 Showed Error to New Owners *(Fixed 2026-06-04)*
+docs/08_KNOWN_BUGS.md:**Description:** A newly-signed-up business owner who hadn't completed onboarding would see a 404 or error state on `/dashboard` because no business existed for their `owner_id`.  
+docs/08_KNOWN_BUGS.md:**Fix:** When `/api/business/get` returns 404, dashboard auto-redirects to `/onboarding`.  
+docs/08_KNOWN_BUGS.md:**Files:** `src/app/(business)/dashboard/page.tsx`
+docs/08_KNOWN_BUGS.md:**Description:** The Google Maps review link (`gmb_link`) could be set during onboarding but had no edit UI in the dashboard. Businesses that skipped it or needed to update it had no way to do so.  
+docs/08_KNOWN_BUGS.md:**Fix:** Added GMB link editor modal to the dashboard Settings tab. Calls `PATCH /api/business/update`.  
+docs/08_KNOWN_BUGS.md:**Files:** `src/app/(business)/dashboard/page.tsx`, `src/app/api/business/update/route.ts`
+docs/08_KNOWN_BUGS.md:### DEBT-003 — Dashboard Loads All Customers at Once
+docs/08_KNOWN_BUGS.md:**Impact:** Slow dashboard load for businesses with >500 customers.  
+docs/08_STAGING_ENVIRONMENT_GUIDE.md:### Business Dashboard
+docs/08_STAGING_ENVIRONMENT_GUIDE.md:- Dashboard loads staging data exclusively.
+docs/08_STAGING_ENVIRONMENT_GUIDE.md:- Manual dashboard operations verify the PIN when the validator is enabled.
+docs/08_STAGING_ENVIRONMENT_GUIDE.md:- [ ] Run migration via CLI or Supabase Dashboard on Staging.
+docs/08_STAGING_ENVIRONMENT_GUIDE.md:| Staff PIN toggle is OFF | Validator not enabled | Check DB `businesses` table | Turn toggle ON in dashboard settings. |
+docs/09_DECISION_LOG.md:Use `@supabase/auth-helpers-nextjs` v0.15.0 for session management. Sessions stored in HTTP-only cookies. `proxy.ts` reads the cookie to protect `/dashboard` and `/onboarding`.
+docs/09_OPERATIONS_RUNBOOK.md:  1. Open Vercel dashboard for `intellistamp-inte`.
+docs/09_OPERATIONS_RUNBOOK.md:- **Expected Result**: Business dashboard loads, showing 0 customers.
+docs/09_OPERATIONS_RUNBOOK.md:- **Rollback**: Delete user from Supabase Auth dashboard.
+docs/09_OPERATIONS_RUNBOOK.md:  3. Refresh the business dashboard in the browser.
+docs/09_OPERATIONS_RUNBOOK.md:- **Purpose**: Turn on the PIN validator for manual dashboard actions.
+docs/09_OPERATIONS_RUNBOOK.md:  1. Go to Business Dashboard -> Settings tab.
+docs/09_OPERATIONS_RUNBOOK.md:  1. Go to Dashboard -> Settings.
+docs/09_OPERATIONS_RUNBOOK.md:  1. Scan a fresh QR code from the dashboard.
+docs/09_OPERATIONS_RUNBOOK.md:- **Preconditions**: Vercel dashboard access.
+docs/10_CLIENT_ONBOARDING_SOP.md:1. **Display the QR code** on the dashboard QR Stamper tab
+docs/10_CLIENT_ONBOARDING_SOP.md:6. **Check the dashboard** → customer appears in Customers tab
+docs/10_CLIENT_ONBOARDING_SOP.md:| QR code not displaying | Dashboard not loaded / business not created | Reload dashboard; check onboarding completed |
+docs/10_CLIENT_ONBOARDING_SOP.md:### Dashboard Tabs
+docs/10_CLIENT_ONBOARDING_SOP.md:- Review customer count on dashboard
+docs/10_CLIENT_ONBOARDING_SOP.md:| Data export request (GDPR/privacy) | Engineering — manual CSV export via dashboard |
+docs/10_CLIENT_ONBOARDING_SOP.md:> Now go to your dashboard. You'll see your QR code. This is what your customers scan.
+docs/10_CLIENT_ONBOARDING_SOP.md:> Check the Customers tab on your dashboard. You're there.
+docs/11_SUPPORT_SOP.md:| "Invalid staff PIN" | Wrong PIN entered | Confirm PIN in dashboard Settings tab → Security → Staff PIN |
+docs/11_SUPPORT_SOP.md:| "Business not found" | Invalid QR code or deleted business | Check if business exists in dashboard; regenerate QR |
+docs/11_SUPPORT_SOP.md:| Stamp shows on dashboard but not on card | Ask customer to hard-refresh (`Ctrl+Shift+R` or clear cache). |
+docs/11_SUPPORT_SOP.md:| Stamp count looks wrong | Check dashboard Customers tab — compare total stamps shown there vs. what customer expects. |
+docs/11_SUPPORT_SOP.md:In Supabase Dashboard:
+docs/11_SUPPORT_SOP.md:## Playbook: Dashboard Not Loading / Showing Wrong Data
+docs/11_SUPPORT_SOP.md:**Reported as:** "Dashboard is blank", "I don't see my customers", "Stats are wrong"
+docs/11_SUPPORT_SOP.md:1. Ask them to **hard-refresh** the dashboard (`Ctrl+Shift+R`)
+docs/11_SUPPORT_SOP.md:4. If dashboard redirects to `/onboarding` loop: their business creation may have failed — check Supabase `businesses` table for their `owner_id`
+docs/11_SUPPORT_SOP.md:2. Does the business have a **Google Maps review link** configured? Check: Dashboard → Settings → Google Review Link.
+docs/11_SUPPORT_SOP.md:| `gmb_link` not set | Owner goes to Dashboard → Settings → Google Review Link → set it |
+docs/11_SUPPORT_SOP.md:| Not using kiosk mode | Advise owner to use `/kiosk/[slug]` instead of the dashboard QR |
+docs/11_SUPPORT_SOP.md:1. Confirm they are on the **Customers tab** in the dashboard
+docs/11_SUPPORT_SOP.md:- Any data inconsistency between dashboard stats and actual stamp records
+docs/12_PRICING_AND_PACKAGING.md:| Dashboard — customer list | ✅ Up to 100 customers |
+docs/13_MESSAGING_AND_POSITIONING.md:> You get a dashboard showing all your loyal customers, their visit counts, and when they're due for a reward. Plus you can send them a WhatsApp when they haven't visited in 30 days.
+docs/13_MESSAGING_AND_POSITIONING.md:> The free plan is genuinely free — no credit card, no trial period. You get the QR stamping, the dashboard, the kiosk mode, and the Google Review bonus. Most businesses run on the free plan for months before they ever think about upgrading.
+docs/13_MESSAGING_AND_POSITIONING.md:> You can give those customers a head start — when they register by phone, you can let them enter their current count. The staff can issue bonus stamps in the dashboard. Or just start fresh — new card, new programme.
+docs/13_MESSAGING_AND_POSITIONING.md:- "Here's what I saw when I checked my loyalty dashboard today: [screenshot of stats]"
+docs/13_MESSAGING_AND_POSITIONING.md:| Dashboard with customer list | "See every customer, every visit — on one page." |
+docs/14_AI_CONTEXT_PACK.md:│   ├── (business)/dashboard/page.tsx  # Main business dashboard
+docs/INCIDENT_RESPONSE.md:  - *Criteria:* Dashboard metrics are slightly delayed; minor styling/alignment issues.
+docs/INCIDENT_RESPONSE.md:- **Service Affected:** [Stamping API / Dashboard / Supabase DB]
+docs/PRODUCTION_READINESS_AUDIT.md:   - Business owner onboarding, credentials management, and dashboard tab.
+docs/PRODUCTION_READINESS_AUDIT.md:* **`/dashboard`** (Page)
+docs/PRODUCTION_READINESS_AUDIT.md:  - *Purpose:* Primary dashboard for metrics, customer lists, rewards, settings.
+docs/PRODUCTION_READINESS_AUDIT.md:  - *Purpose:* Fetch metrics and settings for dashboard.
+docs/RELEASE_CHECKLIST.md:    Alert[Critical Bug Reported] --> CheckLogs[Check Logs & Dashboard Metrics]
+docs/changelog/2026-06-16-performance-and-mobile-recovery.md:dashboard → Database → Migrations or SQL editor history.
+docs/changelog/2026-06-16-performance-and-mobile-recovery.md:<!-- TODO: paste the exact applied SQL here once retrieved from Supabase dashboard -->
+docs/changelog/2026-06-16-performance-and-mobile-recovery.md:phone number from the business dashboard and issue a stamp without needing the QR code or
+docs/changelog/2026-06-16-performance-and-mobile-recovery.md:| `src/app/(business)/dashboard/page.tsx` | Imported `CustomerLookup` and mounted it at the top of the Customers tab, passing `businessId`, `stampsRequired`, `staffPin`, and an `onStamped` callback that refreshes the customer list |
+docs/changelog/2026-06-16-performance-and-mobile-recovery.md:owner-authenticated business dashboard. It is not accessible from the public PIN-only
+schema.sql:-- Run this entire script in: Supabase Dashboard → SQL Editor → New Query
+src/app/(auth)/login/page.tsx:      // Pushing to dashboard drops all query parameters, fulfilling the non-persistence requirement
+src/app/(auth)/login/page.tsx:      router.push('/dashboard')
+src/app/(auth)/login/page.tsx:          <p className="text-zinc-400 text-sm mt-1">Sign in to your business dashboard</p>
+src/app/(auth)/reset-password/page.tsx:              Sign In to Dashboard →
+src/app/(business)/dashboard/page.tsx:interface DashboardData {
+src/app/(business)/dashboard/page.tsx:export default function DashboardPage() {
+src/app/(business)/dashboard/page.tsx:  const [data, setData] = useState<DashboardData | null>(null)
+src/app/(business)/dashboard/page.tsx:        setError(json.error || 'Failed to load dashboard')
+src/app/(business)/onboarding/page.tsx:  // Redirect to dashboard if user already has a business
+src/app/(business)/onboarding/page.tsx:        .then((data) => { if (data.business) router.replace('/dashboard') })
+src/app/(business)/onboarding/page.tsx:              onClick={() => router.push('/dashboard')}
+src/app/(business)/onboarding/page.tsx:              OPEN DASHBOARD →
+src/app/admin/page.tsx:export default async function AdminDashboard() {
+src/app/api/auth/__tests__/auth.flow.test.ts:    const href = session ? '/dashboard' : '/login'
+src/app/api/auth/__tests__/auth.flow.test.ts:  test('2. logged-in businessHref resolves to /dashboard', () => {
+src/app/api/auth/__tests__/auth.flow.test.ts:    const href = session ? '/dashboard' : '/login'
+src/app/api/auth/__tests__/auth.flow.test.ts:    expect(href).toBe('/dashboard')
+src/app/api/auth/__tests__/auth.flow.test.ts:// Test 29: Dashboard logout destination
+src/app/api/auth/__tests__/auth.flow.test.ts:describe('Dashboard logout', () => {
+src/app/api/auth/__tests__/auth.flow.test.ts:    // Dashboard fetchData behavior: no session → push /login
+src/app/api/auth/__tests__/auth.flow.test.ts:    const safeNext = /^\/[^/]/.test(dangerous) && !dangerous.includes('://') ? dangerous : '/dashboard'
+src/app/api/auth/__tests__/auth.flow.test.ts:    expect(safeNext).toBe('/dashboard')
+src/app/api/auth/__tests__/auth.flow.test.ts:    const safe = '/dashboard'
+src/app/api/auth/__tests__/auth.flow.test.ts:    const safeNext = /^\/[^/]/.test(safe) && !safe.includes('://') ? safe : '/dashboard'
+src/app/api/auth/__tests__/auth.flow.test.ts:    expect(safeNext).toBe('/dashboard')
+src/app/api/auth/__tests__/auth.flow.test.ts:    const safeNext = /^\/[^/]/.test(dangerous) && !dangerous.includes('://') ? dangerous : '/dashboard'
+src/app/api/auth/__tests__/auth.flow.test.ts:    expect(safeNext).toBe('/dashboard')
+src/app/api/stamp/__tests__/flow.separation.test.ts: *   B. Manual dashboard:  no valid token   → PIN required when enabled
+src/app/api/stamp/__tests__/flow.separation.test.ts:  test('5. Manual dashboard stamp without valid QR requires correct PIN', async () => {
+src/app/api/stamp/issue/route.ts:    // MANUAL DASHBOARD / STAFF FLOW:
+src/app/page.tsx:  const businessHref = session ? '/dashboard' : '/login'
+src/app/page.tsx:  const businessLabel = session ? 'Go to Dashboard' : 'Business Login'
+src/lib/__tests__/dashboard.test.ts:import DashboardPage from '@/app/(business)/dashboard/page'
+src/lib/__tests__/dashboard.test.ts:describe('Merchant Dashboard Co-Branding and Icons Integration', () => {
+src/lib/__tests__/dashboard.test.ts:  test('Co-branded dashboard header, badge, and tab accent colors are applied when co-branding is active', () => {
+src/lib/__tests__/dashboard.test.ts:    // Mock state variables for DashboardPage:
+src/lib/__tests__/dashboard.test.ts:    const element = DashboardPage()
+src/lib/__tests__/dashboard.test.ts:    const element = DashboardPage()
+src/proxy.ts:const protectedRoutes = ['/dashboard', '/onboarding']
+supabase/migrations/20260725_security_containment.sql:-- STATUS:  NOT YET APPLIED. Apply via Supabase Dashboard → SQL Editor.

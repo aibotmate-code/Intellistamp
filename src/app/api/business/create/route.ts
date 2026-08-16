@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
         owner_phone: data.owner_phone,
         whatsapp_enabled: false,
         plan: 'free',
+        approval_status: 'pending',
         slug,
         ...(ownerId ? { owner_id: ownerId } : {}),
       })

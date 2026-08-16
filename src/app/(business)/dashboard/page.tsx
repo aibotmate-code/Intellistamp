@@ -18,6 +18,8 @@ import Alert from '@/components/ui/Alert'
 import Input from '@/components/ui/Input'
 import { Icons } from '@/config/icons'
 import BusinessVisual from '@/components/branding/BusinessVisual'
+import { PendingView, SuspendedView, RejectedView, ExpiredView } from '@/components/business/LifecycleViews'
+import { getBusinessAccessState } from '@/lib/businessState'
 import type { Business, Customer, BusinessCustomer, Milestone } from '@/types'
 
 const QRDisplay = dynamic(() => import('@/components/business/QRDisplay'), { ssr: false })
@@ -212,11 +214,27 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
         <div className="text-center space-y-4">
-          <Alert type="error" message={error || 'Failed to load'} />
+          <Alert type="error" message={error || 'Something went wrong. Please try again.'} />
+          <Button onClick={() => window.location.reload()} variant="secondary">Retry</Button>
           <Button onClick={() => router.push('/onboarding')}>Setup New Business</Button>
         </div>
       </div>
     )
+  }
+
+  const state = getBusinessAccessState(data.business)
+  
+  if (state === 'pending') {
+    return <PendingView business={data.business} onRefresh={fetchData} />
+  }
+  if (state === 'suspended') {
+    return <SuspendedView business={data.business} />
+  }
+  if (state === 'rejected') {
+    return <RejectedView business={data.business} />
+  }
+  if (state === 'expired') {
+    return <ExpiredView business={data.business} onRefresh={fetchData} />
   }
 
   const { business, stats, customers } = data

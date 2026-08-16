@@ -164,6 +164,9 @@ describe('POST /api/business/create', () => {
     const body = await res.json()
     expect(body.success).toBe(true)
     expect(body.business).toBeDefined()
+    expect(mockChain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ approval_status: 'pending' })
+    )
   })
 
   test('valid data → business has slug generated', async () => {
