@@ -233,30 +233,42 @@ export default function AccountPage() {
         </section>
 
         {/* SUPPORT & LOGOUT */}
-        <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div>
-            <h3 className="font-bold mb-2">Need Help?</h3>
-            <div className="flex items-center gap-3">
-              <a 
-                href="https://wa.me/919286799934?text=Hi%20Intellical%20Labs%2C%20I%20need%20help%20with%20my%20IntelliStamp%20account." 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                WhatsApp Support
-              </a>
-              <a 
-                href="mailto:hello@intellicallabs.com"
-                className="text-sm font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                Email Support
-              </a>
+        <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div>
+              <h3 className="font-bold mb-2">Need Help?</h3>
+              <div className="flex items-center gap-3">
+                <a 
+                  href="https://wa.me/919286799934?text=Hi%20Intellical%20Labs%2C%20I%20need%20help%20with%20my%20IntelliStamp%20account." 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  WhatsApp Support
+                </a>
+                <a 
+                  href="mailto:hello@intellicallabs.com"
+                  className="text-sm font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Email Support
+                </a>
+              </div>
             </div>
+            
+            <Button variant="outline" onClick={handleLogout} className="text-red-400 hover:text-red-300 hover:bg-red-400/10 border-red-400/20 w-full sm:w-auto">
+              Sign Out
+            </Button>
           </div>
-          
-          <Button variant="outline" onClick={handleLogout} className="text-red-400 hover:text-red-300 hover:bg-red-400/10 border-red-400/20">
-            Sign Out
-          </Button>
+
+          <div className="border-t border-zinc-800 pt-6">
+            <h3 className="font-bold mb-1">Switch Business Account</h3>
+            <p className="text-sm text-zinc-400 mb-4">
+              Sign out and log in with a different business owner&apos;s account.
+            </p>
+            <Button variant="secondary" onClick={handleLogout} className="w-full sm:w-auto text-zinc-300 hover:text-white">
+              Switch Business Account
+            </Button>
+          </div>
         </section>
 
       </div>

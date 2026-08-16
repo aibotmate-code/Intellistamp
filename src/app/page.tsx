@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createServerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import HomeAuthMenu from '@/components/auth/HomeAuthMenu'
 
 export const metadata = {
   title: 'IntelliStamp — Smart Loyalty Stamps for Modern Businesses',
@@ -37,20 +38,25 @@ export default async function Home() {
         {/* Business path */}
         <div className="mb-2">
           <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-3 px-1">For Business Owners</p>
-          <Link
-            href={businessHref}
-            className="flex items-center justify-center gap-2 w-full bg-yellow-400 text-black font-bold py-4 px-6 rounded-xl text-base hover:bg-yellow-300 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-zinc-950"
-            aria-label={businessLabel}
-          >
-            🏪 {businessLabel}
-          </Link>
-          {!session && (
-            <Link
-              href="/signup"
-              className="mt-2 flex items-center justify-center gap-2 w-full border border-zinc-700 text-zinc-300 font-medium py-3 px-6 rounded-xl text-sm hover:border-zinc-500 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-zinc-950"
-            >
-              Create Business Account
-            </Link>
+          
+          {session ? (
+            <HomeAuthMenu email={session.user.email ?? ''} />
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="flex items-center justify-center gap-2 w-full bg-yellow-400 text-black font-bold py-4 px-6 rounded-xl text-base hover:bg-yellow-300 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-zinc-950"
+                aria-label="Business Login"
+              >
+                🏪 Business Login
+              </Link>
+              <Link
+                href="/signup"
+                className="mt-2 flex items-center justify-center gap-2 w-full border border-zinc-700 text-zinc-300 font-medium py-3 px-6 rounded-xl text-sm hover:border-zinc-500 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-zinc-950"
+              >
+                Create Business Account
+              </Link>
+            </>
           )}
         </div>
 
