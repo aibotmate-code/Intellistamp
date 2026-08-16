@@ -1,0 +1,6 @@
+-- 20260616071649_remote_initial_schema.sql
+-- this timestamp already exists in production migration history
+-- the original migration was: add_missing_fk_indexes_and_fix_rls_initplan
+-- its schema effects are already present in production
+-- this placeholder exists only to reconcile repository migration history
+-- it must never contain schema-changing SQL
