@@ -22,8 +22,8 @@ function LifecycleBaseView({ business, title, message, badgeText, badgeColor, pr
             <span className="font-black text-white">IntelliStamp</span>
             <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-medium">Business</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => window.location.href = '/'} className="flex items-center gap-1">
-            <Icons.Logout size={16} aria-hidden="true" /> Exit
+          <Button variant="ghost" size="sm" onClick={() => window.location.href = '/account'} className="flex items-center gap-1">
+            <Icons.Settings size={16} aria-hidden="true" /> Account
           </Button>
         </div>
       </header>

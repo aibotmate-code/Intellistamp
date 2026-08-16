@@ -2,22 +2,16 @@
 
 import { useEffect, useState, startTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
 import Spinner from '@/components/ui/Spinner'
-import { Icons } from '@/config/icons'
-import type { Business } from '@/types'
 
 export default function AccountPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [sessionUser, setSessionUser] = useState<{ id: string; email?: string } | null>(null)
-  
-  // Businesses
-  const [businesses, setBusinesses] = useState<Business[]>([])
   
   // Password State
   const [newPassword, setNewPassword] = useState('')
@@ -43,20 +37,6 @@ export default function AccountPage() {
       }
       
       setSessionUser({ id: session.user.id, email: session.user.email })
-      
-      try {
-        const res = await fetch(`/api/business/get?ownerId=${session.user.id}`)
-        if (res.ok) {
-          const json = await res.json()
-          if (json.allBusinesses) {
-            setBusinesses(json.allBusinesses)
-          } else if (json.business) {
-            setBusinesses([json.business])
-          }
-        }
-      } catch (err) {
-        // silently fail business fetch on account page
-      }
       
       setLoading(false)
     }
@@ -143,63 +123,9 @@ export default function AccountPage() {
           </div>
         </section>
         
-        {/* BUSINESSES */}
-        <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-          <h2 className="text-xl font-bold mb-4">Manage Business</h2>
-          
-          {businesses.length === 0 ? (
-            <div className="text-zinc-400 text-sm">
-              No businesses linked to this account yet.
-            </div>
-          ) : businesses.length === 1 ? (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-zinc-950 border border-zinc-800 rounded-xl gap-4">
-              <div>
-                <div className="font-bold text-white flex items-center gap-2">
-                  <span>{businesses[0].emoji}</span>
-                  {businesses[0].name}
-                </div>
-                <div className="text-xs text-zinc-500 mt-1 capitalize">
-                  Status: {businesses[0].approval_status}
-                </div>
-              </div>
-              <Button onClick={() => router.push('/dashboard')}>
-                Go to Business Dashboard
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <Alert type="warning" message="You have multiple businesses connected to this account. Business switching will be available soon." className="mb-4" />
-              {businesses.map((biz) => (
-                <div key={biz.id} className="flex items-center justify-between p-4 bg-zinc-950 border border-zinc-800 rounded-xl">
-                  <div>
-                    <div className="font-bold text-white flex items-center gap-2">
-                      <span>{biz.emoji}</span>
-                      {biz.name}
-                    </div>
-                    <div className="text-xs text-zinc-500 mt-1 capitalize">
-                      Status: {biz.approval_status}
-                    </div>
-                  </div>
-                  {/* For Pilot: Only allow going to dashboard if it's the first one, or disable since switching isn't supported */}
-                </div>
-              ))}
-              <Button onClick={() => router.push('/dashboard')} className="w-full">
-                Go to Primary Dashboard
-              </Button>
-            </div>
-          )}
-        </section>
+
         
-        {/* LOYALTY CARDS */}
-        <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-          <h2 className="text-xl font-bold mb-4">My Loyalty Cards</h2>
-          <p className="text-sm text-zinc-400 mb-4">
-            View the loyalty stamps you have collected as a customer at other businesses.
-          </p>
-          <Button variant="outline" onClick={() => router.push('/cards')} className="w-full sm:w-auto">
-            View My Cards
-          </Button>
-        </section>
+
 
         {/* SECURITY */}
         <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">

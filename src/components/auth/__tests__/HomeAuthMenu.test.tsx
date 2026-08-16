@@ -32,13 +32,13 @@ describe('HomeAuthMenu Component', () => {
     render(<HomeAuthMenu email="test@example.com" />)
     expect(screen.getByText('test@example.com')).toBeInTheDocument()
     expect(screen.getByText(/Go to Business Dashboard/)).toBeInTheDocument()
-    expect(screen.getByText(/My Account/)).toBeInTheDocument()
+    expect(screen.queryByText(/My Account/)).not.toBeInTheDocument()
   })
 
   test('Sign out and switch calls signOut and redirects', async () => {
     render(<HomeAuthMenu email="test@example.com" />)
     
-    const btn = screen.getByText('Sign out & Login with Another Account')
+    const btn = screen.getByText('Switch Business Account')
     fireEvent.click(btn)
 
     await waitFor(() => {

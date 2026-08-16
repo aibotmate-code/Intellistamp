@@ -40,20 +40,13 @@ export default function HomeAuthMenu({ email }: HomeAuthMenuProps) {
         🏪 Go to Business Dashboard
       </Link>
       
-      <Link
-        href="/account"
-        className="flex items-center justify-center gap-2 w-full border border-zinc-700 text-white font-medium py-3 px-6 rounded-xl text-sm hover:border-zinc-500 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-zinc-950"
-      >
-        ⚙️ My Account
-      </Link>
-      
       <Button 
         variant="outline" 
         onClick={handleSignOutAndSwitch} 
         loading={loading}
         className="w-full text-zinc-400 hover:text-white"
       >
-        Sign out & Login with Another Account
+        Switch Business Account
       </Button>
     </div>
   )
