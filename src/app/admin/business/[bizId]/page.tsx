@@ -22,6 +22,17 @@ export default async function AdminManageBusiness({ params }: { params: Promise<
     return <div className="text-red-500">Business not found.</div>
   }
 
+  let ownerEmail = 'Email unavailable'
+  let ownerName = ''
+  
+  if (business.owner_id) {
+    const { data: userData } = await adminClient.auth.admin.getUserById(business.owner_id)
+    if (userData?.user) {
+      ownerEmail = userData.user.email || 'Email unavailable'
+      ownerName = userData.user.user_metadata?.name || userData.user.user_metadata?.full_name || ''
+    }
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -44,16 +55,25 @@ export default async function AdminManageBusiness({ params }: { params: Promise<
           <h2 className="text-xl font-semibold mb-4">Business Info (Read Only)</h2>
           <div className="space-y-3">
             <div>
+              <div className="text-sm text-gray-500">Owner</div>
+              <div className="font-medium text-gray-900">{ownerEmail}</div>
+              {ownerName && <div className="text-sm text-gray-600">{ownerName}</div>}
+            </div>
+            <div>
               <div className="text-sm text-gray-500">Owner ID</div>
-              <div className="font-mono text-sm">{business.owner_id}</div>
+              <div className="font-mono text-xs text-gray-600 break-all">{business.owner_id}</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500">Business ID</div>
+              <div className="font-mono text-xs text-gray-600 break-all">{business.id}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500">Slug</div>
-              <div>/{business.slug}</div>
+              <div className="text-gray-900">/{business.slug}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500">Created</div>
-              <div>{new Date(business.created_at).toLocaleString()}</div>
+              <div className="text-gray-900">{new Date(business.created_at).toLocaleString()}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500">Features</div>

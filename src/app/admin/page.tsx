@@ -20,6 +20,25 @@ export default async function AdminDashboard() {
     return <div className="text-red-500">Error loading businesses: {error.message}</div>
   }
 
+  // Resolve unique owner IDs to emails securely
+  const ownerIds = Array.from(new Set(businesses?.map((b) => b.owner_id) || []))
+  const ownersMap = new Map<string, { email: string; name?: string }>()
+
+  await Promise.all(
+    ownerIds.map(async (ownerId) => {
+      if (!ownerId) return
+      const { data } = await adminClient.auth.admin.getUserById(ownerId)
+      if (data?.user) {
+        ownersMap.set(ownerId, {
+          email: data.user.email || 'Email unavailable',
+          name: data.user.user_metadata?.name || data.user.user_metadata?.full_name || undefined,
+        })
+      } else {
+        ownersMap.set(ownerId, { email: 'Email unavailable' })
+      }
+    })
+  )
+
   return (
     <div>
       <h1 className="text-3xl font-bold mb-8">Businesses</h1>
@@ -29,6 +48,7 @@ export default async function AdminDashboard() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
@@ -42,10 +62,16 @@ export default async function AdminDashboard() {
                   <div className="font-medium text-gray-900">{business.name}</div>
                   <div className="text-sm text-gray-500">/{business.slug}</div>
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{ownersMap.get(business.owner_id)?.email || 'Email unavailable'}</div>
+                  {ownersMap.get(business.owner_id)?.name && (
+                    <div className="text-xs text-gray-500">{ownersMap.get(business.owner_id)?.name}</div>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <span className="capitalize">{business.plan}</span>
                   {business.plan_expires_at && (
-                    <div className="text-xs">Exp: {new Date(business.plan_expires_at).toLocaleDateString()}</div>
+                    <div className="text-xs mt-1">Exp: {new Date(business.plan_expires_at).toLocaleDateString()}</div>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
