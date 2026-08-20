@@ -7,7 +7,8 @@ import { getAppOrigin } from '@/lib/origin'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
-import { EnvelopeSimple, Key, ArrowLeft, CreditCard } from '@phosphor-icons/react'
+import IntelliStampLogo from '@/components/brand/IntelliStampLogo'
+import { EnvelopeSimple, ArrowLeft, CreditCard } from '@phosphor-icons/react'
 
 type FlowState = 'form' | 'sent'
 
@@ -103,9 +104,7 @@ export default function ForgotPasswordPage() {
 
         {/* Header */}
         <div className="text-center mb-6 flex flex-col items-center">
-          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-500 mx-auto mb-3 shadow-xs">
-            <Key size={22} weight="duotone" />
-          </div>
+          <IntelliStampLogo size="md" className="mb-3" />
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Forgot Password?</h1>
           <p className="text-xs text-zinc-400 mt-1">
             Enter your business email to receive a password reset link.

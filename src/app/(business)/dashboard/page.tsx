@@ -19,6 +19,7 @@ import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import { Icons } from '@/config/icons'
 import { Lightning } from '@phosphor-icons/react'
+import IntelliStampLogo from '@/components/brand/IntelliStampLogo'
 import BusinessVisual from '@/components/branding/BusinessVisual'
 import { PendingView, SuspendedView, RejectedView, ExpiredView } from '@/components/business/LifecycleViews'
 import { getBusinessAccessState } from '@/lib/businessState'
@@ -278,8 +279,7 @@ export default function DashboardPage() {
       <header className="border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Icons.Business size={16} className="text-zinc-400" aria-hidden="true" />
-            <span className="font-semibold text-sm tracking-tight text-zinc-100">IntelliStamp</span>
+            <IntelliStampLogo size="sm" />
             <span className="text-[11px] bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium">Business</span>
           </div>
           {ownerEmail && (

@@ -6,7 +6,6 @@ import type { MilestoneWithStatus, RewardResult } from '@/types'
 import BusinessVisual from '@/components/branding/BusinessVisual'
 import { resolveBrandingColors } from '@/lib/branding/palette'
 import { Trophy, LockKey, Gift, Check, X, Tag } from '@phosphor-icons/react'
-import Logo from '@/components/brand/Logo'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
