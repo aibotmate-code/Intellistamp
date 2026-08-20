@@ -9,7 +9,6 @@ import CustomerTable from '@/components/business/CustomerTable'
 import CustomerLookup from '@/components/business/CustomerLookup'
 import FeatureToggles from '@/components/business/FeatureToggles'
 import RewardsTab from '@/components/business/RewardsTab'
-import BrandingTab from '@/components/business/BrandingTab'
 import StaffPinManager from '@/components/business/StaffPinManager'
 import SocialLinksSettings from '@/components/business/SocialLinksSettings'
 import Spinner from '@/components/ui/Spinner'
@@ -380,9 +379,6 @@ export default function DashboardPage() {
             { id: 'rewards' as Tab,   label: 'Rewards', icon: <Icons.Rewards size={15} /> },
             { id: 'campaigns' as Tab, label: 'Messages', icon: <Icons.Campaigns size={15} /> },
             { id: 'settings' as Tab,  label: 'Settings', icon: <Icons.Settings size={15} /> },
-            ...(process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true'
-              ? [{ id: 'branding' as Tab, label: 'Card Design', icon: <Icons.Branding size={15} /> }]
-              : []),
           ]).map((tab) => {
             const isTabActive = activeTab === tab.id
             const activeColor = (process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && business.branding && business.branding.is_enabled !== false)
@@ -574,9 +570,14 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Tab: Branding */}
-        {activeTab === 'branding' && process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && (
-          <BrandingTab business={business} onUpdate={fetchData} />
+        {/* Tab: Branding (Admin-managed) */}
+        {activeTab === 'branding' && (
+          <div className="max-w-2xl bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 text-center space-y-2">
+            <h3 className="font-semibold text-sm text-zinc-100">Co-Branding</h3>
+            <p className="text-xs text-zinc-400">
+              Co-branding is managed exclusively by Intellical Labs administrators.
+            </p>
+          </div>
         )}
 
         {/* Tab: Settings */}

@@ -20,6 +20,7 @@ export interface Business {
   plan: Plan
   approval_status: ApprovalStatus
   plan_expires_at: string | null
+  owner_id?: string
   owner_phone?: string
   created_at: string
   conflict_priority: ConflictPriority
