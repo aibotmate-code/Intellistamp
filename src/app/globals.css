@@ -5,15 +5,20 @@
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   
-  --color-bg: var(--color-bg);
-  --color-surface: var(--color-surface);
-  --color-elevated: var(--color-elevated);
-  --color-border: var(--color-border);
-  --color-border-strong: var(--color-border-strong);
+  --color-bg: var(--is-bg);
+  --color-surface: var(--is-surface);
+  --color-elevated: var(--is-surface-raised);
+  --color-border: var(--is-border);
+  --color-border-strong: var(--is-border-strong);
   
-  --color-text: var(--color-text);
-  --color-text-muted: var(--color-text-muted);
-  --color-text-dim: var(--color-text-dim);
+  --color-text: var(--is-text);
+  --color-text-muted: var(--is-text-muted);
+  --color-text-dim: var(--is-text-dim);
+
+  --color-accent: var(--is-accent);
+  --color-accent-hover: var(--is-accent-hover);
+  --color-accent-soft: var(--is-accent-soft);
+  --color-accent-border: var(--is-accent-border);
 }
 
 :root {
@@ -41,37 +46,46 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* ── Radius (Restrained SaaS values) ── */
+  /* ── Radius scale (10-14px product-specific where appropriate) ── */
   --radius-sm:    4px;
   --radius-md:    6px;
   --radius-lg:    8px;
   --radius-xl:    12px;
+  --radius-2xl:   14px;
   --radius-full: 9999px;
 
-  /* ── Color system (OKLCH) ── */
-  --color-bg:            oklch(0.12 0.005 250); /* Neutral dark */
-  --color-surface:       oklch(0.16 0.005 250);
-  --color-elevated:      oklch(0.20 0.006 250);
-  --color-border:        oklch(0.25 0.005 250);
-  --color-border-strong: oklch(0.35 0.005 250);
+  /* ── IntelliStamp Semantic Design Tokens (Derived from Intellical Labs) ── */
+  --is-bg:             #0A0A0B;
+  --is-surface:        #111113;
+  --is-surface-raised: #17171A;
+  --is-border:         rgba(255, 255, 255, 0.08);
+  --is-border-subtle:  rgba(255, 255, 255, 0.04);
+  --is-border-strong:  rgba(255, 255, 255, 0.15);
 
-  --color-text:          oklch(0.95 0.005 250);
-  --color-text-muted:    oklch(0.65 0.005 250);
-  --color-text-dim:      oklch(0.45 0.005 250);
+  --is-text:           #F4F4F5;
+  --is-text-muted:     #A1A1AA;
+  --is-text-dim:       #71717A;
 
-  --color-gold:          oklch(0.72 0.18  55);
-  --color-gold-bg:       oklch(0.15 0.05  55);
-  --color-gold-border:   oklch(0.30 0.10  55);
+  --is-accent:         #F59E0B; /* Warm Amber / Gold parent derivation */
+  --is-accent-hover:   #D97706;
+  --is-accent-soft:    rgba(245, 158, 11, 0.12);
+  --is-accent-border:  rgba(245, 158, 11, 0.25);
+  --is-accent-glow:    rgba(245, 158, 11, 0.20);
 
-  --color-green:         oklch(0.65 0.16 145);
-  --color-green-bg:      oklch(0.18 0.05 145);
-  --color-red:           oklch(0.65 0.16  25);
-  --color-red-bg:        oklch(0.18 0.05  25);
-  --color-purple:        oklch(0.65 0.16 280);
-  --color-purple-bg:     oklch(0.18 0.05 280);
+  /* Functional status accents */
+  --color-gold:        var(--is-accent);
+  --color-gold-bg:     var(--is-accent-soft);
+  --color-gold-border: var(--is-accent-border);
+
+  --color-green:       #10B981;
+  --color-green-bg:    rgba(16, 185, 129, 0.12);
+  --color-red:         #EF4444;
+  --color-red-bg:      rgba(239, 68, 68, 0.12);
+  --color-purple:      #A855F7;
+  --color-purple-bg:   rgba(168, 85, 247, 0.12);
 
   /* ── Typography ── */
-  --font-body:    var(--font-inter), system-ui, sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
 }
 
 * {
@@ -79,29 +93,39 @@
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--is-bg);
+  color: var(--is-text);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Hover effects gated on non-touch devices ── */
-@media (hover: hover) and (pointer: fine) {
-  .hoverable:hover { /* extend via utility classes per component */ }
+/* ── Subtle background textures ── */
+.is-dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
-/* ── Legacy animation classes (backward compat) ── */
+.is-reward-glow {
+  box-shadow: 0 0 35px -5px var(--is-accent-glow);
+}
+
+/* ── Hover effects gated on non-touch devices ── */
+@media (hover: hover) and (pointer: fine) {
+  .hoverable:hover { /* extend per component */ }
+}
+
+/* ── Micro-animations ── */
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1;   transform: scale(1); }
-  50%      { opacity: 0.5; transform: scale(0.8); }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.85); }
 }
 @keyframes glow-anim {
-  0%, 100% { box-shadow: 0 0 10px rgba(234,179,8,0.4); }
-  50%      { box-shadow: 0 0 24px rgba(234,179,8,0.9); }
+  0%, 100% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
+  50%      { box-shadow: 0 0 28px rgba(245, 158, 11, 0.6); }
 }
-.animate-pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
-.animate-glow      { animation: glow-anim 1.5s ease-in-out infinite; }
+.animate-pulse-dot { animation: pulse-dot 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.animate-glow      { animation: glow-anim 2s ease-in-out infinite; }
 
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {

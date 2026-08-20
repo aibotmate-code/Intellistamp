@@ -5,6 +5,16 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Spinner from '@/components/ui/Spinner'
 import type { Business } from '@/types'
+import {
+  MagnifyingGlass,
+  Trophy,
+  Gift,
+  Star,
+  HourglassMedium,
+  Warning,
+  LockKey,
+  ArrowRight,
+} from '@phosphor-icons/react'
 
 type KioskState = 'loading' | 'not_found' | 'pin' | 'ready' | 'stamping' | 'success' | 'cooldown' | 'error'
 
@@ -97,8 +107,8 @@ export default function KioskPage({ params }: PageParams) {
       const { card_state } = data
       setResultMsg(
         card_state.redeemable
-          ? `🎉 Stamp added! Card complete — ${business.reward} ready to claim!`
-          : `✅ Stamp added! ${card_state.card_stamps}/${business.stamps_required} stamps`
+          ? `Stamp added! Card complete — ${business.reward} ready to claim!`
+          : `Stamp added! ${card_state.card_stamps}/${business.stamps_required} stamps`
       )
 
       setCurrentCustomerId(data.customer_id ?? null)
@@ -187,7 +197,7 @@ export default function KioskPage({ params }: PageParams) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6 text-zinc-100">
         <div className="text-center max-w-sm">
-          <p className="text-4xl mb-3">🔍</p>
+          <MagnifyingGlass size={36} weight="duotone" className="text-amber-500 mx-auto mb-3" />
           <p className="text-lg font-semibold text-zinc-100">Business not found</p>
           <p className="text-xs text-zinc-400 mt-1">Check the URL or contact the business manager.</p>
         </div>
@@ -221,8 +231,11 @@ export default function KioskPage({ params }: PageParams) {
 
           {/* PIN entry */}
           {kioskState === 'pin' && (
-            <div className="rounded-lg p-6 border border-zinc-800 bg-zinc-900/50 space-y-4 shadow-xs">
-              <p className="font-semibold text-sm text-center text-zinc-200">Staff PIN Required</p>
+            <div className="rounded-xl p-6 border border-zinc-800 bg-zinc-900/50 space-y-4 shadow-xs">
+              <div className="flex items-center justify-center gap-1.5 text-zinc-300">
+                <LockKey size={16} weight="duotone" className="text-amber-500" />
+                <p className="font-semibold text-sm">Staff PIN Required</p>
+              </div>
               <Input
                 type="password"
                 placeholder="••••"
@@ -232,7 +245,7 @@ export default function KioskPage({ params }: PageParams) {
                 error={pinError}
                 inputMode="numeric"
                 maxLength={4}
-                className="text-center text-xl tracking-widest"
+                className="text-center text-xl tracking-widest font-mono"
                 autoFocus
               />
               <Button ref={pinBtnRef} onClick={handlePinSubmit} size="sm" className="w-full">
@@ -243,7 +256,7 @@ export default function KioskPage({ params }: PageParams) {
 
           {/* Stamp by phone */}
           {kioskState === 'ready' && (
-            <div className="rounded-lg p-6 border border-zinc-800 bg-zinc-900/50 space-y-4 shadow-xs">
+            <div className="rounded-xl p-6 border border-zinc-800 bg-zinc-900/50 space-y-4 shadow-xs">
               <div className="text-center space-y-1">
                 <div className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
@@ -288,11 +301,13 @@ export default function KioskPage({ params }: PageParams) {
           {/* Success */}
           {kioskState === 'success' && (
             <div className="space-y-4">
-              <div className="rounded-lg p-6 border border-zinc-800 bg-zinc-900/50 text-center space-y-4 shadow-xs">
-                <p className="text-3xl">🎉</p>
+              <div className="rounded-xl p-6 border border-zinc-800 bg-zinc-900/50 text-center space-y-4 shadow-xs is-reward-glow">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
+                  <Trophy size={24} weight="duotone" />
+                </div>
                 <p className="font-semibold text-sm text-zinc-100">
                   {bonusDone
-                    ? `🎁 Bonus stamp added! ${bonusCardStamps !== null ? `${bonusCardStamps}/${business?.stamps_required} stamps` : ''}`
+                    ? `Bonus stamp added! ${bonusCardStamps !== null ? `${bonusCardStamps}/${business?.stamps_required} stamps` : ''}`
                     : resultMsg}
                 </p>
                 <Button onClick={resetForNext} size="sm" className="w-full">Next Customer →</Button>
@@ -300,20 +315,23 @@ export default function KioskPage({ params }: PageParams) {
 
               {/* GMB review prompt */}
               {showGmbPrompt && (
-                <div className="rounded-lg p-5 border border-zinc-700 bg-zinc-900/60 space-y-3 shadow-xs">
-                  <p className="font-semibold text-sm text-center text-zinc-100">
-                    Enjoying {business?.name}? ⭐
-                  </p>
+                <div className="rounded-xl p-5 border border-amber-500/30 bg-zinc-900/60 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-center gap-1 text-amber-400">
+                    <Star size={16} weight="fill" />
+                    <span className="font-semibold text-sm text-zinc-100 ml-1">Enjoying {business?.name}?</span>
+                  </div>
                   <p className="text-xs text-center text-zinc-400 leading-relaxed">
-                    Leave a quick Google review and get a <strong className="text-zinc-200">BONUS STAMP</strong> as a thank you 🎁
+                    Leave a quick Google review and get a <strong className="text-amber-400">BONUS STAMP</strong> as a thank you!
                   </p>
                   {!gmbClicked ? (
                     <Button onClick={handleGmbClick} variant="outline" size="sm" className="w-full">
-                      Open Google Review →
+                      <span>Open Google Review</span>
+                      <ArrowRight size={14} />
                     </Button>
                   ) : (
                     <Button onClick={handleClaimBonus} loading={bonusLoading} size="sm" className="w-full">
-                      Claim Bonus Stamp 🎁
+                      <Gift size={16} weight="fill" />
+                      <span>Claim Bonus Stamp</span>
                     </Button>
                   )}
                 </div>
@@ -323,8 +341,8 @@ export default function KioskPage({ params }: PageParams) {
 
           {/* Cooldown */}
           {kioskState === 'cooldown' && (
-            <div className="rounded-lg p-6 border border-zinc-800 bg-zinc-900/50 text-center space-y-3 shadow-xs">
-              <p className="text-3xl">⏳</p>
+            <div className="rounded-xl p-6 border border-zinc-800 bg-zinc-900/50 text-center space-y-3 shadow-xs">
+              <HourglassMedium size={32} weight="duotone" className="text-amber-500 mx-auto" />
               <p className="font-semibold text-sm text-zinc-100">Stamp Cooldown Active</p>
               <p className="text-xs text-zinc-400 leading-relaxed">
                 This customer already received a stamp recently. Next stamp available in {cooldownHours}h.
@@ -335,8 +353,8 @@ export default function KioskPage({ params }: PageParams) {
 
           {/* Error */}
           {kioskState === 'error' && (
-            <div className="rounded-lg p-6 border border-zinc-800 bg-zinc-900/50 text-center space-y-3 shadow-xs">
-              <p className="text-3xl">⚠️</p>
+            <div className="rounded-xl p-6 border border-zinc-800 bg-zinc-900/50 text-center space-y-3 shadow-xs">
+              <Warning size={32} weight="duotone" className="text-rose-400 mx-auto" />
               <p className="font-semibold text-sm text-zinc-100">{resultMsg || 'Something went wrong'}</p>
               <Button onClick={resetForNext} variant="secondary" size="sm" className="w-full">Try Again</Button>
             </div>

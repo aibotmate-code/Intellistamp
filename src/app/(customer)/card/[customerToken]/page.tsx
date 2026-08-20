@@ -8,6 +8,7 @@ import Spinner from '@/components/ui/Spinner'
 import Alert from '@/components/ui/Alert'
 import StampCard from '@/components/customer/StampCard'
 import { SocialLinks } from '@/components/customer/SocialLinks'
+import { ArrowLeft, Trophy, Camera, Gift } from '@phosphor-icons/react'
 import type { Business, MilestoneWithStatus, RewardResult } from '@/types'
 
 interface CardState {
@@ -98,10 +99,10 @@ export default function CardPage({ params }: PageParams) {
       <div className="max-w-md mx-auto">
         <Link
           href="/cards"
-          className="flex items-center gap-2 text-sm mb-6 transition-colors"
-          style={{ color: 'var(--color-text-muted)' }}
+          className="inline-flex items-center gap-1.5 text-xs mb-4 text-zinc-400 hover:text-zinc-200 transition-colors"
         >
-          ← Back to my cards
+          <ArrowLeft size={12} />
+          <span>Back to my cards</span>
         </Link>
 
         {error && <Alert type="error" message={error} className="mb-4" />}
@@ -123,25 +124,30 @@ export default function CardPage({ params }: PageParams) {
             />
 
             {cardState.cards_redeemed > 0 && (
-              <p className="text-center text-sm font-medium" style={{ color: 'var(--color-green)' }}>
-                🏆 {cardState.cards_redeemed}x redeemed
+              <p className="text-center text-xs font-medium text-emerald-400 flex items-center justify-center gap-1.5">
+                <Trophy size={14} weight="duotone" />
+                <span>{cardState.cards_redeemed}x redeemed</span>
               </p>
             )}
 
             <Button
               onClick={() => router.push('/scanner')}
               variant="outline"
-              className="w-full"
+              size="sm"
+              className="w-full flex items-center justify-center gap-2"
             >
-              📱 Scan QR to Stamp
+              <Camera size={16} />
+              <span>Scan QR to Stamp</span>
             </Button>
 
             {cardState.redeemable && (
               <Button
                 onClick={() => router.push(`/redeem/${bizId}`)}
-                className="w-full"
+                size="sm"
+                className="w-full flex items-center justify-center gap-2"
               >
-                🎁 Claim Your Reward
+                <Gift size={16} weight="fill" />
+                <span>Claim Your Reward</span>
               </Button>
             )}
 

@@ -4,6 +4,7 @@ import { useEffect, useState, startTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
+import Logo from '@/components/brand/Logo'
 import { Icons } from '@/config/icons'
 import Button from '@/components/ui/Button'
 
@@ -45,8 +46,7 @@ export default function GlobalTopbar() {
     <header className="border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link href="/account" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-          <Icons.Business size={16} className="text-zinc-400" aria-hidden="true" />
-          <span className="font-semibold text-sm tracking-tight text-zinc-100">IntelliStamp</span>
+          <Logo size="sm" />
           <span className="text-[11px] bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium hidden sm:inline-block">
             Business
           </span>

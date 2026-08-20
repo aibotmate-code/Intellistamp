@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Camera, LockKey, Warning, ArrowLeft } from '@phosphor-icons/react'
 
 type ScanState = 'checking' | 'scanning' | 'unsupported' | 'no_permission' | 'error'
 
@@ -111,10 +112,10 @@ export default function ScannerPage() {
             </div>
             {/* Corner guides */}
             <div className="absolute inset-6 pointer-events-none">
-              <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-zinc-100 rounded-tl-sm" />
-              <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-zinc-100 rounded-tr-sm" />
-              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-zinc-100 rounded-bl-sm" />
-              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-zinc-100 rounded-br-sm" />
+              <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-amber-500 rounded-tl-sm" />
+              <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-amber-500 rounded-tr-sm" />
+              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-amber-500 rounded-bl-sm" />
+              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-amber-500 rounded-br-sm" />
             </div>
             {hint && (
               <div className="absolute bottom-4 inset-x-4 text-center bg-black/80 rounded-md py-1.5 px-3 border border-zinc-800">
@@ -132,10 +133,10 @@ export default function ScannerPage() {
 
         {scanState === 'unsupported' && (
           <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 text-center space-y-3 shadow-xs">
-            <div className="text-3xl">📷</div>
+            <Camera size={32} weight="duotone" className="text-zinc-400 mx-auto" />
             <p className="font-semibold text-sm text-zinc-100">In-app camera not supported</p>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Your browser doesn&apos;t support the scanner API. Please use your phone&apos;s
+              Your browser doesn&apos;t support the camera scanner. Use your phone&apos;s
               <strong className="text-zinc-200"> Camera app</strong> to scan the QR code
               at the counter directly.
             </p>
@@ -144,7 +145,7 @@ export default function ScannerPage() {
 
         {scanState === 'no_permission' && (
           <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 text-center space-y-3 shadow-xs">
-            <div className="text-3xl">🔒</div>
+            <LockKey size={32} weight="duotone" className="text-amber-500 mx-auto" />
             <p className="font-semibold text-sm text-zinc-100">Camera access required</p>
             <p className="text-xs text-zinc-400 leading-relaxed">
               Allow camera permission in your browser, or open your default Camera app to scan the counter display.
@@ -154,7 +155,7 @@ export default function ScannerPage() {
 
         {scanState === 'error' && (
           <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 text-center space-y-3 shadow-xs">
-            <div className="text-3xl">⚠️</div>
+            <Warning size={32} weight="duotone" className="text-rose-400 mx-auto" />
             <p className="font-semibold text-sm text-zinc-100">Camera error</p>
             <p className="text-xs text-zinc-400 leading-relaxed">
               Could not access the camera. Try using your phone&apos;s standard Camera app.
@@ -163,8 +164,9 @@ export default function ScannerPage() {
         )}
 
         <div className="mt-6 text-center">
-          <Link href="/cards" className="text-xs text-zinc-400 hover:text-zinc-200">
-            ← Back to my cards
+          <Link href="/cards" className="text-xs text-zinc-400 hover:text-zinc-200 inline-flex items-center gap-1">
+            <ArrowLeft size={12} />
+            <span>Back to my cards</span>
           </Link>
         </div>
       </div>

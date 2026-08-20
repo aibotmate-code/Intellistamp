@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { cn } from '@/lib/utils'
+import { X } from '@phosphor-icons/react'
+import Logo from '@/components/brand/Logo'
 
 interface KioskModeProps {
   bizId: string
@@ -101,14 +103,15 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 bg-zinc-950 z-[9999] flex flex-col items-center justify-between p-6 sm:p-8 text-zinc-100"
+      className="fixed inset-0 bg-zinc-950 z-[9999] flex flex-col items-center justify-between p-6 sm:p-8 text-zinc-100 is-dot-grid"
     >
       {/* Exit button */}
       <button
         onClick={handleExit}
-        className="absolute top-4 right-4 text-zinc-400 hover:text-white text-xs px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 transition-colors cursor-pointer"
+        className="absolute top-4 right-4 text-zinc-400 hover:text-white text-xs px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 transition-colors cursor-pointer inline-flex items-center gap-1"
       >
-        ✕ Exit Display
+        <X size={12} />
+        <span>Exit Display</span>
       </button>
 
       {/* Top: business info */}
@@ -149,7 +152,7 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
       </div>
 
       {/* Bottom */}
-      <div className="text-center space-y-2 mb-4">
+      <div className="text-center space-y-2 mb-4 flex flex-col items-center">
         <p className="text-xs font-medium text-zinc-200">Scan with your phone camera to collect your stamp</p>
         <div className="flex items-center justify-center gap-2 text-xs">
           <span className={cn(
@@ -160,9 +163,9 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
             Refreshes in {seconds}s
           </span>
         </div>
-        <p className="text-zinc-600 text-[11px] pt-2">
-          IntelliStamp · Smart Loyalty Platform
-        </p>
+        <div className="pt-2">
+          <Logo size="sm" />
+        </div>
       </div>
     </div>
   )

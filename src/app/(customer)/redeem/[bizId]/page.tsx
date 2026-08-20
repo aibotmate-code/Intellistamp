@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
+import { Gift } from '@phosphor-icons/react'
 
 export default function RedeemPage() {
   const { bizId } = useParams<{ bizId: string }>()
@@ -74,20 +75,22 @@ export default function RedeemPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100">
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100 is-dot-grid">
       <div className="w-full max-w-sm text-center space-y-6">
-        <div className="text-5xl">🎁</div>
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto is-reward-glow">
+          <Gift size={32} weight="duotone" />
+        </div>
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight text-amber-400">Reward Unlocked!</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-amber-400">Reward Unlocked</h1>
           <p className="text-xs text-zinc-400">{businessName}</p>
         </div>
         
         <p className="text-xl font-semibold text-zinc-100">{reward}</p>
-        <p className="text-xs text-zinc-400">Show this code to staff to claim your reward</p>
+        <p className="text-xs text-zinc-400">Show this redemption code to staff to claim your reward</p>
 
-        <div className="border border-dashed border-amber-500/40 bg-zinc-900/50 rounded-lg p-5">
-          <p className="text-[11px] text-zinc-400 mb-1">Redemption Code</p>
-          <p className="text-3xl font-mono font-semibold text-amber-400 tracking-wider">{code}</p>
+        <div className="border border-dashed border-amber-500/40 bg-zinc-900/60 rounded-xl p-5 shadow-xs">
+          <p className="text-[11px] font-mono text-zinc-400 mb-1">Redemption Code</p>
+          <p className="text-3xl font-mono font-bold text-amber-400 tracking-widest">{code}</p>
         </div>
 
         <Button onClick={() => router.push('/cards')} variant="secondary" size="sm" className="w-full">

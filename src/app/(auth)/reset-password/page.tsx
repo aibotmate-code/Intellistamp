@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
 import Spinner from '@/components/ui/Spinner'
+import { HourglassMedium, CheckCircle, LockKey, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
 
 type FlowState = 'loading' | 'ready' | 'expired' | 'success'
 
@@ -80,17 +81,17 @@ function ResetPasswordInner() {
 
   if (flow === 'expired') {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100">
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100 is-dot-grid">
         <div className="w-full max-w-sm text-center">
-          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
-            ⏳
+          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-500 mx-auto mb-3 shadow-xs">
+            <HourglassMedium size={22} weight="duotone" />
           </div>
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100 mb-2">Link Expired</h1>
           <p className="text-zinc-400 text-xs mb-6 leading-relaxed">
             This password-reset link has expired or has already been used.
             Request a new link to try again.
           </p>
-          <div className="bg-zinc-900/50 rounded-lg p-5 border border-zinc-800 shadow-xs">
+          <div className="bg-zinc-900/60 rounded-lg p-5 border border-zinc-800 shadow-xs">
             <Link
               href="/forgot-password"
               className="flex items-center justify-center w-full bg-zinc-100 text-zinc-950 text-xs font-medium h-9 px-4 rounded-md hover:bg-zinc-200 transition-colors"
@@ -99,11 +100,13 @@ function ResetPasswordInner() {
             </Link>
           </div>
           <nav aria-label="Other options" className="mt-6 flex flex-col items-center gap-2">
-            <Link href="/login" className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors font-medium">
-              ← Back to Business Login
+            <Link href="/login" className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors font-medium inline-flex items-center gap-1">
+              <ArrowLeft size={12} />
+              <span>Back to Business Login</span>
             </Link>
-            <Link href="/" className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors">
-              ← Back to Home
+            <Link href="/" className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors inline-flex items-center gap-1">
+              <ArrowLeft size={12} />
+              <span>Back to Home</span>
             </Link>
           </nav>
         </div>
@@ -113,26 +116,28 @@ function ResetPasswordInner() {
 
   if (flow === 'success') {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100">
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100 is-dot-grid">
         <div className="w-full max-w-sm text-center">
-          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
-            ✅
+          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mx-auto mb-3 shadow-xs">
+            <CheckCircle size={22} weight="fill" />
           </div>
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100 mb-2">Password Updated</h1>
           <p className="text-zinc-400 text-xs mb-6">
             Your password has been changed successfully. You can now sign in with your new password.
           </p>
-          <div className="bg-zinc-900/50 rounded-lg p-5 border border-zinc-800 shadow-xs">
+          <div className="bg-zinc-900/60 rounded-lg p-5 border border-zinc-800 shadow-xs">
             <Link
               href="/login"
-              className="flex items-center justify-center w-full bg-zinc-100 text-zinc-950 text-xs font-medium h-9 px-4 rounded-md hover:bg-zinc-200 transition-colors"
+              className="flex items-center justify-center gap-1.5 w-full bg-zinc-100 text-zinc-950 text-xs font-medium h-9 px-4 rounded-md hover:bg-zinc-200 transition-colors"
             >
-              Sign In to Dashboard →
+              <span>Sign In to Dashboard</span>
+              <ArrowRight size={12} weight="bold" />
             </Link>
           </div>
           <div className="mt-4">
-            <Link href="/" className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors">
-              ← Back to Home
+            <Link href="/" className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors inline-flex items-center gap-1">
+              <ArrowLeft size={12} />
+              <span>Back to Home</span>
             </Link>
           </div>
         </div>
@@ -142,17 +147,17 @@ function ResetPasswordInner() {
 
   // flow === 'ready'
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100 is-dot-grid">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-6">
-          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
-            🔒
+        <div className="text-center mb-6 flex flex-col items-center">
+          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-500 mx-auto mb-3 shadow-xs">
+            <LockKey size={22} weight="duotone" />
           </div>
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Set New Password</h1>
           <p className="text-xs text-zinc-400 mt-1">Choose a strong password for your business account.</p>
         </div>
 
-        <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
+        <div className="bg-zinc-900/60 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
           <div className="relative">
             <Input
               id="reset-password"
@@ -210,11 +215,13 @@ function ResetPasswordInner() {
         </div>
 
         <nav aria-label="Other options" className="mt-6 flex flex-col items-center gap-2">
-          <Link href="/login" className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors font-medium">
-            ← Back to Business Login
+          <Link href="/login" className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors font-medium inline-flex items-center gap-1">
+            <ArrowLeft size={12} />
+            <span>Back to Business Login</span>
           </Link>
-          <Link href="/" className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors">
-            ← Back to Home
+          <Link href="/" className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors inline-flex items-center gap-1">
+            <ArrowLeft size={12} />
+            <span>Back to Home</span>
           </Link>
         </nav>
       </div>

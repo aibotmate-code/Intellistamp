@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { createServerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import HomeAuthMenu from '@/components/auth/HomeAuthMenu'
+import Logo from '@/components/brand/Logo'
+import { CreditCard, Storefront, UserPlus } from '@phosphor-icons/react/dist/ssr'
 
 export const metadata = {
   title: 'IntelliStamp — Smart Loyalty Stamps for Modern Businesses',
@@ -23,16 +25,13 @@ export default async function Home() {
   const { data: { session } } = await supabase.auth.getSession()
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-zinc-100">
+    <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-zinc-100 is-dot-grid">
       <div className="w-full max-w-sm">
 
         {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
-            🏷️
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">IntelliStamp</h1>
-          <p className="text-xs text-zinc-400 mt-1">Smart loyalty cards &amp; counter displays for businesses</p>
+        <div className="text-center mb-8 flex flex-col items-center">
+          <Logo size="lg" className="mb-3" />
+          <p className="text-xs text-zinc-400">Smart loyalty cards &amp; counter displays for businesses</p>
         </div>
 
         {/* Business Section */}
@@ -48,13 +47,15 @@ export default async function Home() {
                 className="flex items-center justify-center gap-2 w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 px-4 rounded-md text-sm hover:bg-zinc-200 transition-colors shadow-xs"
                 aria-label="Business Login"
               >
-                Business Login
+                <Storefront size={16} weight="bold" />
+                <span>Business Login</span>
               </Link>
               <Link
                 href="/signup"
                 className="flex items-center justify-center gap-2 w-full border border-zinc-800 bg-zinc-900/60 text-zinc-300 font-medium py-2.5 px-4 rounded-md text-sm hover:bg-zinc-850 hover:text-white transition-colors"
               >
-                Create Business Account
+                <UserPlus size={16} />
+                <span>Create Business Account</span>
               </Link>
             </div>
           )}
@@ -75,7 +76,8 @@ export default async function Home() {
             className="flex items-center justify-center gap-2 w-full border border-zinc-800 bg-zinc-900/40 text-zinc-200 font-medium py-2.5 px-4 rounded-md text-sm hover:border-zinc-700 hover:text-white transition-colors shadow-xs"
             aria-label="View my loyalty cards"
           >
-            📱 View My Loyalty Cards
+            <CreditCard size={16} weight="duotone" className="text-amber-500" />
+            <span>View My Loyalty Cards</span>
           </Link>
           <p className="text-center text-[11px] text-zinc-500 px-2 leading-relaxed">
             Access your stamps and rewards with your mobile number.

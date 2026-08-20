@@ -8,6 +8,9 @@ import { resolveBrandingColors } from '@/lib/branding/palette'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Spinner from '@/components/ui/Spinner'
+import Logo from '@/components/brand/Logo'
+import { cn } from '@/lib/utils'
+import { CreditCard, Camera, Gift, Storefront, ArrowLeft, MagnifyingGlass } from '@phosphor-icons/react'
 
 interface CardItem {
   business_id: string
@@ -102,17 +105,17 @@ export default function CardsPage() {
 
   if (flow === 'phone') {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100 is-dot-grid">
         <div className="w-full max-w-sm">
-          <div className="text-center mb-6">
-            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
-              💳
+          <div className="text-center mb-6 flex flex-col items-center">
+            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-500 mx-auto mb-3 shadow-xs">
+              <CreditCard size={22} weight="duotone" />
             </div>
             <h1 className="text-xl font-semibold tracking-tight text-zinc-100">My Loyalty Cards</h1>
             <p className="text-xs text-zinc-400 mt-1">Enter your mobile number to view active cards</p>
           </div>
 
-          <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
+          <div className="bg-zinc-900/60 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
             <Input
               label="Mobile Number"
               type="tel"
@@ -133,16 +136,18 @@ export default function CardsPage() {
               View My Cards →
             </Button>
             <p className="text-center text-[11px] text-zinc-500">
-              New here? Scan a merchant QR code to get started.
+              New here? Scan a merchant QR code at the counter to start.
             </p>
           </div>
 
           <div className="text-center mt-6 flex flex-col items-center gap-2">
-            <Link href="/login" className="text-xs text-zinc-400 hover:text-zinc-200">
-              🏪 Business Portal
+            <Link href="/login" className="text-xs text-zinc-400 hover:text-zinc-200 inline-flex items-center gap-1.5">
+              <Storefront size={14} />
+              <span>Business Portal</span>
             </Link>
-            <Link href="/" className="text-[11px] text-zinc-600 hover:text-zinc-400">
-              ← Back to Home
+            <Link href="/" className="text-[11px] text-zinc-600 hover:text-zinc-400 inline-flex items-center gap-1">
+              <ArrowLeft size={12} />
+              <span>Back to Home</span>
             </Link>
           </div>
         </div>
@@ -152,10 +157,10 @@ export default function CardsPage() {
 
   if (flow === 'not_found') {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100 is-dot-grid">
         <div className="text-center max-w-sm">
-          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
-            🔍
+          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-500 mx-auto mb-3 shadow-xs">
+            <MagnifyingGlass size={22} weight="duotone" />
           </div>
           <h2 className="text-lg font-semibold text-zinc-100 mb-2">No Account Found</h2>
           <p className="text-zinc-400 text-xs mb-6 leading-relaxed">
@@ -180,11 +185,8 @@ export default function CardsPage() {
   return (
     <div className="min-h-screen bg-zinc-950 p-4 text-zinc-100">
       <div className="max-w-md mx-auto py-4 space-y-5">
-        <div className="flex items-center justify-between pb-2">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-zinc-100">My Loyalty Cards</h1>
-            <p className="text-xs text-zinc-400">Tap a card to view reward progress &amp; history</p>
-          </div>
+        <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
+          <Logo size="sm" />
           <button
             onClick={handleLogout}
             className="text-xs text-zinc-400 hover:text-zinc-200 cursor-pointer"
@@ -195,12 +197,12 @@ export default function CardsPage() {
 
         {cards.length === 0 ? (
           <div className="text-center py-12 text-zinc-400 rounded-lg border border-zinc-800 bg-zinc-900/30 p-6">
-            <p className="text-3xl mb-3">💳</p>
+            <CreditCard size={36} weight="duotone" className="text-zinc-600 mx-auto mb-3" />
             <p className="font-semibold text-sm text-zinc-100">No active loyalty cards</p>
             <p className="text-xs text-zinc-400 mt-1">Scan a merchant QR code to earn your first stamp.</p>
             <Link
               href="/"
-              className="mt-4 inline-block text-xs font-medium text-zinc-300 hover:underline"
+              className="mt-4 inline-block text-xs font-medium text-amber-500 hover:underline"
             >
               Back to Home →
             </Link>
@@ -220,7 +222,10 @@ export default function CardsPage() {
                 <Link
                   key={card.business_id}
                   href={customerToken ? `/card/${customerToken}?biz=${card.business_id}` : '#'}
-                  className="block rounded-lg p-4 border transition-all hover:border-zinc-700 shadow-xs"
+                  className={cn(
+                    'block rounded-xl p-4 border transition-all hover:border-zinc-700 shadow-xs',
+                    redeemable && 'is-reward-glow'
+                  )}
                   style={{
                     background: resolved.surface_color,
                     borderColor: resolved.empty_stamp_border_color,
@@ -245,21 +250,21 @@ export default function CardsPage() {
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xl font-semibold tracking-tight" style={{ color: resolved.primary_color }}>
+                      <p className="text-lg font-mono font-semibold" style={{ color: resolved.primary_color }}>
                         {card_stamps}/{business.stamps_required}
                       </p>
                       {cards_completed > 0 && (
-                        <p className="text-[11px] text-emerald-400">{cards_completed} completed</p>
+                        <p className="text-[10px] text-emerald-400">{cards_completed} completed</p>
                       )}
                     </div>
                   </div>
 
-                  {/* Progress bar */}
-                  <div className="mt-3 flex gap-[3px]">
+                  {/* Punch trail dots */}
+                  <div className="mt-3 flex gap-1">
                     {Array.from({ length: segCount }).map((_, i) => (
                       <div
                         key={i}
-                        className="h-1.5 flex-1 rounded-full"
+                        className="h-1.5 flex-1 rounded-full transition-colors"
                         style={{
                           background: i < card_stamps ? resolved.primary_color : resolved.empty_stamp_color,
                         }}
@@ -268,9 +273,10 @@ export default function CardsPage() {
                   </div>
 
                   {redeemable && (
-                    <p className="text-xs font-semibold mt-2.5 flex items-center gap-1" style={{ color: resolved.primary_color }}>
-                      <span>🎁</span> Reward ready to redeem!
-                    </p>
+                    <div className="mt-2.5 flex items-center gap-1.5 text-xs font-semibold" style={{ color: resolved.primary_color }}>
+                      <Gift size={14} weight="fill" />
+                      <span>Reward ready to redeem!</span>
+                    </div>
                   )}
                 </Link>
               )
@@ -280,9 +286,9 @@ export default function CardsPage() {
 
         <Link
           href="/scanner"
-          className="flex items-center justify-center gap-2 border border-dashed border-zinc-800 rounded-lg p-4 text-xs font-medium text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 transition-colors"
+          className="flex items-center justify-center gap-2 border border-dashed border-zinc-800 rounded-lg p-3.5 text-xs font-medium text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 transition-colors"
         >
-          <span>📷</span>
+          <Camera size={16} weight="duotone" className="text-amber-500" />
           <span>Scan a new business QR code</span>
         </Link>
       </div>

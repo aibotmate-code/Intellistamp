@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
 import type { Business } from '@/types'
+import { Star, CheckCircle, ArrowRight } from '@phosphor-icons/react'
 
 function getSessionToken(): { customerId: string | null; customerToken: string | null } {
   try {
@@ -66,16 +67,22 @@ export default function ReviewPage() {
   if (!business) return null
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100">
+    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100 is-dot-grid">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Earn a Bonus Stamp ⭐</h1>
-          <p className="text-xs text-zinc-400 mt-1">Leave a Google review and show staff at the counter.</p>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Earn a Bonus Stamp</h1>
+          <p className="text-xs text-zinc-400 mt-1">Leave a Google review and show staff at the counter</p>
         </div>
 
-        <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
+        <div className="bg-zinc-900/60 rounded-xl p-6 border border-zinc-800 space-y-4 shadow-xs">
           <div className="text-center space-y-1">
-            <div className="text-2xl">⭐⭐⭐⭐⭐</div>
+            <div className="flex items-center justify-center gap-1 text-amber-400 py-1">
+              <Star size={20} weight="fill" />
+              <Star size={20} weight="fill" />
+              <Star size={20} weight="fill" />
+              <Star size={20} weight="fill" />
+              <Star size={20} weight="fill" />
+            </div>
             <div className="text-base font-semibold text-zinc-100">{business.emoji} {business.name}</div>
           </div>
 
@@ -91,12 +98,16 @@ export default function ReviewPage() {
             size="sm"
             className="w-full"
           >
-            Leave Review on Google →
+            <span>Leave Review on Google</span>
+            <ArrowRight size={14} />
           </Button>
 
           {gmbClicked && (
             <div className="rounded-md bg-zinc-850/80 border border-zinc-800 p-3 text-center space-y-1 text-xs">
-              <p className="text-emerald-400 font-medium">Review link opened ✓</p>
+              <p className="text-emerald-400 font-medium flex items-center justify-center gap-1.5">
+                <CheckCircle size={14} weight="fill" />
+                <span>Review link opened</span>
+              </p>
               <p className="text-zinc-400 text-[11px]">
                 Show your posted review to staff to receive your bonus stamp.
               </p>

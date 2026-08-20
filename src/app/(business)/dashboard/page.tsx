@@ -18,6 +18,7 @@ import Alert from '@/components/ui/Alert'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import { Icons } from '@/config/icons'
+import { Lightning } from '@phosphor-icons/react'
 import BusinessVisual from '@/components/branding/BusinessVisual'
 import { PendingView, SuspendedView, RejectedView, ExpiredView } from '@/components/business/LifecycleViews'
 import { getBusinessAccessState } from '@/lib/businessState'
@@ -436,7 +437,7 @@ export default function DashboardPage() {
             <div>
               {!business.staff_pin_enabled ? (
                 <div className="bg-zinc-900/50 rounded-lg p-8 border border-zinc-800 h-full flex flex-col items-center justify-center text-center gap-2.5">
-                  <div className="text-3xl text-zinc-400">⚡</div>
+                  <Lightning size={28} weight="duotone" className="text-amber-500" />
                   <h3 className="font-semibold text-sm text-zinc-100">Auto-Refresh QR Active</h3>
                   <p className="text-xs text-zinc-400 max-w-xs">
                     Customers stamp themselves by scanning the live dynamic QR.

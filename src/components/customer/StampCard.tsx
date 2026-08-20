@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils'
 import type { MilestoneWithStatus, RewardResult } from '@/types'
 import BusinessVisual from '@/components/branding/BusinessVisual'
 import { resolveBrandingColors } from '@/lib/branding/palette'
+import { Trophy, LockKey, Gift, Check, X, Tag } from '@phosphor-icons/react'
+import Logo from '@/components/brand/Logo'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -40,7 +42,7 @@ function MilestoneProgressBar({ pct }: { pct: number }) {
     <div
       style={{
         height: 3,
-        background: 'var(--color-border)',
+        background: 'var(--is-border, rgba(255,255,255,0.08))',
         borderRadius: 9999,
         overflow: 'hidden',
       }}
@@ -49,7 +51,7 @@ function MilestoneProgressBar({ pct }: { pct: number }) {
         style={{
           height: '100%',
           width: `${width}%`,
-          background: 'oklch(0.55 0.12 280)',
+          background: 'var(--is-accent, #F59E0B)',
           borderRadius: 9999,
           transition: 'width 800ms ease-out',
         }}
@@ -93,100 +95,43 @@ function MilestoneBanner({
     <div
       role="status"
       aria-live="polite"
+      className="relative p-4 rounded-xl text-center mb-4 border border-amber-500/30 bg-amber-500/10 transition-all duration-300 shadow-sm"
       style={{
-        position: 'relative',
-        background: 'oklch(0.13 0.04 55)',
-        border: '1px solid oklch(0.28 0.10 55)',
-        borderRadius: 'var(--radius-lg)',
-        padding: 16,
-        textAlign: 'center',
-        marginBottom: 16,
         opacity: visible && !exiting ? 1 : 0,
         transform: exiting
           ? 'translateY(-10px)'
           : visible
           ? 'translateY(0)'
           : 'translateY(-8px)',
-        transition: exiting
-          ? 'opacity 180ms ease, transform 180ms ease'
-          : 'opacity 300ms cubic-bezier(0.32,0.72,0,1), transform 300ms cubic-bezier(0.32,0.72,0,1)',
       }}
     >
       {/* Dismiss button */}
       <button
         onClick={handleDismiss}
         aria-label="Dismiss milestone celebration"
-        style={{
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: 'var(--color-text-muted)',
-          fontSize: 16,
-          lineHeight: 1,
-          minWidth: 28,
-          minHeight: 28,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 4,
-        }}
+        className="absolute top-2.5 right-2.5 text-zinc-400 hover:text-zinc-200 cursor-pointer p-1 rounded"
       >
-        ✕
+        <X size={14} />
       </button>
 
-      {/* Trophy — scale-in from animations.css */}
-      <div
-        className="scale-in"
-        style={{ fontSize: 32, lineHeight: 1, marginBottom: 10 }}
-        aria-hidden="true"
-      >
-        🏆
+      {/* Trophy icon */}
+      <div className="flex justify-center mb-2 text-amber-400" aria-hidden="true">
+        <Trophy size={28} weight="duotone" />
       </div>
 
       {/* Badge name */}
-      <p
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 22,
-          color: 'var(--color-gold)',
-          lineHeight: 1.1,
-          marginBottom: 6,
-          opacity: 0,
-          transform: 'translateY(8px)',
-          animation: 'fadeUp 300ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) 100ms forwards',
-        }}
-      >
-        {badge} UNLOCKED!
+      <p className="font-semibold text-base text-amber-400 tracking-tight mb-1">
+        {badge} Milestone Unlocked!
       </p>
 
       {/* Reward text */}
-      <p
-        style={{
-          fontSize: 14,
-          color: 'var(--color-text)',
-          marginBottom: 4,
-          opacity: 0,
-          transform: 'translateY(8px)',
-          animation: 'fadeUp 300ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) 200ms forwards',
-        }}
-      >
+      <p className="text-xs text-zinc-100 font-medium mb-1">
         {milestoneReward}
       </p>
 
       {/* Instruction */}
-      <p
-        style={{
-          fontSize: 12,
-          color: 'var(--color-text-muted)',
-          opacity: 0,
-          transform: 'translateY(8px)',
-          animation: 'fadeUp 300ms var(--ease-out, cubic-bezier(0.23,1,0.32,1)) 300ms forwards',
-        }}
-      >
-        Show this to staff to claim
+      <p className="text-[11px] text-zinc-400">
+        Show this to staff to claim your milestone reward
       </p>
     </div>
   )
@@ -215,50 +160,27 @@ function DeferredNotification({
   }
 
   const msg = rewardResult.deferred_milestone
-    ? `🏆 ${rewardResult.deferred_milestone.badge} milestone unlocks on your next visit!`
-    : '🔖 Stamp card completes on your next visit!'
+    ? `${rewardResult.deferred_milestone.badge} milestone unlocks on your next visit!`
+    : 'Stamp card completes on your next visit!'
 
   return (
     <div
       role="status"
       aria-live="polite"
+      className="flex items-center gap-2 p-2.5 rounded-md border border-amber-500/20 bg-amber-500/10 text-xs text-amber-300 transition-all duration-200"
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        background: 'oklch(0.15 0.04 55)',
-        border: '1px solid oklch(0.28 0.08 55)',
-        borderRadius: 'var(--radius-md)',
-        padding: '10px 14px',
-        fontSize: 13,
-        color: 'oklch(0.72 0.12 55)',
         opacity: visible && !exiting ? 1 : 0,
-        transform:
-          exiting ? 'translateY(-4px)' : visible ? 'translateY(0)' : 'translateY(-4px)',
-        transition: 'opacity 200ms ease, transform 200ms ease',
+        transform: exiting ? 'translateY(-4px)' : visible ? 'translateY(0)' : 'translateY(-4px)',
       }}
     >
-      <span style={{ flex: 1 }}>{msg}</span>
+      <Tag size={16} weight="duotone" className="text-amber-400 shrink-0" />
+      <span className="flex-1 text-xs">{msg}</span>
       <button
         onClick={handleDismiss}
         aria-label="Dismiss notification"
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: 'oklch(0.55 0.08 55)',
-          fontSize: 14,
-          lineHeight: 1,
-          minWidth: 28,
-          minHeight: 28,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          borderRadius: 4,
-        }}
+        className="text-amber-400/80 hover:text-amber-200 cursor-pointer p-0.5"
       >
-        ✕
+        <X size={13} />
       </button>
     </div>
   )
@@ -288,7 +210,6 @@ export default function StampCard({
   const [deferredDismissed, setDeferredDismissed] = useState(false)
   const prevStamps = useRef(cardStamps)
 
-  // Existing stamp animation logic — unchanged
   useEffect(() => {
     const prev = prevStamps.current
     prevStamps.current = cardStamps
@@ -335,12 +256,17 @@ export default function StampCard({
   const primaryBrandColor = resolved.primary_color
   const textOnPrimaryBrandColor = resolved.text_on_primary
 
+  const visitsRemaining = Math.max(0, stampsRequired - cardStamps)
+
   return (
     <div
-      className="rounded-2xl p-5 border"
-      style={{ background: cardBgColor, borderColor: 'var(--color-border)' }}
+      className={cn(
+        'rounded-xl p-5 border transition-all duration-300 shadow-sm',
+        redeemable && 'is-reward-glow'
+      )}
+      style={{ background: cardBgColor, borderColor: resolved.empty_stamp_border_color }}
     >
-      {/* ── Milestone celebration banner — ABOVE stamp dots ── */}
+      {/* ── Milestone celebration banner ── */}
       {activeMilestoneBanner && (
         <MilestoneBanner
           rewardResult={activeMilestoneBanner}
@@ -348,30 +274,38 @@ export default function StampCard({
         />
       )}
 
-      {/* ── Header ── */}
-      <div className="flex items-center gap-3 mb-5">
+      {/* ── Header: Merchant Identity First ── */}
+      <div className="flex items-center gap-3.5 mb-5">
         <BusinessVisual
           logoUrl={activeBranding?.logo_url}
           emoji={businessEmoji}
           name={businessName}
-          className="text-3xl"
+          className="text-3xl shrink-0"
         />
-        <div>
+        <div className="flex-1 min-w-0">
           <h3
-            className="font-bold text-lg leading-tight"
+            className="font-semibold text-base leading-tight truncate"
             style={{ color: resolved.card_text_color }}
           >
             {businessName}
           </h3>
-          <p className="text-xs" style={{ color: resolved.card_muted_text_color }}>
-            Collect {stampsRequired} stamps → {reward}
+          <p className="text-xs mt-0.5 truncate" style={{ color: resolved.card_muted_text_color }}>
+            {reward}
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-xs font-mono font-semibold" style={{ color: primaryBrandColor }}>
+            {cardStamps}/{stampsRequired}
+          </p>
+          <p className="text-[10px]" style={{ color: resolved.card_muted_text_color }}>
+            {visitsRemaining === 0 ? 'Complete' : `${visitsRemaining} to reward`}
           </p>
         </div>
       </div>
 
-      {/* ── Stamp dot grid ── */}
+      {/* ── Stamp Grid: Signature Punch Trail ── */}
       <div
-        className="grid gap-2"
+        className="grid gap-2.5 my-4"
         style={{ gridTemplateColumns: `repeat(${Math.min(5, stampsRequired)}, 1fr)` }}
         aria-label={`${cardStamps} of ${stampsRequired} stamps collected`}
         role="img"
@@ -386,8 +320,8 @@ export default function StampCard({
             <div key={i} className="relative aspect-square flex items-center justify-center">
               <div
                 className={cn(
-                  'w-full h-full rounded-full flex items-center justify-center text-sm font-bold',
-                  isNew && 'stamp-dot-fill',
+                  'w-full h-full rounded-full flex items-center justify-center text-xs font-semibold transition-transform duration-200',
+                  isNew && 'stamp-dot-fill scale-105',
                   isPulsing && 'stamp-dot-pulse',
                 )}
                 style={
@@ -395,20 +329,24 @@ export default function StampCard({
                     ? {
                         background: primaryBrandColor,
                         color: textOnPrimaryBrandColor,
-                        boxShadow: `0 2px 8px ${isBrandingEnabled ? primaryBrandColor + '40' : 'oklch(0.72 0.18 55 / 0.25)'}`,
-                        minWidth: 48,
-                        minHeight: 48,
+                        boxShadow: `0 2px 10px ${isBrandingEnabled ? primaryBrandColor + '40' : 'rgba(245, 158, 11, 0.25)'}`,
+                        minWidth: 44,
+                        minHeight: 44,
                       }
                     : {
                         background: resolved.empty_stamp_color,
                         border: `2px solid ${resolved.empty_stamp_border_color}`,
                         color: resolved.card_muted_text_color,
-                        minWidth: 48,
-                        minHeight: 48,
+                        minWidth: 44,
+                        minHeight: 44,
                       }
                 }
               >
-                {filled ? '✓' : ''}
+                {filled ? (
+                  <Check size={16} weight="bold" />
+                ) : (
+                  <span className="text-[10px] opacity-40 font-mono">{i + 1}</span>
+                )}
               </div>
 
               {isRippling && (
@@ -422,13 +360,13 @@ export default function StampCard({
         })}
       </div>
 
-      {/* ── Footer ── */}
-      <div className="flex items-center justify-between mt-4">
+      {/* ── Progress statement ── */}
+      <div className="flex items-center justify-between mt-3 text-xs">
         <span
-          className="text-sm font-medium count-up"
+          className="font-medium font-mono text-[11px]"
           style={{ color: resolved.card_muted_text_color }}
         >
-          {cardStamps}/{stampsRequired} stamps
+          {cardStamps} of {stampsRequired} stamps collected
           {totalVisits !== undefined && (
             <span style={{ color: resolved.card_muted_text_color + 'cc' }}>
               {' '}· {totalVisits} total visits
@@ -441,14 +379,15 @@ export default function StampCard({
       {showClaim && onClaim && (
         <button
           onClick={onClaim}
-          className="btn btn-primary claim-btn-enter glow-pulse mt-4 w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl text-base"
-          style={{ background: primaryBrandColor, color: textOnPrimaryBrandColor, minHeight: 48 }}
+          className="claim-btn-enter glow-pulse mt-4 w-full flex items-center justify-center gap-2 font-semibold py-2.5 px-4 rounded-lg text-sm transition-all hover:brightness-110 active:scale-[0.99] cursor-pointer"
+          style={{ background: primaryBrandColor, color: textOnPrimaryBrandColor, minHeight: 44 }}
         >
-          🎁 CLAIM REWARD
+          <Gift size={18} weight="fill" />
+          <span>Claim {reward}</span>
         </button>
       )}
 
-      {/* ── Deferred reward notification — below stamps, above milestones ── */}
+      {/* ── Deferred notification ── */}
       {showDeferred && (
         <div className="mt-3">
           <DeferredNotification
@@ -460,27 +399,19 @@ export default function StampCard({
 
       {/* ── Milestones section ── */}
       {sortedMilestones.length > 0 && (
-        <div className="mt-4">
-          {/* Divider */}
+        <div className="mt-5">
           <div
-            style={{ height: 1, background: 'var(--color-border)', marginBottom: 12 }}
+            style={{ height: 1, background: resolved.empty_stamp_border_color, marginBottom: 12 }}
           />
 
-          {/* Section label */}
           <p
-            style={{
-              fontSize: 11,
-              letterSpacing: '0.12em',
-              color: resolved.card_muted_text_color,
-              textTransform: 'uppercase',
-              fontWeight: 600,
-              marginBottom: 10,
-            }}
+            className="text-[10px] font-semibold tracking-wider uppercase mb-2.5"
+            style={{ color: resolved.card_muted_text_color }}
           >
-            Milestones
+            Milestone Rewards
           </p>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {sortedMilestones.map(m => {
               const pct =
                 totalVisits != null
@@ -490,96 +421,61 @@ export default function StampCard({
 
               return (
                 <div key={m.id}>
-                  {/* Row */}
                   <div
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5"
+                    className="flex items-center gap-3 rounded-md px-3 py-2"
                     style={{
                       background: m.earned 
-                        ? (isBrandingEnabled && resolved.primary_color ? resolved.primary_color + '1A' : 'oklch(0.13 0.03 55)') 
+                        ? (isBrandingEnabled && resolved.primary_color ? resolved.primary_color + '1A' : 'rgba(245, 158, 11, 0.10)') 
                         : 'transparent',
                     }}
                   >
-                    {/* Icon */}
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        fontSize: 20,
-                        lineHeight: 1,
-                        flexShrink: 0,
-                        filter: m.earned
-                          ? `drop-shadow(0 0 6px ${primaryBrandColor + '80'})`
-                          : undefined,
-                      }}
-                    >
-                      {m.earned ? '🏆' : '🔒'}
-                    </span>
+                    <div className="shrink-0">
+                      {m.earned ? (
+                        <Trophy size={18} weight="duotone" className="text-amber-400" />
+                      ) : (
+                        <LockKey size={18} className="text-zinc-500" />
+                      )}
+                    </div>
 
-                    {/* Badge + reward */}
                     <div className="flex-1 min-w-0">
                       <p
+                        className="text-xs font-medium truncate"
                         style={{
-                          fontFamily: 'var(--font-display)',
-                          fontSize: 15,
-                          lineHeight: 1.2,
-                          letterSpacing: '0.02em',
-                          color: m.earned
-                            ? primaryBrandColor
-                            : resolved.card_muted_text_color,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                          color: m.earned ? primaryBrandColor : resolved.card_muted_text_color,
                         }}
                       >
                         {m.badge}
                       </p>
                       <p
-                        style={{
-                          fontSize: 13,
-                          marginTop: 2,
-                          color: m.earned
-                            ? resolved.card_muted_text_color
-                            : resolved.card_muted_text_color + 'bb',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
+                        className="text-[11px] truncate mt-0.5"
+                        style={{ color: resolved.card_muted_text_color + 'bb' }}
                       >
                         {m.reward}
                       </p>
                     </div>
 
-                    {/* Status */}
                     {m.earned ? (
                       <span
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0"
                         style={{
-                          fontSize: 11,
-                          fontWeight: 600,
                           color: primaryBrandColor,
-                          background: isBrandingEnabled ? primaryBrandColor + '1A' : 'var(--color-gold-bg)',
-                          border: `1px solid ${isBrandingEnabled ? primaryBrandColor + '33' : 'var(--color-gold-border)'}`,
-                          borderRadius: 9999,
-                          padding: '3px 10px',
-                          flexShrink: 0,
-                          whiteSpace: 'nowrap',
+                          background: isBrandingEnabled ? primaryBrandColor + '1A' : 'rgba(245, 158, 11, 0.15)',
+                          border: `1px solid ${isBrandingEnabled ? primaryBrandColor + '33' : 'rgba(245, 158, 11, 0.3)'}`,
                         }}
                       >
-                        Earned ✓
+                        <Check size={11} weight="bold" />
+                        <span>Earned</span>
                       </span>
                     ) : (
                       <span
-                        style={{
-                          fontSize: 12,
-                          color: resolved.card_muted_text_color + 'bb',
-                          flexShrink: 0,
-                          whiteSpace: 'nowrap',
-                        }}
+                        className="text-[11px] shrink-0 font-mono"
+                        style={{ color: resolved.card_muted_text_color + 'bb' }}
                       >
                         {visitsAway} visit{visitsAway !== 1 ? 's' : ''} away
                       </span>
                     )}
                   </div>
 
-                  {/* Progress bar — locked milestones only */}
                   {!m.earned && (
                     <div className="px-3 mt-1">
                       <MilestoneProgressBar pct={pct} />
@@ -592,7 +488,7 @@ export default function StampCard({
         </div>
       )}
 
-      {/* ── Visual Attribution ── */}
+      {/* ── Subtle Platform Attribution ── */}
       <div className="mt-6 pt-4 border-t border-zinc-800/60 flex justify-center text-center">
         <p className="text-[10px] text-zinc-500 font-medium tracking-wide uppercase">
           Powered by{' '}

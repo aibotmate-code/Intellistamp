@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import { useState, startTransition } from 'react'
+import { ArrowRight, Storefront } from '@phosphor-icons/react'
 
 interface HomeAuthMenuProps {
   email: string
@@ -36,7 +37,9 @@ export default function HomeAuthMenu({ email }: HomeAuthMenuProps) {
         href="/dashboard"
         className="flex items-center justify-center gap-2 w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 px-4 rounded-md text-sm hover:bg-zinc-200 transition-colors shadow-xs"
       >
-        Go to Business Dashboard →
+        <Storefront size={16} weight="bold" />
+        <span>Go to Business Dashboard</span>
+        <ArrowRight size={14} weight="bold" />
       </Link>
       
       <div className="pt-1 text-center">

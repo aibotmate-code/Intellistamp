@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
+import Logo from '@/components/brand/Logo'
 
 const CATEGORIES = ['Cafe', 'Salon', 'Gym', 'Restaurant', 'Jewellery', 'Spa', 'Bakery', 'Other'] as const
 const EMOJIS = ['☕', '✂️', '💪', '🍽️', '💎', '🧖', '🥐', '🏪', '🌸', '🎯', '⭐', '🏆']
@@ -191,7 +192,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="relative text-center mb-6">
+        <div className="relative text-center mb-6 flex flex-col items-center">
           <button 
             onClick={() => {
               createBrowserClient(
@@ -203,9 +204,7 @@ export default function OnboardingPage() {
           >
             Sign Out
           </button>
-          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
-            🏷️
-          </div>
+          <Logo size="md" className="mb-3" />
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100">IntelliStamp Setup</h1>
           <p className="text-xs text-zinc-400 mt-1">Configure your digital loyalty card in 5 simple steps</p>
         </div>

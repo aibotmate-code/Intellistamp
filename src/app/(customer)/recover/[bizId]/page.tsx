@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
+import { MagnifyingGlass } from '@phosphor-icons/react'
 
 type RecoverState = 'form' | 'not_found'
 
@@ -59,20 +60,23 @@ export default function RecoverPage({ params }: PageParams) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100">
+    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100 is-dot-grid">
       <div className="w-full max-w-sm">
-        <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-200">Recover Loyalty Card</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Enter the mobile number you used to enroll to recover your stamp progress.
-            </p>
+        <div className="bg-zinc-900/60 rounded-xl p-6 border border-zinc-800 space-y-4 shadow-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-amber-500">
+              <MagnifyingGlass size={18} weight="duotone" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-100">Recover Loyalty Card</h2>
+              <p className="text-[11px] text-zinc-400">Enter your registered mobile number</p>
+            </div>
           </div>
 
           {state === 'form' && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-1">
               <Input
-                label="Registered Mobile Number"
+                label="Mobile Number"
                 placeholder="9876543210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}

@@ -8,6 +8,8 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
 import Spinner from '@/components/ui/Spinner'
+import Logo from '@/components/brand/Logo'
+import { ArrowLeft, CreditCard } from '@phosphor-icons/react'
 
 function LoginInner() {
   const router = useRouter()
@@ -71,20 +73,18 @@ function LoginInner() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100 is-dot-grid">
       <div className="w-full max-w-sm">
 
         {/* Header */}
-        <div className="text-center mb-6">
-          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
-            🏷️
-          </div>
+        <div className="text-center mb-6 flex flex-col items-center">
+          <Logo size="md" className="mb-3" />
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Business Login</h1>
           <p className="text-xs text-zinc-400 mt-1">Sign in to manage your loyalty program</p>
         </div>
 
         {/* Form card */}
-        <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
+        <div className="bg-zinc-900/60 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs backdrop-blur-xs">
           
           {urlError && (
             <div role="alert" className="bg-amber-500/10 border border-amber-500/20 rounded-md p-3.5 flex flex-col gap-2.5">
@@ -138,7 +138,7 @@ function LoginInner() {
             <div className="flex justify-end mt-1.5">
               <Link
                 href="/forgot-password"
-                className="text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
+                className="text-[11px] text-zinc-400 hover:text-amber-400 transition-colors"
               >
                 Forgot password?
               </Link>
@@ -170,15 +170,17 @@ function LoginInner() {
         <nav aria-label="Other options" className="mt-6 flex flex-col items-center gap-2">
           <Link
             href="/cards"
-            className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors font-medium"
+            className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors font-medium inline-flex items-center gap-1.5"
           >
-            View Customer Loyalty Cards
+            <CreditCard size={14} weight="duotone" className="text-amber-500" />
+            <span>View Customer Loyalty Cards</span>
           </Link>
           <Link
             href="/"
-            className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors inline-flex items-center gap-1"
           >
-            ← Back to Home
+            <ArrowLeft size={12} />
+            <span>Back to Home</span>
           </Link>
         </nav>
 
