@@ -358,18 +358,18 @@ export default function ScanPage() {
         )}
 
         {flowState === 'success' && business && cardState && (
-          <div className="space-y-4">
-            {/* Stamp Earned Header Banner */}
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center space-y-1 shadow-xs">
-              <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto mb-1">
-                <CheckCircle size={20} weight="fill" />
+          <div className="space-y-3">
+            {/* Compact Stamp Earned Pill */}
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 flex items-center justify-between text-xs shadow-xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle size={16} weight="fill" className="text-emerald-400 shrink-0" />
+                <span className="font-semibold text-emerald-300">Stamp added</span>
               </div>
-              <h2 className="text-base font-semibold text-emerald-300 tracking-tight">Stamp added</h2>
-              <p className="text-xs text-zinc-300">
+              <span className="text-zinc-400 text-[11px]">
                 {visitsRemaining === 0
-                  ? 'Your reward is unlocked!'
-                  : `${visitsRemaining} ${visitsRemaining === 1 ? 'visit' : 'visits'} to your reward`}
-              </p>
+                  ? 'Reward unlocked!'
+                  : `${visitsRemaining} ${visitsRemaining === 1 ? 'visit' : 'visits'} to reward`}
+              </span>
             </div>
 
             <StampCard

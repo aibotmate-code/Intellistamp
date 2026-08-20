@@ -251,7 +251,7 @@ export default function CardsPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <p
-                        className="font-semibold text-sm truncate"
+                        className="font-semibold text-sm leading-snug break-words"
                         style={{ color: resolved.card_text_color }}
                       >
                         {business.name}
@@ -261,7 +261,7 @@ export default function CardsPage() {
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-base font-mono font-semibold" style={{ color: resolved.primary_color }}>
+                      <p className="text-sm font-mono font-semibold" style={{ color: resolved.primary_color }}>
                         {card_stamps}/{business.stamps_required}
                       </p>
                       <p className="text-[10px]" style={{ color: resolved.card_muted_text_color }}>

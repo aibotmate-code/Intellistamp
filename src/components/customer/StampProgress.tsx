@@ -21,7 +21,7 @@ export interface StampProgressProps {
 
 /**
  * StampProgress
- * Reusable, tactile punch-card progress component supporting custom merchant palettes,
+ * Reusable, compact tactile punch-card progress component supporting custom merchant palettes,
  * responsive grid layouts, dynamic thresholds, and subtle stamp-fill animations.
  */
 export default function StampProgress({
@@ -38,12 +38,10 @@ export default function StampProgress({
   className = '',
   size = 'md',
 }: StampProgressProps) {
-  // Determine optimal column layout based on stamp count
+  // Thresholds <= 6 fit in a single row
   const cols =
-    stampsRequired <= 4
+    stampsRequired <= 6
       ? stampsRequired
-      : stampsRequired <= 6
-      ? 3
       : stampsRequired <= 8
       ? 4
       : stampsRequired <= 10
@@ -52,16 +50,16 @@ export default function StampProgress({
 
   const sizeClasses =
     size === 'sm'
-      ? 'min-w-[36px] min-h-[36px] text-xs'
+      ? 'max-w-[32px] max-h-[32px] text-[10px]'
       : size === 'lg'
-      ? 'min-w-[52px] min-h-[52px] text-sm'
-      : 'min-w-[44px] min-h-[44px] text-xs'
+      ? 'max-w-[48px] max-h-[48px] text-xs'
+      : 'max-w-[40px] max-h-[40px] text-xs'
 
-  const iconSize = size === 'sm' ? 14 : size === 'lg' ? 20 : 16
+  const iconSize = size === 'sm' ? 12 : size === 'lg' ? 16 : 14
 
   return (
     <div
-      className={cn('grid gap-2.5 my-4 select-none', className)}
+      className={cn('grid gap-2 my-2 select-none justify-center', className)}
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
       aria-label={`${cardStamps} of ${stampsRequired} stamps collected`}
       role="img"
@@ -73,10 +71,10 @@ export default function StampProgress({
         const isCurrentlyPulsing = isPulsing && filled
 
         return (
-          <div key={i} className="relative aspect-square flex items-center justify-center">
+          <div key={i} className="relative aspect-square flex items-center justify-center w-full max-w-[44px] max-h-[44px] mx-auto">
             <div
               className={cn(
-                'w-full h-full rounded-full flex items-center justify-center font-semibold transition-all duration-300',
+                'w-full h-full rounded-full flex items-center justify-center font-semibold transition-all duration-200 select-none',
                 sizeClasses,
                 isNew && 'stamp-dot-fill scale-105',
                 isCurrentlyPulsing && 'stamp-dot-pulse'
@@ -86,7 +84,7 @@ export default function StampProgress({
                   ? {
                       background: primaryColor,
                       color: textOnPrimaryColor,
-                      boxShadow: `0 2px 10px ${primaryColor}40`,
+                      boxShadow: `0 1px 6px ${primaryColor}30`,
                     }
                   : {
                       background: emptyStampColor,
@@ -98,7 +96,7 @@ export default function StampProgress({
               {filled ? (
                 <Check size={iconSize} weight="bold" />
               ) : (
-                <span className="text-[10px] opacity-45 font-mono tracking-tight">{i + 1}</span>
+                <span className="text-[10px] opacity-40 font-mono tracking-tight">{i + 1}</span>
               )}
             </div>
 
