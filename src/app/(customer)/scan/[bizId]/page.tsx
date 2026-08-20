@@ -53,8 +53,13 @@ export default function ScanPage() {
     startTransition(() => {
       if (stored) {
         try {
-          setCustomer(JSON.parse(stored))
-          setFlowState('stamping')
+          const parsed = JSON.parse(stored)
+          if (parsed && parsed.id) {
+            setCustomer(parsed)
+            setFlowState('stamping')
+            return
+          }
+          setFlowState('login')
         } catch {
           setFlowState('login')
         }
@@ -127,32 +132,78 @@ export default function ScanPage() {
       return
     }
     setLoadingIdentify(true)
+
+    let res: Response
     try {
-      const res = await fetch('/api/customer/identify', {
+      res = await fetch('/api/customer/identify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: digits, business_id: bizId }),
+        body: JSON.stringify({
+          phone: digits,
+          business_id: bizId,
+          ...(qrToken ? { qr_token: qrToken } : {}),
+        }),
       })
+    } catch {
+      setPhoneError('Network error. Please try again.')
+      setLoadingIdentify(false)
+      return
+    }
+
+    try {
       const data = await res.json()
       if (!res.ok) {
         setPhoneError(data.error || 'Failed to identify customer')
         return
       }
-      if (data.is_new) {
+
+      // Case 1: New customer needing name/onboarding
+      if (data.isNew || data.needsName) {
         setFlowState('name')
         return
       }
-      const c = data.customer
-      localStorage.setItem('customer_session', JSON.stringify({
-        id: c.id,
-        phone: c.phone,
-        customer_token: c.customer_token,
-        name: c.name,
-      }))
-      setCustomer(c)
-      setFlowState('stamping')
+
+      // Case 2: Returning customer who scanned valid QR and is ready to stamp
+      if (data.readyToStamp) {
+        const sessionData = {
+          id: data.customer_id || data.customer?.id,
+          phone: digits,
+          name: data.name || data.customer?.name || '',
+          ...(data.customer?.customer_token ? { customer_token: data.customer.customer_token } : {}),
+        }
+        if (sessionData.id) {
+          localStorage.setItem('customer_session', JSON.stringify(sessionData))
+          setCustomer(sessionData)
+          setFlowState('stamping')
+        } else {
+          setPhoneError('Something went wrong. Please try again.')
+        }
+        return
+      }
+
+      // Case 3: Returning customer without valid QR (cannot auto recover)
+      if (data.message) {
+        setPhoneError(data.message)
+        return
+      }
+
+      // Fallback if data.customer exists
+      if (data.customer && data.customer.id) {
+        const c = data.customer
+        localStorage.setItem('customer_session', JSON.stringify({
+          id: c.id,
+          phone: c.phone || digits,
+          customer_token: c.customer_token,
+          name: c.name || '',
+        }))
+        setCustomer(c)
+        setFlowState('stamping')
+        return
+      }
+
+      setPhoneError('Something went wrong. Please try again.')
     } catch {
-      setPhoneError('Network error. Please try again.')
+      setPhoneError('Something went wrong. Please try again.')
     } finally {
       setLoadingIdentify(false)
     }
@@ -165,29 +216,54 @@ export default function ScanPage() {
       return
     }
     setLoadingIdentify(true)
+
+    const digits = phone.replace(/\D/g, '').replace(/^91/, '')
+    let res: Response
     try {
-      const digits = phone.replace(/\D/g, '').replace(/^91/, '')
-      const res = await fetch('/api/customer/identify', {
+      res = await fetch('/api/customer/identify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: digits, name: name.trim(), business_id: bizId }),
+        body: JSON.stringify({
+          phone: digits,
+          name: name.trim(),
+          business_id: bizId,
+          ...(qrToken ? { qr_token: qrToken } : {}),
+        }),
       })
+    } catch {
+      setNameError('Network error. Please try again.')
+      setLoadingIdentify(false)
+      return
+    }
+
+    try {
       const data = await res.json()
       if (!res.ok) {
         setNameError(data.error || 'Failed to create customer account')
         return
       }
-      const c = data.customer
-      localStorage.setItem('customer_session', JSON.stringify({
-        id: c.id,
-        phone: c.phone,
-        customer_token: c.customer_token,
-        name: c.name,
-      }))
-      setCustomer(c)
-      setFlowState('stamping')
+
+      const c = data.customer || {
+        id: data.customer_id,
+        phone: digits,
+        name: name.trim(),
+        customer_token: data.customer_token,
+      }
+
+      if (c && c.id) {
+        localStorage.setItem('customer_session', JSON.stringify({
+          id: c.id,
+          phone: c.phone || digits,
+          customer_token: c.customer_token,
+          name: c.name || name.trim(),
+        }))
+        setCustomer(c)
+        setFlowState('stamping')
+      } else {
+        setNameError('Something went wrong. Please try again.')
+      }
     } catch {
-      setNameError('Network error. Please try again.')
+      setNameError('Something went wrong. Please try again.')
     } finally {
       setLoadingIdentify(false)
     }
