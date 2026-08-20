@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from 'react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -85,14 +87,14 @@ export default function SocialLinksSettings({ business }: { business: Business }
   }
 
   if (loading) {
-    return <div className="p-6 text-center text-zinc-500 animate-pulse">Loading settings...</div>
+    return <div className="p-6 text-center text-zinc-500 text-xs animate-pulse">Loading settings...</div>
   }
 
   return (
-    <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
-      <div className="mb-6">
-        <h3 className="font-bold text-white text-lg">Social & Contact Links</h3>
-        <p className="text-sm text-zinc-400 mt-1">
+    <div className="bg-zinc-900/50 rounded-lg p-5 border border-zinc-800 shadow-xs">
+      <div className="mb-5">
+        <h3 className="font-semibold text-zinc-100 text-sm">Social &amp; Contact Links</h3>
+        <p className="text-xs text-zinc-400 mt-0.5">
           Add your business social profiles. These will appear on the customer loyalty card. Leave blank to hide.
         </p>
       </div>
@@ -102,8 +104,8 @@ export default function SocialLinksSettings({ business }: { business: Business }
         {success && <Alert type="success" message={success} />}
 
         <div className="grid sm:grid-cols-2 gap-4">
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-zinc-300 border-b border-zinc-800 pb-2">Social Profiles</h4>
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold text-zinc-300 border-b border-zinc-800 pb-1.5">Social Profiles</h4>
             <Input
               name="instagram_url"
               label="Instagram Profile URL"
@@ -134,8 +136,8 @@ export default function SocialLinksSettings({ business }: { business: Business }
             />
           </div>
 
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-zinc-300 border-b border-zinc-800 pb-2">Direct Contact</h4>
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold text-zinc-300 border-b border-zinc-800 pb-1.5">Direct Contact</h4>
             <Input
               name="google_review_url"
               label="Google Review URL"
@@ -160,8 +162,8 @@ export default function SocialLinksSettings({ business }: { business: Business }
           </div>
         </div>
 
-        <div className="pt-4 flex justify-end">
-          <Button type="submit" loading={saving}>Save Links</Button>
+        <div className="pt-2 flex justify-end">
+          <Button type="submit" size="sm" loading={saving}>Save Links</Button>
         </div>
       </form>
     </div>

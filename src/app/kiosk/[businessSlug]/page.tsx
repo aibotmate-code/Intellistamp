@@ -3,6 +3,7 @@
 import { use, useEffect, useRef, useState } from 'react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import Spinner from '@/components/ui/Spinner'
 import type { Business } from '@/types'
 
 type KioskState = 'loading' | 'not_found' | 'pin' | 'ready' | 'stamping' | 'success' | 'cooldown' | 'error'
@@ -100,7 +101,6 @@ export default function KioskPage({ params }: PageParams) {
           : `✅ Stamp added! ${card_state.card_stamps}/${business.stamps_required} stamps`
       )
 
-      // Store customer info for potential GMB bonus
       setCurrentCustomerId(data.customer_id ?? null)
       setReviewClaimed(data.review_claimed ?? false)
       setGmbClicked(false)
@@ -135,7 +135,7 @@ export default function KioskPage({ params }: PageParams) {
         setBonusCardStamps(data.card_state?.card_stamps ?? null)
       }
     } catch {
-      // silent — bonus stamp failure shouldn't block UI
+      // silent
     } finally {
       setBonusLoading(false)
     }
@@ -177,19 +177,19 @@ export default function KioskPage({ params }: PageParams) {
 
   if (kioskState === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-bg)' }}>
-        <div className="text-4xl animate-pulse" style={{ color: 'var(--color-gold)' }}>●</div>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-100">
+        <Spinner size="md" />
       </div>
     )
   }
 
   if (kioskState === 'not_found') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'var(--color-bg)' }}>
-        <div className="text-center">
-          <p className="text-5xl mb-4">🔍</p>
-          <p className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Business not found</p>
-          <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>Check the URL or contact support.</p>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6 text-zinc-100">
+        <div className="text-center max-w-sm">
+          <p className="text-4xl mb-3">🔍</p>
+          <p className="text-lg font-semibold text-zinc-100">Business not found</p>
+          <p className="text-xs text-zinc-400 mt-1">Check the URL or contact the business manager.</p>
         </div>
       </div>
     )
@@ -208,24 +208,21 @@ export default function KioskPage({ params }: PageParams) {
         ._kiosk-shake { animation: _ksk-shake 400ms ease-in-out; }
       `}</style>
 
-      <div
-        className="min-h-screen flex flex-col items-center justify-center p-6 page-enter"
-        style={{ background: 'var(--color-bg)' }}
-      >
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-zinc-100">
         <div className="w-full max-w-sm space-y-6">
           {/* Business header */}
           <div className="text-center">
-            <div className="text-5xl mb-2">{business?.emoji}</div>
-            <h1 className="text-2xl text-white" style={{ fontFamily: 'var(--font-display)', letterSpacing: '0.04em' }}>
+            <div className="text-4xl mb-2">{business?.emoji}</div>
+            <h1 className="text-xl font-semibold tracking-tight text-zinc-100">
               {business?.name}
             </h1>
-            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>KIOSK MODE</p>
+            <p className="text-[11px] text-zinc-400 mt-0.5 tracking-wider uppercase">Counter Kiosk</p>
           </div>
 
           {/* PIN entry */}
           {kioskState === 'pin' && (
-            <div className="rounded-2xl p-6 border space-y-4" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-              <p className="font-semibold text-center" style={{ color: 'var(--color-text)' }}>Staff PIN required</p>
+            <div className="rounded-lg p-6 border border-zinc-800 bg-zinc-900/50 space-y-4 shadow-xs">
+              <p className="font-semibold text-sm text-center text-zinc-200">Staff PIN Required</p>
               <Input
                 type="password"
                 placeholder="••••"
@@ -235,29 +232,31 @@ export default function KioskPage({ params }: PageParams) {
                 error={pinError}
                 inputMode="numeric"
                 maxLength={4}
-                className="text-center text-2xl tracking-widest"
+                className="text-center text-xl tracking-widest"
                 autoFocus
               />
-              <Button ref={pinBtnRef} onClick={handlePinSubmit} className="w-full">Unlock Kiosk →</Button>
+              <Button ref={pinBtnRef} onClick={handlePinSubmit} size="sm" className="w-full">
+                Unlock Kiosk →
+              </Button>
             </div>
           )}
 
           {/* Stamp by phone */}
           {kioskState === 'ready' && (
-            <div className="rounded-2xl p-6 border space-y-4" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+            <div className="rounded-lg p-6 border border-zinc-800 bg-zinc-900/50 space-y-4 shadow-xs">
               <div className="text-center space-y-1">
-                <div className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full" style={{ background: 'var(--color-elevated)', color: 'var(--color-green)' }}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />
-                  Kiosk unlocked
+                <div className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                  Kiosk Unlocked
                 </div>
-                <p className="font-bold text-lg" style={{ color: 'var(--color-text)' }}>Enter customer phone</p>
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                <p className="font-semibold text-base text-zinc-100 pt-1">Enter Customer Phone</p>
+                <p className="text-xs text-zinc-400">
                   Free {business?.reward} after {business?.stamps_required} stamps
                 </p>
               </div>
               <Input
                 ref={phoneInputRef}
-                label="Customer phone number"
+                label="Customer mobile number"
                 placeholder="9876543210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
@@ -266,13 +265,14 @@ export default function KioskPage({ params }: PageParams) {
                 inputMode="numeric"
                 maxLength={10}
               />
-              <Button onClick={handleStamp} className="w-full">Issue Stamp →</Button>
+              <Button onClick={handleStamp} size="sm" className="w-full">
+                Issue Stamp →
+              </Button>
               <button
                 onClick={() => { setPin(''); setKioskState('pin') }}
-                className="w-full text-xs text-center py-1 transition-colors"
-                style={{ color: 'var(--color-text-dim)' }}
+                className="w-full text-xs text-center py-1 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
               >
-                Lock kiosk
+                Lock Kiosk
               </button>
             </div>
           )}
@@ -280,44 +280,39 @@ export default function KioskPage({ params }: PageParams) {
           {/* Stamping spinner */}
           {kioskState === 'stamping' && (
             <div className="text-center py-8 space-y-3">
-              <div className="text-4xl animate-spin inline-block" style={{ color: 'var(--color-gold)' }}>◌</div>
-              <p style={{ color: 'var(--color-text-muted)' }}>Issuing stamp…</p>
+              <Spinner size="lg" className="mx-auto" />
+              <p className="text-xs text-zinc-400">Issuing stamp…</p>
             </div>
           )}
 
           {/* Success */}
           {kioskState === 'success' && (
             <div className="space-y-4">
-              <div className="rounded-2xl p-6 border text-center space-y-4 scale-in" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-                <p className="text-4xl">🎉</p>
-                <p className="font-bold text-lg" style={{ color: 'var(--color-text)' }}>
+              <div className="rounded-lg p-6 border border-zinc-800 bg-zinc-900/50 text-center space-y-4 shadow-xs">
+                <p className="text-3xl">🎉</p>
+                <p className="font-semibold text-sm text-zinc-100">
                   {bonusDone
                     ? `🎁 Bonus stamp added! ${bonusCardStamps !== null ? `${bonusCardStamps}/${business?.stamps_required} stamps` : ''}`
                     : resultMsg}
                 </p>
-                {!bonusDone && (
-                  <Button onClick={resetForNext} className="w-full">Next Customer →</Button>
-                )}
-                {bonusDone && (
-                  <Button onClick={resetForNext} className="w-full">Next Customer →</Button>
-                )}
+                <Button onClick={resetForNext} size="sm" className="w-full">Next Customer →</Button>
               </div>
 
               {/* GMB review prompt */}
               {showGmbPrompt && (
-                <div className="rounded-2xl p-5 border space-y-3" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-gold)', borderWidth: '1.5px' }}>
-                  <p className="font-bold text-center" style={{ color: 'var(--color-text)' }}>
+                <div className="rounded-lg p-5 border border-zinc-700 bg-zinc-900/60 space-y-3 shadow-xs">
+                  <p className="font-semibold text-sm text-center text-zinc-100">
                     Enjoying {business?.name}? ⭐
                   </p>
-                  <p className="text-sm text-center" style={{ color: 'var(--color-text-muted)' }}>
-                    Leave a quick Google review and get a <strong style={{ color: 'var(--color-gold)' }}>BONUS STAMP</strong> as a thank you 🎁
+                  <p className="text-xs text-center text-zinc-400 leading-relaxed">
+                    Leave a quick Google review and get a <strong className="text-zinc-200">BONUS STAMP</strong> as a thank you 🎁
                   </p>
                   {!gmbClicked ? (
-                    <Button onClick={handleGmbClick} variant="outline" className="w-full">
+                    <Button onClick={handleGmbClick} variant="outline" size="sm" className="w-full">
                       Open Google Review →
                     </Button>
                   ) : (
-                    <Button onClick={handleClaimBonus} loading={bonusLoading} className="w-full">
+                    <Button onClick={handleClaimBonus} loading={bonusLoading} size="sm" className="w-full">
                       Claim Bonus Stamp 🎁
                     </Button>
                   )}
@@ -328,22 +323,22 @@ export default function KioskPage({ params }: PageParams) {
 
           {/* Cooldown */}
           {kioskState === 'cooldown' && (
-            <div className="rounded-2xl p-6 border text-center space-y-4" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-              <p className="text-4xl">⏳</p>
-              <p className="font-bold" style={{ color: 'var(--color-text)' }}>Stamp cooldown active</p>
-              <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+            <div className="rounded-lg p-6 border border-zinc-800 bg-zinc-900/50 text-center space-y-3 shadow-xs">
+              <p className="text-3xl">⏳</p>
+              <p className="font-semibold text-sm text-zinc-100">Stamp Cooldown Active</p>
+              <p className="text-xs text-zinc-400 leading-relaxed">
                 This customer already received a stamp recently. Next stamp available in {cooldownHours}h.
               </p>
-              <Button onClick={resetForNext} variant="secondary" className="w-full">Next Customer →</Button>
+              <Button onClick={resetForNext} variant="secondary" size="sm" className="w-full">Next Customer →</Button>
             </div>
           )}
 
           {/* Error */}
           {kioskState === 'error' && (
-            <div className="rounded-2xl p-6 border text-center space-y-4" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-              <p className="text-4xl">⚠️</p>
-              <p className="font-bold" style={{ color: 'var(--color-text)' }}>{resultMsg || 'Something went wrong'}</p>
-              <Button onClick={resetForNext} variant="secondary" className="w-full">Try Again</Button>
+            <div className="rounded-lg p-6 border border-zinc-800 bg-zinc-900/50 text-center space-y-3 shadow-xs">
+              <p className="text-3xl">⚠️</p>
+              <p className="font-semibold text-sm text-zinc-100">{resultMsg || 'Something went wrong'}</p>
+              <Button onClick={resetForNext} variant="secondary" size="sm" className="w-full">Try Again</Button>
             </div>
           )}
         </div>

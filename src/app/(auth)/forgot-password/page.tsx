@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import { getAppOrigin } from '@/lib/origin'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import Alert from '@/components/ui/Alert'
 
 type FlowState = 'form' | 'sent'
 
@@ -18,7 +19,6 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async () => {
     setError('')
     if (!email.trim()) { setError('Please enter your email address'); return }
-    // Basic email format check
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError('Please enter a valid email address')
       return
@@ -31,16 +31,12 @@ export default function ForgotPasswordPage() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       )
 
-      // We intentionally call resetPasswordForEmail regardless of whether
-      // the email exists — this prevents user enumeration attacks.
       await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${getAppOrigin()}/api/auth/callback`,
       })
 
-      // Always show success — never reveal whether the email exists
       setFlow('sent')
     } catch {
-      // Surface generic errors (network etc.) but not auth-specific ones
       setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
@@ -53,24 +49,27 @@ export default function ForgotPasswordPage() {
 
   if (flow === 'sent') {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md text-center">
-          <div className="text-5xl mb-4" aria-hidden="true">📬</div>
-          <h1 className="text-2xl font-black text-white mb-3">Check your inbox</h1>
-          <p className="text-zinc-400 text-sm mb-2">
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100">
+        <div className="w-full max-w-sm text-center">
+          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
+            📬
+          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-100 mb-2">Check your inbox</h1>
+          <p className="text-zinc-400 text-xs mb-2 leading-relaxed">
             If an account exists for{' '}
             <span className="text-zinc-200 font-medium">{email}</span>,
             you&apos;ll receive a password-reset link shortly.
           </p>
-          <p className="text-zinc-500 text-xs mb-8">
+          <p className="text-zinc-500 text-[11px] mb-6">
             Didn&apos;t receive it? Check your spam folder or request another link below.
           </p>
 
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-3">
+          <div className="bg-zinc-900/50 rounded-lg p-5 border border-zinc-800 space-y-3 shadow-xs">
             <Button
               onClick={() => { setFlow('form'); setError('') }}
               className="w-full"
-              variant="ghost"
+              variant="outline"
+              size="sm"
             >
               Send another link
             </Button>
@@ -79,19 +78,13 @@ export default function ForgotPasswordPage() {
           <nav aria-label="Other options" className="mt-6 flex flex-col items-center gap-2">
             <Link
               href="/login"
-              className="text-sm text-zinc-300 hover:text-yellow-400 transition-colors font-medium"
+              className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors font-medium"
             >
               ← Back to Business Login
             </Link>
             <Link
-              href="/cards"
-              className="text-sm text-zinc-400 hover:text-yellow-400 transition-colors"
-            >
-              📱 View My Loyalty Cards
-            </Link>
-            <Link
               href="/"
-              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
             >
               ← Back to Home
             </Link>
@@ -102,20 +95,22 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100">
+      <div className="w-full max-w-sm">
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-2" aria-hidden="true">🔑</div>
-          <h1 className="text-2xl font-black text-white">Forgot Password?</h1>
-          <p className="text-zinc-400 text-sm mt-1">
-            Enter your business email and we&apos;ll send a reset link.
+        <div className="text-center mb-6">
+          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
+            🔑
+          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Forgot Password?</h1>
+          <p className="text-xs text-zinc-400 mt-1">
+            Enter your business email to receive a password reset link.
           </p>
         </div>
 
         {/* Form card */}
-        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
+        <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
           <Input
             id="forgot-email"
             label="Business Email"
@@ -127,11 +122,7 @@ export default function ForgotPasswordPage() {
             onKeyDown={handleKeyDown}
           />
 
-          {error && (
-            <p role="alert" className="text-sm text-red-400 bg-red-950/30 border border-red-800/40 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
+          {error && <Alert type="error" message={error} />}
 
           <Button
             id="forgot-submit"
@@ -139,8 +130,9 @@ export default function ForgotPasswordPage() {
             loading={loading}
             disabled={loading}
             className="w-full"
+            size="sm"
           >
-            Send Reset Link →
+            Send Reset Link
           </Button>
         </div>
 
@@ -148,19 +140,13 @@ export default function ForgotPasswordPage() {
         <nav aria-label="Other options" className="mt-6 flex flex-col items-center gap-2">
           <Link
             href="/login"
-            className="text-sm text-zinc-300 hover:text-yellow-400 transition-colors font-medium"
+            className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors font-medium"
           >
             ← Back to Business Login
           </Link>
           <Link
-            href="/cards"
-            className="text-sm text-zinc-400 hover:text-yellow-400 transition-colors"
-          >
-            📱 View My Loyalty Cards
-          </Link>
-          <Link
             href="/"
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
           >
             ← Back to Home
           </Link>

@@ -69,7 +69,6 @@ export default function AccountPage() {
     setPwdLoading(false)
     
     if (error) {
-      // Don't show raw error message, show friendly message
       setPwdError('Failed to update password. Please try logging out and back in if this persists.')
       return
     }
@@ -100,35 +99,35 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      {/* Note: GlobalTopbar is injected via layout or directly in pages, 
-          but since we're replacing the dashboard header, let's keep the account page clean 
-          and assume GlobalTopbar is added to the layout. */}
-          
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
-        
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         <div>
-          <h1 className="text-3xl font-black mb-2">My Account</h1>
-          <p className="text-zinc-400">Manage your account.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-100 mb-1">My Account</h1>
+          <p className="text-sm text-zinc-400">Manage your business profile and account security.</p>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-8">
-          
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-6 space-y-6 shadow-xs">
           <div>
-            <p className="text-sm text-zinc-500 mb-1">Signed in as</p>
-            <p className="text-lg font-bold text-white mb-3">{sessionUser.email}</p>
-            <button onClick={handleLogout} className="text-sm text-zinc-400 hover:text-white transition-colors underline underline-offset-4 decoration-zinc-700 hover:decoration-zinc-400">
+            <p className="text-xs font-medium text-zinc-400 mb-1">Signed in as</p>
+            <p className="text-base font-semibold text-zinc-100 mb-2">{sessionUser.email}</p>
+            <button
+              onClick={handleLogout}
+              className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors underline underline-offset-4 decoration-zinc-700 hover:decoration-zinc-400 cursor-pointer"
+            >
               Switch account
             </button>
           </div>
 
-          <div className="pt-6 border-t border-zinc-800">
-            <h2 className="text-lg font-bold mb-4">Security</h2>
+          <div className="pt-6 border-t border-zinc-800/80">
+            <h2 className="text-sm font-semibold text-zinc-200 mb-3">Security</h2>
             
             {pwdSuccess ? (
-               <Alert type="success" message={pwdSuccess} />
+              <Alert type="success" message={pwdSuccess} />
             ) : !showPasswordForm ? (
-              <button onClick={() => setShowPasswordForm(true)} className="text-sm text-zinc-400 hover:text-white transition-colors underline underline-offset-4 decoration-zinc-700 hover:decoration-zinc-400 flex items-center gap-1">
+              <button
+                onClick={() => setShowPasswordForm(true)}
+                className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors underline underline-offset-4 decoration-zinc-700 hover:decoration-zinc-400 flex items-center gap-1 cursor-pointer"
+              >
                 Change password &rsaquo;
               </button>
             ) : (
@@ -152,11 +151,22 @@ export default function AccountPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={pwdLoading}
                 />
-                <div className="flex items-center gap-3 pt-2">
-                  <Button type="submit" loading={pwdLoading}>
+                <div className="flex items-center gap-2.5 pt-1">
+                  <Button type="submit" size="sm" loading={pwdLoading}>
                     Save Password
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => { setShowPasswordForm(false); setPwdError(''); setNewPassword(''); setConfirmPassword(''); }} disabled={pwdLoading}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowPasswordForm(false)
+                      setPwdError('')
+                      setNewPassword('')
+                      setConfirmPassword('')
+                    }}
+                    disabled={pwdLoading}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -164,33 +174,37 @@ export default function AccountPage() {
             )}
           </div>
 
-          <div className="pt-6 border-t border-zinc-800">
-            <h3 className="text-lg font-bold mb-3">Need help?</h3>
-            <div className="flex items-center gap-4 text-sm font-medium">
-              <a 
-                href="https://wa.me/919286799934?text=Hi%20Intellical%20Labs%2C%20I%20need%20help%20with%20my%20IntelliStamp%20account." 
-                target="_blank" 
+          <div className="pt-6 border-t border-zinc-800/80">
+            <h3 className="text-sm font-semibold text-zinc-200 mb-2">Need help?</h3>
+            <div className="flex items-center gap-3 text-xs font-medium">
+              <a
+                href="https://wa.me/919286799934?text=Hi%20Intellical%20Labs%2C%20I%20need%20help%20with%20my%20IntelliStamp%20account."
+                target="_blank"
                 rel="noopener noreferrer"
-                className="text-zinc-300 hover:text-white transition-colors"
+                className="text-zinc-400 hover:text-zinc-200 transition-colors"
               >
                 WhatsApp Support
               </a>
-              <span className="text-zinc-700">|</span>
-              <a 
+              <span className="text-zinc-700">·</span>
+              <a
                 href="mailto:hello@intellicallabs.com"
-                className="text-zinc-300 hover:text-white transition-colors"
+                className="text-zinc-400 hover:text-zinc-200 transition-colors"
               >
                 Email Support
               </a>
             </div>
           </div>
 
-          <div className="pt-6 border-t border-zinc-800">
-            <Button variant="outline" onClick={handleLogout} className="text-red-400 hover:text-red-300 hover:bg-red-400/10 border-red-400/20 w-full sm:w-auto">
+          <div className="pt-6 border-t border-zinc-800/80">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleLogout}
+              className="w-full sm:w-auto"
+            >
               Sign Out
             </Button>
           </div>
-          
         </div>
       </div>
     </div>

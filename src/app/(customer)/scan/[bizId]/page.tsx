@@ -31,13 +31,7 @@ export default function ScanPage() {
   const [loadingIdentify, setLoadingIdentify] = useState(false)
   const [loadingStamp, setLoadingStamp] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [toast, setToast] = useState('')
   const [cooldownHours, setCooldownHours] = useState(0)
-
-  const showToast = (msg: string) => {
-    setToast(msg)
-    setTimeout(() => setToast(''), 3000)
-  }
 
   // Load business
   useEffect(() => {
@@ -88,7 +82,7 @@ export default function ScanPage() {
           setCooldownHours(data.cooldown_hours ?? 4)
           setFlowState('cooldown')
         } else {
-          setErrorMsg(data.error || 'Failed to stamp')
+          setErrorMsg(data.error || 'Failed to issue stamp')
           setFlowState('error')
         }
         return
@@ -98,31 +92,36 @@ export default function ScanPage() {
       if (data.reward_result) {
         try {
           sessionStorage.setItem('intellistamp_pending_reward', JSON.stringify(data.reward_result))
-        } catch { /* sessionStorage unavailable */ }
+        } catch {
+          // ignore
+        }
       }
       if (data.access_grant) {
         setAccessGrant(data.access_grant)
       }
       setFlowState('success')
-      showToast('Stamp added! 🎉')
     } catch {
       setErrorMsg('Network error. Please try again.')
       setFlowState('error')
     } finally {
       setLoadingStamp(false)
     }
-  }, [bizId, business, customer, qrToken])
+  }, [customer, business, bizId, qrToken])
 
   useEffect(() => {
     if (flowState === 'stamping' && customer && business) {
-      startTransition(() => { void doStamp() })
+      const timer = setTimeout(() => {
+        doStamp()
+      }, 0)
+      return () => clearTimeout(timer)
     }
   }, [flowState, customer, business, doStamp])
 
   const handleContinue = async () => {
     setPhoneError('')
-    if (!/^[6-9]\d{9}$/.test(phone)) {
-      setPhoneError('Enter a valid 10-digit Indian mobile number')
+    const digits = phone.replace(/\D/g, '').replace(/^91/, '')
+    if (digits.length !== 10) {
+      setPhoneError('Enter a valid 10-digit mobile number')
       return
     }
     setLoadingIdentify(true)
@@ -130,35 +129,17 @@ export default function ScanPage() {
       const res = await fetch('/api/customer/identify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ business_id: bizId, phone, qr_token: qrToken }),
+        body: JSON.stringify({ phone: digits, business_id: bizId }),
       })
       const data = await res.json()
-      
       if (!res.ok) {
-        setPhoneError(data.error || 'Something went wrong')
+        setPhoneError(data.error || 'Failed to identify customer')
         return
       }
-
-      // RETURNING CUSTOMER — valid QR: associate + proceed to stamp
-      if (data.isNew === false && data.readyToStamp === true) {
-        setCustomer({ id: data.customer_id, phone, name: data.name })
-        setFlowState('stamping')
-        return
-      }
-
-      // RETURNING CUSTOMER — no valid QR: show recovery message
-      if (data.isNew === false) {
-        setPhoneError(data.message || 'Cannot recover card automatically.')
-        return
-      }
-
-      // NEW CUSTOMER — needs name
-      if (data.needsName) {
+      if (data.is_new) {
         setFlowState('name')
         return
       }
-
-      // NEW CUSTOMER — identify returned customer immediately (shouldn't normally happen)
       const c = data.customer
       localStorage.setItem('customer_session', JSON.stringify({
         id: c.id,
@@ -177,28 +158,23 @@ export default function ScanPage() {
 
   const handleJoin = async () => {
     setNameError('')
-    if (!name.trim()) {
+    if (!name.trim() || name.length < 2) {
       setNameError('Please enter your name')
       return
     }
     setLoadingIdentify(true)
     try {
+      const digits = phone.replace(/\D/g, '').replace(/^91/, '')
       const res = await fetch('/api/customer/identify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ business_id: bizId, phone, name: name.trim(), qr_token: qrToken }),
+        body: JSON.stringify({ phone: digits, name: name.trim(), business_id: bizId }),
       })
       const data = await res.json()
       if (!res.ok) {
-        setNameError(data.error || 'Something went wrong')
+        setNameError(data.error || 'Failed to create customer account')
         return
       }
-
-      if (data.isNew === false) {
-        setNameError(data.message || 'Cannot recover card automatically.')
-        return
-      }
-
       const c = data.customer
       localStorage.setItem('customer_session', JSON.stringify({
         id: c.id,
@@ -217,11 +193,11 @@ export default function ScanPage() {
 
   if (flowState === 'loading' || loadingStamp) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-100">
         <div className="text-center">
-          <Spinner size="lg" />
-          <p className="text-zinc-400 mt-4">
-            {loadingStamp ? 'Issuing your stamp...' : 'Loading...'}
+          <Spinner size="md" className="mx-auto mb-3" />
+          <p className="text-zinc-400 text-xs">
+            {loadingStamp ? 'Adding your loyalty stamp...' : 'Loading...'}
           </p>
         </div>
       </div>
@@ -229,26 +205,23 @@ export default function ScanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center">
-      {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-full font-semibold z-50 animate-bounce">
-          {toast}
-        </div>
-      )}
-
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100">
+      <div className="w-full max-w-sm">
         {business && (
           <div className="text-center mb-6">
-            <div className="text-4xl mb-1">{business.emoji}</div>
-            <h1 className="text-xl font-black text-white">{business.name}</h1>
+            <div className="text-3xl mb-1">{business.emoji}</div>
+            <h1 className="text-lg font-semibold tracking-tight text-zinc-100">{business.name}</h1>
           </div>
         )}
 
         {flowState === 'login' && (
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
-            <h2 className="text-lg font-bold text-white">Enter your phone to collect a stamp</h2>
+          <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-200">Collect Loyalty Stamp</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">Enter your mobile number to add your stamp.</p>
+            </div>
             <Input
-              label="Phone Number"
+              label="Mobile Number"
               placeholder="9876543210"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -256,12 +229,12 @@ export default function ScanPage() {
               inputMode="numeric"
               maxLength={10}
             />
-            <Button onClick={handleContinue} loading={loadingIdentify} className="w-full">
+            <Button onClick={handleContinue} loading={loadingIdentify} size="sm" className="w-full">
               Continue →
             </Button>
             <button
               onClick={() => router.push(`/recover/${bizId}`)}
-              className="text-sm text-zinc-500 hover:text-zinc-300 w-full text-center"
+              className="text-xs text-zinc-500 hover:text-zinc-300 w-full text-center py-1 cursor-pointer"
             >
               Already enrolled? Recover my card
             </button>
@@ -269,23 +242,25 @@ export default function ScanPage() {
         )}
 
         {flowState === 'name' && (
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
-            <h2 className="text-lg font-bold text-white">Welcome! What&apos;s your name?</h2>
-            <p className="text-sm text-zinc-400">First time here — just your name and you&apos;re in.</p>
+          <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-200">Welcome! What&apos;s your name?</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">First visit — just your name to get started.</p>
+            </div>
             <Input
               label="Your Name"
-              placeholder="Rahul"
+              placeholder="Rahul Sharma"
               value={name}
               onChange={(e) => setName(e.target.value)}
               error={nameError}
               autoFocus
             />
-            <Button onClick={handleJoin} loading={loadingIdentify} className="w-full">
-              Join & Get Stamp →
+            <Button onClick={handleJoin} loading={loadingIdentify} size="sm" className="w-full">
+              Join &amp; Get Stamp →
             </Button>
             <button
               onClick={() => setFlowState('login')}
-              className="text-sm text-zinc-500 hover:text-zinc-300 w-full text-center"
+              className="text-xs text-zinc-500 hover:text-zinc-300 w-full text-center py-1 cursor-pointer"
             >
               ← Change number
             </button>
@@ -322,24 +297,30 @@ export default function ScanPage() {
                 }
               }}
               variant="outline"
+              size="sm"
               className="w-full"
             >
-              View My Card
+              View My Loyalty Card
             </Button>
           </div>
         )}
 
         {flowState === 'cooldown' && (
-          <Alert
-            type="warning"
-            message={`You already collected a stamp recently. Next stamp available in ${cooldownHours}h.`}
-          />
+          <div className="space-y-4">
+            <Alert
+              type="warning"
+              message={`You already collected a stamp recently. Next stamp available in ${cooldownHours}h.`}
+            />
+            <Button onClick={() => router.push('/cards')} variant="secondary" size="sm" className="w-full">
+              View My Cards
+            </Button>
+          </div>
         )}
 
         {flowState === 'error' && (
           <div className="space-y-4">
             <Alert type="error" message={errorMsg || 'Something went wrong. Please try again.'} />
-            <Button onClick={() => setFlowState('login')} variant="secondary" className="w-full">
+            <Button onClick={() => setFlowState('login')} variant="secondary" size="sm" className="w-full">
               Try Again
             </Button>
           </div>

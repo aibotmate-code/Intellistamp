@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import Alert from '@/components/ui/Alert'
+import Spinner from '@/components/ui/Spinner'
 
 function LoginInner() {
   const router = useRouter()
@@ -55,7 +57,6 @@ function LoginInner() {
         setPassword('')
         return
       }
-      // Pushing to dashboard drops all query parameters, fulfilling the non-persistence requirement
       router.push('/dashboard')
       router.refresh()
     } catch {
@@ -70,28 +71,30 @@ function LoginInner() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100">
+      <div className="w-full max-w-sm">
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-2" aria-hidden="true">🏷️</div>
-          <h1 className="text-2xl font-black text-white">Business Login</h1>
-          <p className="text-zinc-400 text-sm mt-1">Sign in to your business dashboard</p>
+        <div className="text-center mb-6">
+          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
+            🏷️
+          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Business Login</h1>
+          <p className="text-xs text-zinc-400 mt-1">Sign in to manage your loyalty program</p>
         </div>
 
         {/* Form card */}
-        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
+        <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
           
           {urlError && (
-            <div role="alert" className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-2 flex flex-col gap-3">
-              <p className="text-sm text-yellow-200/90 leading-relaxed">
+            <div role="alert" className="bg-amber-500/10 border border-amber-500/20 rounded-md p-3.5 flex flex-col gap-2.5">
+              <p className="text-xs text-amber-300 leading-relaxed">
                 {urlError.message}
               </p>
               {urlError.isRecovery && (
                 <Link
                   href="/forgot-password"
-                  className="inline-flex items-center justify-center bg-yellow-400 text-yellow-950 text-sm font-semibold h-9 px-4 rounded-md hover:bg-yellow-500 transition-colors self-start"
+                  className="inline-flex items-center justify-center bg-zinc-100 text-zinc-950 text-xs font-medium h-7 px-3 rounded hover:bg-zinc-200 transition-colors self-start"
                 >
                   Request New Reset Link
                 </Link>
@@ -101,7 +104,7 @@ function LoginInner() {
 
           <Input
             id="login-email"
-            label="Email"
+            label="Email Address"
             type="email"
             autoComplete="email"
             placeholder="you@example.com"
@@ -127,27 +130,22 @@ function LoginInner() {
                 tabIndex={-1}
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-3 bottom-3 text-xs text-zinc-400 hover:text-white select-none"
+                className="absolute right-3 bottom-2 text-xs text-zinc-400 hover:text-zinc-200 select-none cursor-pointer"
               >
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
-            {/* Forgot password — close to password field */}
             <div className="flex justify-end mt-1.5">
               <Link
                 href="/forgot-password"
-                className="text-xs text-zinc-400 hover:text-yellow-400 transition-colors"
+                className="text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
               >
                 Forgot password?
               </Link>
             </div>
           </div>
 
-          {error && (
-            <p role="alert" className="text-sm text-red-400 bg-red-950/30 border border-red-800/40 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
+          {error && <Alert type="error" message={error} />}
 
           <Button
             id="login-submit"
@@ -155,29 +153,30 @@ function LoginInner() {
             loading={loading}
             disabled={loading}
             className="w-full"
+            size="sm"
           >
-            Sign In →
+            Sign In
           </Button>
 
-          <p className="text-center text-sm text-zinc-500">
+          <p className="text-center text-xs text-zinc-400 pt-1">
             New business?{' '}
-            <Link href="/signup" className="text-yellow-400 hover:underline font-medium">
-              Create account →
+            <Link href="/signup" className="text-zinc-200 hover:underline font-medium">
+              Create account
             </Link>
           </p>
         </div>
 
-        {/* Escape routes — always visible */}
+        {/* Escape routes */}
         <nav aria-label="Other options" className="mt-6 flex flex-col items-center gap-2">
           <Link
             href="/cards"
-            className="text-sm text-zinc-300 hover:text-yellow-400 transition-colors font-medium"
+            className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors font-medium"
           >
-            📱 View My Loyalty Cards
+            View Customer Loyalty Cards
           </Link>
           <Link
             href="/"
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
           >
             ← Back to Home
           </Link>
@@ -193,9 +192,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-zinc-900 rounded-2xl p-6 border border-zinc-800 flex justify-center py-12">
-            <div className="w-8 h-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-          </div>
+          <Spinner size="md" />
         </div>
       }
     >

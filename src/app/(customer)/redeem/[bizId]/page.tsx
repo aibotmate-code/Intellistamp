@@ -41,7 +41,7 @@ export default function RedeemPage() {
       .then((r) => r.json())
       .then(async (data) => {
         if (!data.success) {
-          setError(data.error || 'Failed to redeem')
+          setError(data.error || 'Failed to redeem reward')
           return
         }
         setCode(data.code)
@@ -56,7 +56,7 @@ export default function RedeemPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-100">
         <Spinner size="lg" />
       </div>
     )
@@ -64,30 +64,33 @@ export default function RedeemPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">{error}</p>
-          <Button onClick={toCard}>Back to Card</Button>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100">
+        <div className="text-center max-w-sm">
+          <p className="text-rose-400 text-sm mb-4">{error}</p>
+          <Button onClick={toCard} size="sm">Back to Card</Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100">
       <div className="w-full max-w-sm text-center space-y-6">
-        <div className="text-7xl animate-bounce">🎁</div>
-        <h1 className="text-4xl font-black text-yellow-400">REWARD UNLOCKED!</h1>
-        <p className="text-zinc-300 font-medium">{businessName}</p>
-        <p className="text-2xl font-bold text-white">{reward}</p>
-        <p className="text-zinc-400">Show this to the staff to claim your reward</p>
+        <div className="text-5xl">🎁</div>
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold tracking-tight text-amber-400">Reward Unlocked!</h1>
+          <p className="text-xs text-zinc-400">{businessName}</p>
+        </div>
+        
+        <p className="text-xl font-semibold text-zinc-100">{reward}</p>
+        <p className="text-xs text-zinc-400">Show this code to staff to claim your reward</p>
 
-        <div className="border-2 border-dashed border-yellow-400 rounded-2xl p-6 animate-glow">
-          <p className="text-xs text-zinc-400 mb-2">Redemption Code</p>
-          <p className="text-4xl font-black text-yellow-400 tracking-widest">{code}</p>
+        <div className="border border-dashed border-amber-500/40 bg-zinc-900/50 rounded-lg p-5">
+          <p className="text-[11px] text-zinc-400 mb-1">Redemption Code</p>
+          <p className="text-3xl font-mono font-semibold text-amber-400 tracking-wider">{code}</p>
         </div>
 
-        <Button onClick={() => router.push('/cards')} variant="secondary" className="w-full">
+        <Button onClick={() => router.push('/cards')} variant="secondary" size="sm" className="w-full">
           Back to Cards
         </Button>
       </div>

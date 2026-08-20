@@ -16,16 +16,16 @@ const icons = {
 }
 
 const styles = {
-  success: 'bg-green-500/10 border-green-500/30 text-green-400',
-  error: 'bg-red-500/10 border-red-500/30 text-red-400',
-  warning: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400',
-  info: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+  success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+  error: 'bg-rose-500/10 border-rose-500/20 text-rose-400',
+  warning: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+  info: 'bg-sky-500/10 border-sky-500/20 text-sky-400',
 }
 
 export default function Alert({ type, message, className }: AlertProps) {
   const Icon = icons[type]
   return (
-    <div className={cn('flex items-start gap-3 p-3 rounded-lg border text-sm', styles[type], className)}>
+    <div className={cn('flex items-start gap-2.5 p-3 rounded-md border text-xs leading-relaxed', styles[type], className)}>
       <Icon className="h-4 w-4 shrink-0 mt-0.5" />
       <span>{message}</span>
     </div>

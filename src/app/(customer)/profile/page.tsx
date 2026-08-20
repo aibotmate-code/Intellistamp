@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import Select from '@/components/ui/Select'
 import Alert from '@/components/ui/Alert'
+import Spinner from '@/components/ui/Spinner'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -75,19 +77,12 @@ function ProfileForm() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center">
-      <div className="w-full max-w-md">
-        {/* Step dots */}
-        <div className="flex justify-center gap-2 mb-8">
-          {[1, 2, 3].map((s) => (
-            <div key={s} className="w-3 h-3 rounded-full bg-yellow-400" />
-          ))}
-        </div>
-
-        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
+    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100">
+      <div className="w-full max-w-sm">
+        <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
           <div>
-            <h1 className="text-xl font-black text-white">Complete Your Profile</h1>
-            <p className="text-sm text-zinc-400 mt-1">Get personalised offers and reward reminders</p>
+            <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Complete Your Profile</h1>
+            <p className="text-xs text-zinc-400 mt-1">Get personalized offers and birthday rewards.</p>
           </div>
 
           <Input
@@ -99,60 +94,60 @@ function ProfileForm() {
           />
 
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-              Birthday 🎂 <span className="text-zinc-500 text-xs">(optional — for surprise offers)</span>
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+              Birthday <span className="text-zinc-500 font-normal">(optional — for surprise offers)</span>
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <select
+            <div className="grid grid-cols-2 gap-2.5">
+              <Select
                 value={birthdayMonth}
                 onChange={(e) => setBirthdayMonth(e.target.value)}
-                className="bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/50"
               >
                 <option value="">Month</option>
                 {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
-              <select
+              </Select>
+              <Select
                 value={birthdayDay}
                 onChange={(e) => setBirthdayDay(e.target.value)}
-                className="bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/50"
               >
                 <option value="">Day</option>
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
           <div
-            className={`p-4 rounded-xl border-2 cursor-pointer transition-colors ${
-              whatsappOptin ? 'border-green-500 bg-green-500/10' : 'border-zinc-700'
+            className={`p-3.5 rounded-md border cursor-pointer transition-colors ${
+              whatsappOptin ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-zinc-800 bg-zinc-900/40'
             }`}
             onClick={() => setWhatsappOptin(!whatsappOptin)}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-2.5">
               <input
                 type="checkbox"
                 checked={whatsappOptin}
                 onChange={(e) => setWhatsappOptin(e.target.checked)}
-                className="w-5 h-5 accent-green-500"
+                className="w-4 h-4 mt-0.5 accent-emerald-500 cursor-pointer"
               />
               <div>
-                <p className="text-sm font-semibold text-white">📲 Send me offers on WhatsApp</p>
-                <p className="text-xs text-zinc-400">Get reward reminders, birthday surprises & exclusive deals</p>
+                <p className="text-xs font-medium text-zinc-200">Send offers on WhatsApp</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                  Receive stamp receipts, milestone rewards &amp; exclusive deals.
+                </p>
               </div>
             </div>
           </div>
 
           {error && <Alert type="error" message={error} />}
 
-          <Button onClick={handleSubmit} loading={loading} className="w-full" size="lg">
-            JOIN REWARDS CLUB →
+          <Button onClick={handleSubmit} loading={loading} className="w-full" size="sm">
+            Join Rewards Club →
           </Button>
 
           <button
             onClick={handleSkip}
-            className="text-sm text-zinc-500 hover:text-zinc-300 w-full text-center"
+            className="text-xs text-zinc-500 hover:text-zinc-300 w-full text-center py-1 cursor-pointer"
           >
             Skip for now
           </button>
@@ -164,7 +159,7 @@ function ProfileForm() {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-zinc-950 flex items-center justify-center"><Spinner size="md" /></div>}>
       <ProfileForm />
     </Suspense>
   )

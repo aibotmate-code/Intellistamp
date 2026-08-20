@@ -5,6 +5,9 @@ import Link from 'next/link'
 import type { Business } from '@/types'
 import BusinessVisual from '@/components/branding/BusinessVisual'
 import { resolveBrandingColors } from '@/lib/branding/palette'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import Spinner from '@/components/ui/Spinner'
 
 interface CardItem {
   business_id: string
@@ -62,7 +65,7 @@ export default function CardsPage() {
         return
       }
       if (!res.ok) {
-        setPhoneError('Something went wrong. Try again.')
+        setPhoneError('Something went wrong. Please try again.')
         return
       }
       const data = await res.json()
@@ -75,7 +78,7 @@ export default function CardsPage() {
       if (data.customer?.customer_token) setCustomerToken(data.customer.customer_token)
       setFlow('cards')
     } catch {
-      setPhoneError('Network error. Try again.')
+      setPhoneError('Network error. Please try again.')
     } finally {
       setPhoneLoading(false)
     }
@@ -92,55 +95,55 @@ export default function CardsPage() {
   if (flow === 'loading') {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="w-full max-w-md px-4 space-y-4">
-          <div className="h-8 w-48 bg-zinc-800 rounded animate-pulse mb-6" />
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="h-24 w-full bg-zinc-800 rounded-2xl animate-pulse" />
-          ))}
-        </div>
+        <Spinner size="md" />
       </div>
     )
   }
 
   if (flow === 'phone') {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="text-5xl mb-3">💳</div>
-            <h1 className="text-2xl font-black text-white">View My Cards</h1>
-            <p className="text-zinc-400 text-sm mt-1">Enter your mobile number to see your loyalty cards</p>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-6">
+            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
+              💳
+            </div>
+            <h1 className="text-xl font-semibold tracking-tight text-zinc-100">My Loyalty Cards</h1>
+            <p className="text-xs text-zinc-400 mt-1">Enter your mobile number to view active cards</p>
           </div>
 
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Mobile Number</label>
-              <input
-                type="tel"
-                inputMode="numeric"
-                placeholder="9876543210"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handlePhoneLookup()}
-                className="w-full bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400 transition-colors"
-              />
-            </div>
-            {phoneError && <p className="text-sm text-red-400">{phoneError}</p>}
-            <button
+          <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
+            <Input
+              label="Mobile Number"
+              type="tel"
+              inputMode="numeric"
+              placeholder="9876543210"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handlePhoneLookup()}
+              error={phoneError}
+            />
+            <Button
               onClick={handlePhoneLookup}
+              loading={phoneLoading}
               disabled={phoneLoading}
-              className="w-full bg-yellow-400 text-black font-bold py-3 px-6 rounded-xl hover:bg-yellow-300 transition-colors disabled:opacity-60"
+              className="w-full"
+              size="sm"
             >
-              {phoneLoading ? 'Looking up…' : 'View My Cards →'}
-            </button>
-            <p className="text-center text-xs text-zinc-500">
-              New here? Scan a business QR code to get started.
+              View My Cards →
+            </Button>
+            <p className="text-center text-[11px] text-zinc-500">
+              New here? Scan a merchant QR code to get started.
             </p>
           </div>
 
-          <div className="text-center mt-4 flex flex-col items-center gap-1.5">
-            <Link href="/login" className="text-xs text-zinc-500 hover:text-zinc-300">🏪 Business Login</Link>
-            <Link href="/" className="text-xs text-zinc-600 hover:text-zinc-400">← Back to home</Link>
+          <div className="text-center mt-6 flex flex-col items-center gap-2">
+            <Link href="/login" className="text-xs text-zinc-400 hover:text-zinc-200">
+              🏪 Business Portal
+            </Link>
+            <Link href="/" className="text-[11px] text-zinc-600 hover:text-zinc-400">
+              ← Back to Home
+            </Link>
           </div>
         </div>
       </div>
@@ -149,21 +152,25 @@ export default function CardsPage() {
 
   if (flow === 'not_found') {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 text-zinc-100">
         <div className="text-center max-w-sm">
-          <div className="text-5xl mb-4">🔍</div>
-          <h2 className="text-xl font-black text-white mb-2">No account found</h2>
-          <p className="text-zinc-400 text-sm mb-6">
-            We couldn&apos;t find loyalty cards for this number. Scan a business QR code first to create your account.
+          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
+            🔍
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-100 mb-2">No Account Found</h2>
+          <p className="text-zinc-400 text-xs mb-6 leading-relaxed">
+            We couldn&apos;t find loyalty cards for this number. Scan a merchant QR code at the counter first to create your account.
           </p>
-          <button
-            onClick={() => { setFlow('phone'); setPhone('') }}
-            className="text-yellow-400 text-sm hover:underline mr-4"
-          >
-            Try again
-          </button>
-          <Link href="/login" className="text-zinc-400 text-sm hover:text-zinc-200 mr-4">🏪 Business Login</Link>
-          <Link href="/" className="text-zinc-500 text-sm hover:text-zinc-300">← Home</Link>
+          <div className="flex items-center justify-center gap-3 text-xs">
+            <button
+              onClick={() => { setFlow('phone'); setPhone('') }}
+              className="text-zinc-100 hover:underline cursor-pointer font-medium"
+            >
+              Try another number
+            </button>
+            <span className="text-zinc-700">·</span>
+            <Link href="/" className="text-zinc-400 hover:text-zinc-200">Home</Link>
+          </div>
         </div>
       </div>
     )
@@ -171,31 +178,31 @@ export default function CardsPage() {
 
   // flow === 'cards'
   return (
-    <div className="min-h-screen bg-zinc-950 p-4">
-      <div className="max-w-md mx-auto">
-        <div className="mb-6 flex items-center justify-between">
+    <div className="min-h-screen bg-zinc-950 p-4 text-zinc-100">
+      <div className="max-w-md mx-auto py-4 space-y-5">
+        <div className="flex items-center justify-between pb-2">
           <div>
-            <h1 className="text-2xl font-black text-white">My Loyalty Cards</h1>
-            <p className="text-sm text-zinc-400">Tap a card to view details</p>
+            <h1 className="text-xl font-semibold tracking-tight text-zinc-100">My Loyalty Cards</h1>
+            <p className="text-xs text-zinc-400">Tap a card to view reward progress &amp; history</p>
           </div>
           <button
             onClick={handleLogout}
-            className="text-xs text-zinc-500 hover:text-zinc-300"
+            className="text-xs text-zinc-400 hover:text-zinc-200 cursor-pointer"
           >
             Logout
           </button>
         </div>
 
         {cards.length === 0 ? (
-          <div className="text-center py-12 text-zinc-400">
-            <p className="text-5xl mb-4">💳</p>
-            <p className="font-semibold text-base text-white">No loyalty cards yet</p>
-            <p className="text-sm mt-1">Scan a business QR code to get started</p>
+          <div className="text-center py-12 text-zinc-400 rounded-lg border border-zinc-800 bg-zinc-900/30 p-6">
+            <p className="text-3xl mb-3">💳</p>
+            <p className="font-semibold text-sm text-zinc-100">No active loyalty cards</p>
+            <p className="text-xs text-zinc-400 mt-1">Scan a merchant QR code to earn your first stamp.</p>
             <Link
               href="/"
-              className="mt-4 inline-block text-sm font-medium text-yellow-400 hover:underline"
+              className="mt-4 inline-block text-xs font-medium text-zinc-300 hover:underline"
             >
-              Back to home →
+              Back to Home →
             </Link>
           </div>
         ) : (
@@ -213,7 +220,7 @@ export default function CardsPage() {
                 <Link
                   key={card.business_id}
                   href={customerToken ? `/card/${customerToken}?biz=${card.business_id}` : '#'}
-                  className="block rounded-2xl p-4 border transition-colors hover:brightness-110"
+                  className="block rounded-lg p-4 border transition-all hover:border-zinc-700 shadow-xs"
                   style={{
                     background: resolved.surface_color,
                     borderColor: resolved.empty_stamp_border_color,
@@ -224,31 +231,31 @@ export default function CardsPage() {
                       logoUrl={activeBranding?.logo_url}
                       emoji={business.emoji}
                       name={business.name}
-                      className="text-3xl"
+                      className="text-2xl shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <p
-                        className="font-bold truncate"
+                        className="font-semibold text-sm truncate"
                         style={{ color: resolved.card_text_color }}
                       >
                         {business.name}
                       </p>
-                      <p className="text-xs" style={{ color: resolved.card_muted_text_color }}>
-                        Free {business.reward} after {business.stamps_required} stamps
+                      <p className="text-xs mt-0.5 truncate" style={{ color: resolved.card_muted_text_color }}>
+                        {business.reward} ({business.stamps_required} stamps)
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-2xl font-black" style={{ color: resolved.primary_color }}>
+                      <p className="text-xl font-semibold tracking-tight" style={{ color: resolved.primary_color }}>
                         {card_stamps}/{business.stamps_required}
                       </p>
                       {cards_completed > 0 && (
-                        <p className="text-xs text-green-400">{cards_completed}x completed</p>
+                        <p className="text-[11px] text-emerald-400">{cards_completed} completed</p>
                       )}
                     </div>
                   </div>
 
-                  {/* Segmented progress bar */}
-                  <div className="mt-3 flex gap-[2px]">
+                  {/* Progress bar */}
+                  <div className="mt-3 flex gap-[3px]">
                     {Array.from({ length: segCount }).map((_, i) => (
                       <div
                         key={i}
@@ -261,8 +268,8 @@ export default function CardsPage() {
                   </div>
 
                   {redeemable && (
-                    <p className="text-xs font-semibold mt-2" style={{ color: resolved.primary_color }}>
-                      🎁 Ready to redeem!
+                    <p className="text-xs font-semibold mt-2.5 flex items-center gap-1" style={{ color: resolved.primary_color }}>
+                      <span>🎁</span> Reward ready to redeem!
                     </p>
                   )}
                 </Link>
@@ -273,10 +280,10 @@ export default function CardsPage() {
 
         <Link
           href="/scanner"
-          className="mt-6 flex items-center justify-center gap-2 border-2 border-dashed border-zinc-800 rounded-2xl p-5 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400 transition-colors"
+          className="flex items-center justify-center gap-2 border border-dashed border-zinc-800 rounded-lg p-4 text-xs font-medium text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 transition-colors"
         >
-          <span className="text-xl">📷</span>
-          <span className="font-medium">Scan a new business</span>
+          <span>📷</span>
+          <span>Scan a new business QR code</span>
         </Link>
       </div>
     </div>

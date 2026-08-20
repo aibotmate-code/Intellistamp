@@ -16,6 +16,7 @@ import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
 import Alert from '@/components/ui/Alert'
 import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 import { Icons } from '@/config/icons'
 import BusinessVisual from '@/components/branding/BusinessVisual'
 import { PendingView, SuspendedView, RejectedView, ExpiredView } from '@/components/business/LifecycleViews'
@@ -148,19 +149,18 @@ export default function DashboardPage() {
     if (!data) return
     try {
       const res = await fetch(`/api/business/export-customers?bizId=${data.business.id}`)
-      if (!res.ok) return
+      if (!res.ok) throw new Error('Export failed')
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
+      const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
-      const date = new Date().toISOString().split('T')[0]
       a.href = url
-      a.download = `${data.business.slug || data.business.id.slice(0, 8)}-customers-${date}.csv`
+      a.download = `customers-${data.business.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`
       document.body.appendChild(a)
       a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      a.remove()
+      window.URL.revokeObjectURL(url)
     } catch {
-      // silent fail — no external state to show
+      alert('Failed to export customers. Please try again.')
     }
   }
 
@@ -174,19 +174,22 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           business_id: data.business.id,
-          message: campaignMessage,
           audience: campaignAudience,
+          message: campaignMessage.trim(),
         }),
       })
       const json = await res.json()
       if (res.ok) {
-        setCampaignResult({ type: 'success', msg: `Campaign sent to ${json.total_sent} customers!` })
+        setCampaignResult({
+          type: 'success',
+          msg: `Campaign sent to ${json.sent_count} customer${json.sent_count !== 1 ? 's' : ''}!`,
+        })
         setCampaignMessage('')
       } else {
-        setCampaignResult({ type: 'error', msg: json.error || 'Failed to send' })
+        setCampaignResult({ type: 'error', msg: json.error || 'Failed to send campaign' })
       }
     } catch {
-      setCampaignResult({ type: 'error', msg: 'Network error' })
+      setCampaignResult({ type: 'error', msg: 'Network error. Please try again.' })
     } finally {
       setCampaignLoading(false)
     }
@@ -213,10 +216,12 @@ export default function DashboardPage() {
   if (error || !data) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 max-w-sm w-full">
           <Alert type="error" message={error || 'Something went wrong. Please try again.'} />
-          <Button onClick={() => window.location.reload()} variant="secondary">Retry</Button>
-          <Button onClick={() => router.push('/onboarding')}>Setup New Business</Button>
+          <div className="flex gap-2 justify-center">
+            <Button onClick={() => window.location.reload()} variant="secondary" size="sm">Retry</Button>
+            <Button onClick={() => router.push('/onboarding')} size="sm">Setup Business</Button>
+          </div>
         </div>
       </div>
     )
@@ -258,7 +263,7 @@ export default function DashboardPage() {
   const previewMessage = campaignMessage.replace('{name}', 'Rahul')
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
       {kioskMode && (
         <KioskMode
           bizId={business.id}
@@ -269,60 +274,60 @@ export default function DashboardPage() {
       )}
 
       {/* Topbar */}
-      <header className="border-b border-zinc-800 bg-zinc-950 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <header className="border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-sm sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Icons.Business size={18} className="text-zinc-400" aria-hidden="true" />
-            <span className="font-black text-white">IntelliStamp</span>
-            <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-medium">Business</span>
+            <Icons.Business size={16} className="text-zinc-400" aria-hidden="true" />
+            <span className="font-semibold text-sm tracking-tight text-zinc-100">IntelliStamp</span>
+            <span className="text-[11px] bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium">Business</span>
           </div>
           {ownerEmail && (
             <span className="hidden sm:block text-xs text-zinc-500">{ownerEmail}</span>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setKioskMode(true)}
-              className="hidden sm:flex items-center gap-1.5"
+              className="hidden sm:flex items-center gap-1.5 text-xs"
             >
-              <Icons.KioskMode size={16} aria-hidden="true" /> Open Counter Display
+              <Icons.KioskMode size={14} aria-hidden="true" /> Counter Display
             </Button>
             <button
               onClick={() => setKioskMode(true)}
-              className="sm:hidden text-zinc-400 hover:text-white px-3 py-1.5 text-lg flex items-center justify-center"
+              className="sm:hidden text-zinc-400 hover:text-white p-2 text-base flex items-center justify-center rounded-md hover:bg-zinc-900"
               aria-label="Open Counter Display"
             >
-              <Icons.KioskMode size={18} aria-hidden="true" />
+              <Icons.KioskMode size={16} aria-hidden="true" />
             </button>
-            <Button variant="ghost" size="sm" onClick={() => setActiveTab('settings')} className="flex items-center gap-1">
-              <Icons.Settings size={16} aria-hidden="true" /> Settings
+            <Button variant="ghost" size="sm" onClick={() => setActiveTab('settings')} className="flex items-center gap-1 text-xs">
+              <Icons.Settings size={14} aria-hidden="true" /> Settings
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => router.push('/account')} className="flex items-center gap-1">
-              <Icons.Customers size={16} aria-hidden="true" /> Account
+            <Button variant="ghost" size="sm" onClick={() => router.push('/account')} className="flex items-center gap-1 text-xs">
+              <Icons.Customers size={14} aria-hidden="true" /> Account
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="flex items-center gap-1">
-              <Icons.Logout size={16} aria-hidden="true" /> Logout
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200">
+              <Icons.Logout size={14} aria-hidden="true" /> Logout
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* Business header */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-3.5 pb-2">
           <BusinessVisual 
             logoUrl={business.branding?.logo_url} 
             emoji={business.emoji} 
             name={business.name} 
-            className="text-3xl max-h-12 w-auto max-w-[120px]" 
+            className="text-2xl max-h-10 w-auto max-w-[100px]" 
           />
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-black text-white">{business.name}</h1>
+              <h1 className="text-xl font-semibold tracking-tight text-zinc-100">{business.name}</h1>
               {process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && business.branding?.is_enabled !== false && (
                 <span 
-                  className="text-xs px-2 py-0.5 rounded-full font-bold whitespace-nowrap"
+                  className="text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                   style={{
                     background: (business.branding?.primary_color || '#FACC15') + '1A',
                     color: business.branding?.primary_color || '#FACC15',
@@ -333,14 +338,14 @@ export default function DashboardPage() {
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-400 mt-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400 mt-0.5">
               <span>{business.category}</span>
               {process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && business.branding?.is_enabled !== false && (
                 <button 
                   onClick={() => setActiveTab('branding')}
-                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1 underline cursor-pointer"
+                  className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors flex items-center gap-1 underline cursor-pointer"
                 >
-                  👁️ Preview Customer Card
+                  Preview Customer Card
                 </button>
               )}
             </div>
@@ -348,50 +353,51 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <StatsCard 
-            icon={<Icons.TotalCustomers size={24} />} 
+            icon={<Icons.TotalCustomers size={18} />} 
             label="Total Customers" 
             value={stats.total_customers} 
           />
           <StatsCard 
-            icon={<Icons.StampsIssued size={24} />} 
+            icon={<Icons.StampsIssued size={18} />} 
             label="Stamps Issued" 
             value={stats.total_stamps} 
           />
           <StatsCard 
-            icon={<Icons.RewardsRedeemed size={24} />} 
+            icon={<Icons.RewardsRedeemed size={18} />} 
             label="Rewards Redeemed" 
             value={stats.rewards_redeemed} 
           />
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-zinc-800 mb-6 overflow-x-auto">
+        <div className="flex gap-1 border-b border-zinc-800/80 overflow-x-auto">
           {([
-            { id: 'qr' as Tab,        label: 'Stamp QR', icon: <Icons.QrStamper size={16} /> },
-            { id: 'customers' as Tab, label: `Customers (${customers.length})`, icon: <Icons.Customers size={16} /> },
-            { id: 'rewards' as Tab,   label: 'Rewards', icon: <Icons.Rewards size={16} /> },
-            { id: 'campaigns' as Tab, label: 'Messages', icon: <Icons.Campaigns size={16} /> },
-            { id: 'settings' as Tab,  label: 'Settings', icon: <Icons.Settings size={16} /> },
+            { id: 'qr' as Tab,        label: 'Stamp QR', icon: <Icons.QrStamper size={15} /> },
+            { id: 'customers' as Tab, label: `Customers (${customers.length})`, icon: <Icons.Customers size={15} /> },
+            { id: 'rewards' as Tab,   label: 'Rewards', icon: <Icons.Rewards size={15} /> },
+            { id: 'campaigns' as Tab, label: 'Messages', icon: <Icons.Campaigns size={15} /> },
+            { id: 'settings' as Tab,  label: 'Settings', icon: <Icons.Settings size={15} /> },
             ...(process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true'
-              ? [{ id: 'branding' as Tab, label: 'Card Design', icon: <Icons.Branding size={16} /> }]
+              ? [{ id: 'branding' as Tab, label: 'Card Design', icon: <Icons.Branding size={15} /> }]
               : []),
           ]).map((tab) => {
             const isTabActive = activeTab === tab.id
-            const isBrandingActive = process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && business.branding?.is_enabled !== false
-            const brandColor = isBrandingActive && business.branding?.primary_color ? business.branding.primary_color : '#FACC15'
+            const activeColor = (process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED === 'true' && business.branding && business.branding.is_enabled !== false)
+              ? (business.branding.primary_color || '#FACC15')
+              : '#FACC15'
 
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-2`}
-                style={
+                style={isTabActive ? { color: activeColor, borderColor: activeColor } : undefined}
+                className={`px-3.5 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
                   isTabActive
-                    ? { borderColor: brandColor, color: brandColor }
-                    : { borderColor: 'transparent', color: '#a1a1aa' }
-                }
+                    ? ''
+                    : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                }`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
@@ -402,25 +408,26 @@ export default function DashboardPage() {
 
         {/* Tab: Stamp QR */}
         {activeTab === 'qr' && (
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid lg:grid-cols-2 gap-5">
             {/* Left: Customer Display */}
-            <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
-              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">
-                Customer QR Code
-              </p>
-              <p className="text-xs text-zinc-500 mb-6">Show this to your customers so they can collect stamps.</p>
-
-              <div className="flex flex-col items-center">
-                <QRDisplay bizId={business.id} size={200} showToken={true} />
+            <div className="bg-zinc-900/50 rounded-lg p-5 border border-zinc-800 shadow-xs space-y-4">
+              <div>
+                <p className="text-xs font-medium text-zinc-300">Customer QR Code</p>
+                <p className="text-xs text-zinc-500 mt-0.5">Show this to your customers so they can scan and collect stamps.</p>
               </div>
 
-              <div className="mt-6">
+              <div className="flex flex-col items-center py-2">
+                <QRDisplay bizId={business.id} size={180} showToken={true} />
+              </div>
+
+              <div>
                 <Button
                   onClick={() => setKioskMode(true)}
                   variant="outline"
+                  size="sm"
                   className="w-full"
                 >
-                  ⛶ Open Counter Display
+                  Open Counter Display
                 </Button>
               </div>
             </div>
@@ -428,14 +435,14 @@ export default function DashboardPage() {
             {/* Right: Staff Validator */}
             <div>
               {!business.staff_pin_enabled ? (
-                <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 h-full flex flex-col items-center justify-center text-center gap-3 py-8">
-                  <div className="text-4xl">⚡</div>
-                  <h3 className="font-bold text-white">Auto-Refresh QR Active</h3>
-                  <p className="text-sm text-zinc-400">
-                    Customers stamp themselves by scanning the QR
+                <div className="bg-zinc-900/50 rounded-lg p-8 border border-zinc-800 h-full flex flex-col items-center justify-center text-center gap-2.5">
+                  <div className="text-3xl text-zinc-400">⚡</div>
+                  <h3 className="font-semibold text-sm text-zinc-100">Auto-Refresh QR Active</h3>
+                  <p className="text-xs text-zinc-400 max-w-xs">
+                    Customers stamp themselves by scanning the live dynamic QR.
                   </p>
-                  <p className="text-xs text-zinc-500">
-                    Enable Staff PIN in Settings for manual stamp issuing
+                  <p className="text-[11px] text-zinc-500 mt-2">
+                    Enable Staff PIN in Settings for manual lookup &amp; stamping.
                   </p>
                 </div>
               ) : (
@@ -457,13 +464,13 @@ export default function DashboardPage() {
               stampsRequired={business.stamps_required}
               onStamped={fetchData}
             />
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-zinc-400">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-zinc-400">
                   {customers.length} customer{customers.length !== 1 ? 's' : ''} enrolled
                 </p>
-                <Button size="sm" variant="secondary" onClick={handleExport}>
-                  ⬇ Export Customers
+                <Button size="sm" variant="secondary" onClick={handleExport} className="text-xs">
+                  Export CSV
                 </Button>
               </div>
               <CustomerTable customers={customers} stampsRequired={business.stamps_required} />
@@ -482,25 +489,28 @@ export default function DashboardPage() {
 
         {/* Tab: Campaigns */}
         {activeTab === 'campaigns' && (
-          <div className="max-w-2xl space-y-6">
-            <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
-              <h3 className="font-bold text-white">Send Campaign</h3>
+          <div className="max-w-2xl space-y-4">
+            <div className="bg-zinc-900/50 rounded-lg p-5 border border-zinc-800 space-y-4 shadow-xs">
+              <div>
+                <h3 className="font-semibold text-sm text-zinc-100">Send Campaign Message</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">Reach out to opted-in loyalty customers on WhatsApp.</p>
+              </div>
 
               {/* Audience */}
               <div>
-                <p className="text-sm font-medium text-zinc-300 mb-2">Audience</p>
+                <p className="text-xs font-medium text-zinc-300 mb-2">Audience</p>
                 <div className="space-y-2">
                   {([
                     { id: 'all' as const, label: 'All opted-in customers', count: audienceCounts.all },
-                    { id: 'near_reward' as const, label: 'Near reward — 1-2 stamps away', count: audienceCounts.near_reward },
+                    { id: 'near_reward' as const, label: 'Near reward (1-2 stamps away)', count: audienceCounts.near_reward },
                     { id: 'inactive' as const, label: 'Inactive 30+ days', count: audienceCounts.inactive },
                   ]).map((opt) => (
                     <label
                       key={opt.id}
-                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                      className={`flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
                         campaignAudience === opt.id
-                          ? 'border-yellow-400 bg-yellow-400/5'
-                          : 'border-zinc-700 hover:border-zinc-600'
+                          ? 'border-zinc-400 bg-zinc-800/60'
+                          : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700'
                       }`}
                     >
                       <input
@@ -509,10 +519,10 @@ export default function DashboardPage() {
                         value={opt.id}
                         checked={campaignAudience === opt.id}
                         onChange={() => setCampaignAudience(opt.id)}
-                        className="accent-yellow-400"
+                        className="accent-zinc-100"
                       />
-                      <span className="text-sm text-white flex-1">{opt.label}</span>
-                      <span className="text-sm font-bold text-yellow-400">{opt.count}</span>
+                      <span className="text-xs text-zinc-200 flex-1">{opt.label}</span>
+                      <span className="text-xs font-semibold text-zinc-400">{opt.count}</span>
                     </label>
                   ))}
                 </div>
@@ -520,26 +530,25 @@ export default function DashboardPage() {
 
               {/* Message */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-sm font-medium text-zinc-300">Message</p>
-                  <span className="text-xs text-zinc-500">{campaignMessage.length}/160</span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-zinc-300">Message</span>
+                  <span className="text-[11px] text-zinc-500">{campaignMessage.length}/160</span>
                 </div>
-                <textarea
+                <Textarea
                   value={campaignMessage}
                   onChange={(e) => setCampaignMessage(e.target.value)}
-                  placeholder="Hi {name}! ..."
+                  placeholder="Hi {name}! You have stamps waiting at our store..."
                   maxLength={160}
-                  rows={4}
-                  className="w-full bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/50 resize-none"
+                  rows={3}
                 />
-                <p className="text-xs text-zinc-500 mt-1">Use {'{name}'} for personalisation</p>
+                <p className="text-[11px] text-zinc-500 mt-1">Use {'{name}'} for personalized customer name.</p>
               </div>
 
               {/* Preview */}
               {campaignMessage && (
-                <div className="bg-zinc-800 rounded-lg p-3">
-                  <p className="text-xs text-zinc-400 mb-1">Preview</p>
-                  <p className="text-sm text-white">{previewMessage}</p>
+                <div className="bg-zinc-850/60 rounded-md p-3 border border-zinc-800">
+                  <p className="text-[10px] uppercase font-semibold text-zinc-400 mb-1">Preview</p>
+                  <p className="text-xs text-zinc-200 leading-relaxed">{previewMessage}</p>
                 </div>
               )}
 
@@ -552,12 +561,13 @@ export default function DashboardPage() {
                 loading={campaignLoading}
                 disabled={audienceCounts[campaignAudience] === 0 || !campaignMessage.trim()}
                 className="w-full"
+                size="sm"
               >
                 Send Campaign
               </Button>
 
-              <p className="text-xs text-zinc-500 text-center">
-                ~₹{(audienceCounts[campaignAudience] * 0.5).toFixed(2)} ({audienceCounts[campaignAudience]} messages × ₹0.50)
+              <p className="text-[11px] text-zinc-500 text-center">
+                Est. ~₹{(audienceCounts[campaignAudience] * 0.5).toFixed(2)} ({audienceCounts[campaignAudience]} messages × ₹0.50)
               </p>
             </div>
           </div>
@@ -570,32 +580,32 @@ export default function DashboardPage() {
 
         {/* Tab: Settings */}
         {activeTab === 'settings' && (
-          <div className="max-w-2xl space-y-6">
+          <div className="max-w-2xl space-y-5">
             {/* Business Info */}
-            <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
-              <h3 className="font-bold text-white mb-4">Business Info</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
+            <div className="bg-zinc-900/50 rounded-lg p-5 border border-zinc-800 shadow-xs">
+              <h3 className="font-semibold text-sm text-zinc-100 mb-3">Business Info</h3>
+              <div className="space-y-2.5 text-xs">
+                <div className="flex justify-between py-1 border-b border-zinc-800/60">
                   <span className="text-zinc-400">Name</span>
-                  <span className="text-white font-medium">{business.name}</span>
+                  <span className="text-zinc-100 font-medium">{business.name}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between py-1 border-b border-zinc-800/60">
                   <span className="text-zinc-400">Category</span>
-                  <span className="text-white">{business.category}</span>
+                  <span className="text-zinc-100">{business.category}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between py-1 border-b border-zinc-800/60">
                   <span className="text-zinc-400">Stamps Required</span>
-                  <span className="text-white">{business.stamps_required}</span>
+                  <span className="text-zinc-100">{business.stamps_required}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between py-1 border-b border-zinc-800/60">
                   <span className="text-zinc-400">Reward</span>
-                  <span className="text-white">{business.reward}</span>
+                  <span className="text-zinc-100">{business.reward}</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center py-1">
                   <span className="text-zinc-400">Staff PIN</span>
                   <div className="flex items-center gap-2">
                     {business.has_staff_pin ? (
-                      <span className="text-white">••••</span>
+                      <span className="text-zinc-200">••••</span>
                     ) : (
                       <span className="text-zinc-500 italic">Not set</span>
                     )}
@@ -605,7 +615,7 @@ export default function DashboardPage() {
                           setPinManagerAction(business.has_staff_pin ? 'change' : 'set')
                           setPinManagerOpen(true)
                         }}
-                        className="text-xs text-yellow-400 hover:text-yellow-300 ml-2"
+                        className="text-xs text-zinc-300 hover:text-white underline ml-2 cursor-pointer"
                       >
                         {business.has_staff_pin ? 'Change' : 'Set PIN'}
                       </button>
@@ -615,11 +625,11 @@ export default function DashboardPage() {
               </div>
 
               {/* Google Review Link */}
-              <div className="mt-5 pt-5 border-t border-zinc-800">
-                <div className="flex items-center justify-between mb-2">
+              <div className="mt-4 pt-4 border-t border-zinc-800">
+                <div className="flex items-center justify-between mb-1.5">
                   <div>
-                    <p className="text-sm font-medium text-white">Google Review Link</p>
-                    <p className="text-xs text-zinc-500">Customers get a bonus stamp for leaving a review</p>
+                    <p className="text-xs font-medium text-zinc-200">Google Review Link</p>
+                    <p className="text-[11px] text-zinc-500">Customers get a bonus stamp for leaving a review.</p>
                   </div>
                   <button
                     onClick={() => {
@@ -628,15 +638,15 @@ export default function DashboardPage() {
                       setGmbSaved(false)
                       setEditModalOpen(true)
                     }}
-                    className="text-xs text-yellow-400 hover:text-yellow-300"
+                    className="text-xs text-zinc-300 hover:text-white underline cursor-pointer"
                   >
-                    {business.gmb_link ? 'Edit' : 'Set up →'}
+                    {business.gmb_link ? 'Edit' : 'Configure →'}
                   </button>
                 </div>
                 {business.gmb_link ? (
-                  <p className="text-xs text-green-400">✓ Set — review prompt active in kiosk</p>
+                  <p className="text-[11px] text-emerald-400">✓ Set — review prompt active in counter display</p>
                 ) : (
-                  <p className="text-xs text-zinc-600">Not set — review prompt hidden in kiosk</p>
+                  <p className="text-[11px] text-zinc-500">Not set — review prompt hidden</p>
                 )}
               </div>
             </div>
@@ -657,11 +667,11 @@ export default function DashboardPage() {
 
       {/* GMB Link Modal */}
       {editModalOpen && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 w-full max-w-sm space-y-4">
-            <h3 className="font-bold text-white">Google Review Link</h3>
-            <p className="text-sm text-zinc-400">
-              Paste your Google Maps review link. Customers in kiosk mode will be offered a bonus stamp for leaving a review.
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 rounded-lg p-5 border border-zinc-800 w-full max-w-sm space-y-4 shadow-xl">
+            <h3 className="font-semibold text-sm text-zinc-100">Google Review Link</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Paste your Google Maps review link. Customers in counter display mode will be offered a bonus stamp for leaving a review.
             </p>
             <Input
               label="Google Review URL"
@@ -669,17 +679,19 @@ export default function DashboardPage() {
               value={gmbInput}
               onChange={(e) => { setGmbInput(e.target.value); setGmbError(''); setGmbSaved(false) }}
             />
-            {gmbError && <p className="text-sm text-red-400">{gmbError}</p>}
-            {gmbSaved && <p className="text-sm text-green-400">✓ Saved successfully</p>}
-            <div className="flex gap-2">
+            {gmbError && <p className="text-xs text-rose-400">{gmbError}</p>}
+            {gmbSaved && <p className="text-xs text-emerald-400">✓ Saved successfully</p>}
+            <div className="flex gap-2 pt-1">
               <Button
                 variant="secondary"
+                size="sm"
                 className="flex-1"
                 onClick={() => setEditModalOpen(false)}
               >
                 {gmbSaved ? 'Close' : 'Cancel'}
               </Button>
               <Button
+                size="sm"
                 className="flex-1"
                 loading={gmbSaving}
                 onClick={async () => {
@@ -722,9 +734,7 @@ export default function DashboardPage() {
           business={data.business}
           initialAction={pinManagerAction}
           onSuccess={async (hasPin) => {
-            // Optimistically update the UI to reflect the new state
             if (hasPin && !data.business.has_staff_pin && pinManagerAction === 'set') {
-              // Automatically enable the toggle locally once PIN is set
               setData((prev) => prev ? { ...prev, business: { ...prev.business, has_staff_pin: true, staff_pin_enabled: true } } : prev)
               await handleSaveToggles({ staff_pin_enabled: true })
             }

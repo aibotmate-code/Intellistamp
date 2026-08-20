@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import Alert from '@/components/ui/Alert'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -24,7 +25,6 @@ export default function SignupPage() {
     if (password !== confirm) { setError('Passwords do not match'); return }
     setLoading(true)
     try {
-      // Create user server-side with email pre-confirmed (no verification email)
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -33,7 +33,6 @@ export default function SignupPage() {
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Signup failed'); return }
 
-      // Sign in immediately to establish the session cookie
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -51,21 +50,23 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100">
+      <div className="w-full max-w-sm">
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-2" aria-hidden="true">🏷️</div>
-          <h1 className="text-2xl font-black text-white">Create Business Account</h1>
-          <p className="text-zinc-400 text-sm mt-1">Set up your loyalty program in minutes</p>
+        <div className="text-center mb-6">
+          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 mx-auto mb-3 shadow-xs">
+            🏷️
+          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Create Business Account</h1>
+          <p className="text-xs text-zinc-400 mt-1">Set up your smart loyalty stamp program in minutes</p>
         </div>
 
         {/* Form card */}
-        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
+        <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
           <Input
             id="signup-email"
-            label="Email"
+            label="Email Address"
             type="email"
             autoComplete="email"
             placeholder="you@example.com"
@@ -78,7 +79,7 @@ export default function SignupPage() {
               label="Password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
-              placeholder="Min 8 characters"
+              placeholder="Min. 8 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -87,7 +88,7 @@ export default function SignupPage() {
               tabIndex={-1}
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              className="absolute right-3 bottom-3 text-xs text-zinc-400 hover:text-white select-none"
+              className="absolute right-3 bottom-2 text-xs text-zinc-400 hover:text-zinc-200 select-none cursor-pointer"
             >
               {showPassword ? 'Hide' : 'Show'}
             </button>
@@ -107,17 +108,13 @@ export default function SignupPage() {
               tabIndex={-1}
               onClick={() => setShowConfirm((v) => !v)}
               aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
-              className="absolute right-3 bottom-3 text-xs text-zinc-400 hover:text-white select-none"
+              className="absolute right-3 bottom-2 text-xs text-zinc-400 hover:text-zinc-200 select-none cursor-pointer"
             >
               {showConfirm ? 'Hide' : 'Show'}
             </button>
           </div>
 
-          {error && (
-            <p role="alert" className="text-sm text-red-400 bg-red-950/30 border border-red-800/40 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
+          {error && <Alert type="error" message={error} />}
 
           <Button
             id="signup-submit"
@@ -125,14 +122,15 @@ export default function SignupPage() {
             loading={loading}
             disabled={loading}
             className="w-full"
+            size="sm"
           >
-            Create Account →
+            Create Account
           </Button>
 
-          <p className="text-center text-sm text-zinc-500">
+          <p className="text-center text-xs text-zinc-400 pt-1">
             Already have an account?{' '}
-            <Link href="/login" className="text-yellow-400 hover:underline font-medium">
-              Sign in →
+            <Link href="/login" className="text-zinc-200 hover:underline font-medium">
+              Sign in
             </Link>
           </p>
         </div>
@@ -141,13 +139,13 @@ export default function SignupPage() {
         <nav aria-label="Other options" className="mt-6 flex flex-col items-center gap-2">
           <Link
             href="/cards"
-            className="text-sm text-zinc-300 hover:text-yellow-400 transition-colors font-medium"
+            className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors font-medium"
           >
-            📱 View My Loyalty Cards
+            View Customer Loyalty Cards
           </Link>
           <Link
             href="/"
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
           >
             ← Back to Home
           </Link>

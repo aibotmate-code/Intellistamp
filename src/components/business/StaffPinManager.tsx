@@ -28,14 +28,14 @@ export default function StaffPinManager({ business, onSuccess, onClose, initialA
 
   if (!isPro) {
     return (
-      <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-        <div className="bg-zinc-900 rounded-2xl p-6 border border-purple-500/30 w-full max-w-sm space-y-4">
-          <h3 className="font-bold text-white">Pro Feature</h3>
-          <p className="text-sm text-zinc-400">
+      <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+        <div className="bg-zinc-900 rounded-lg p-5 border border-zinc-800 w-full max-w-sm space-y-4 shadow-xl">
+          <h3 className="font-semibold text-sm text-zinc-100">Pro Feature</h3>
+          <p className="text-xs text-zinc-400 leading-relaxed">
             Staff PIN management requires the IntelliStamp Pro plan.
           </p>
-          <div className="flex justify-end">
-            <Button variant="secondary" onClick={onClose}>Close</Button>
+          <div className="flex justify-end pt-2">
+            <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
           </div>
         </div>
       </div>
@@ -77,7 +77,6 @@ export default function StaffPinManager({ business, onSuccess, onClose, initialA
       })
       const json = await res.json()
       if (res.ok) {
-        // Clear all inputs from state
         setCurrentPin('')
         setNewPin('')
         setConfirmPin('')
@@ -107,10 +106,12 @@ export default function StaffPinManager({ business, onSuccess, onClose, initialA
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 w-full max-w-sm space-y-4">
-        <h3 className="font-bold text-white">{titles[action]}</h3>
-        <p className="text-sm text-zinc-400">{descriptions[action]}</p>
+    <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+      <div className="bg-zinc-900 rounded-lg p-5 border border-zinc-800 w-full max-w-sm space-y-4 shadow-xl">
+        <div>
+          <h3 className="font-semibold text-sm text-zinc-100">{titles[action]}</h3>
+          <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{descriptions[action]}</p>
+        </div>
 
         {error && <Alert type="error" message={error} />}
 
@@ -156,22 +157,22 @@ export default function StaffPinManager({ business, onSuccess, onClose, initialA
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>
+          <Button variant="secondary" size="sm" className="flex-1" onClick={onClose}>
             Cancel
           </Button>
-          <Button className="flex-1" loading={loading} onClick={handleSubmit}>
-            Save
+          <Button size="sm" className="flex-1" loading={loading} onClick={handleSubmit}>
+            Save PIN
           </Button>
         </div>
 
         {action === 'change' && (
-          <div className="text-center mt-2">
+          <div className="text-center pt-1">
             <button
               onClick={() => {
                 setError('')
                 setAction('reset')
               }}
-              className="text-xs text-zinc-500 hover:text-white underline"
+              className="text-xs text-zinc-500 hover:text-zinc-300 underline cursor-pointer"
             >
               Forgot current PIN? Reset it
             </button>

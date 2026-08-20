@@ -101,74 +101,68 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 bg-zinc-950 z-[9999] flex flex-col items-center justify-between p-8"
+      className="fixed inset-0 bg-zinc-950 z-[9999] flex flex-col items-center justify-between p-6 sm:p-8 text-zinc-100"
     >
       {/* Exit button */}
       <button
         onClick={handleExit}
-        className="absolute top-4 right-4 text-zinc-500 hover:text-white text-sm px-3 py-1.5 rounded-lg border border-zinc-700 hover:border-zinc-500"
+        className="absolute top-4 right-4 text-zinc-400 hover:text-white text-xs px-2.5 py-1.5 rounded-md border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 transition-colors cursor-pointer"
       >
-        ✕ Exit
+        ✕ Exit Display
       </button>
 
       {/* Top: business info */}
-      <div className="text-center mt-8">
-        <div className="text-5xl mb-2">{businessEmoji}</div>
-        <p className="text-2xl font-black text-zinc-400 tracking-widest uppercase">{businessName}</p>
+      <div className="text-center mt-6">
+        <div className="text-4xl mb-2">{businessEmoji}</div>
+        <h1 className="text-xl font-semibold tracking-tight text-zinc-100">{businessName}</h1>
+        <p className="text-xs text-zinc-400 mt-0.5">Customer Counter Display</p>
       </div>
 
       {/* Center: QR */}
-      <div className="flex flex-col items-center gap-4">
-        <div className="bg-white rounded-2xl p-4 shadow-2xl flex items-center justify-center" style={{ width: 272, height: 272 }}>
+      <div className="flex flex-col items-center gap-4 my-auto">
+        <div className="bg-white rounded-lg p-3.5 shadow-md flex items-center justify-center" style={{ width: 250, height: 250 }}>
           {token ? (
             <QRCodeSVG
               value={qrUrl}
-              size={240}
+              size={220}
               bgColor="#ffffff"
               fgColor="#000000"
               level="M"
               includeMargin={false}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center text-zinc-400 text-sm">
+            <div className="flex flex-col items-center justify-center text-zinc-400 text-xs">
               {diagnostic.status === 'loading' || diagnostic.status === 'fetching' ? (
                 <span className="animate-pulse">Loading QR...</span>
               ) : (
-                <span className="text-red-500">Error: {diagnostic.status}</span>
+                <span className="text-rose-500">Error loading QR</span>
               )}
             </div>
           )}
         </div>
 
         <div className="text-center w-full max-w-full px-2 overflow-hidden flex justify-center">
-          <p className="text-xs font-mono text-zinc-500 bg-zinc-900/50 p-2 rounded truncate max-w-[300px]" title={token}>
-            {token ? `${token.substring(0, 16)}...${token.slice(-16)}` : '...'}
+          <p className="text-[11px] font-mono text-zinc-500 bg-zinc-900/60 border border-zinc-800/80 px-2 py-1 rounded truncate max-w-[260px]" title={token}>
+            {token ? `${token.substring(0, 12)}...${token.slice(-12)}` : '...'}
           </p>
         </div>
       </div>
 
       {/* Bottom */}
-      <div className="text-center space-y-2">
-        <p className="text-zinc-300 font-medium">Scan this with your camera to get a stamp!</p>
-        <div className="flex items-center justify-center gap-2 text-sm">
+      <div className="text-center space-y-2 mb-4">
+        <p className="text-xs font-medium text-zinc-200">Scan with your phone camera to collect your stamp</p>
+        <div className="flex items-center justify-center gap-2 text-xs">
           <span className={cn(
-            'w-2 h-2 rounded-full animate-pulse-dot',
-            seconds > 10 ? 'bg-green-400' : 'bg-red-400'
+            'w-1.5 h-1.5 rounded-full',
+            seconds > 10 ? 'bg-emerald-400' : 'bg-rose-400'
           )} />
-          <span className={seconds > 10 ? 'text-zinc-500' : 'text-red-400'}>
+          <span className={seconds > 10 ? 'text-zinc-400' : 'text-rose-400'}>
             Refreshes in {seconds}s
           </span>
         </div>
-        <p className="text-zinc-600 text-xs mt-4">
-          Powered by IntelliStamp · stamp.intellicallabs.com
+        <p className="text-zinc-600 text-[11px] pt-2">
+          IntelliStamp · Smart Loyalty Platform
         </p>
-        
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-2 text-[10px] font-mono text-zinc-500 text-center bg-black/20 p-2 rounded max-w-xs mx-auto flex gap-4 justify-center">
-            <span>status: {diagnostic.status}</span>
-            <span>tok: {diagnostic.tokenLength}</span>
-          </div>
-        )}
       </div>
     </div>
   )

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Spinner from '@/components/ui/Spinner'
+import Button from '@/components/ui/Button'
 import type { Business } from '@/types'
 
 function getSessionToken(): { customerId: string | null; customerToken: string | null } {
@@ -57,7 +58,7 @@ export default function ReviewPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-100">
       <Spinner size="lg" />
     </div>
   )
@@ -65,43 +66,39 @@ export default function ReviewPage() {
   if (!business) return null
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center">
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex justify-center gap-2">
-          {[1, 2, 3].map((s) => (
-            <div key={s} className="w-3 h-3 rounded-full bg-yellow-400" />
-          ))}
-        </div>
-
+    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100">
+      <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-black text-white">EARN A BONUS STAMP ⭐</h1>
-          <p className="text-zinc-400 mt-1">Leave a Google review and ask staff to add your bonus stamp.</p>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Earn a Bonus Stamp ⭐</h1>
+          <p className="text-xs text-zinc-400 mt-1">Leave a Google review and show staff at the counter.</p>
         </div>
 
-        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
-          <div className="text-center">
-            <div className="text-4xl mb-1">⭐⭐⭐⭐⭐</div>
-            <div className="text-2xl font-black text-white">{business.emoji} {business.name}</div>
+        <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
+          <div className="text-center space-y-1">
+            <div className="text-2xl">⭐⭐⭐⭐⭐</div>
+            <div className="text-base font-semibold text-zinc-100">{business.emoji} {business.name}</div>
           </div>
 
-          <p className="text-sm text-zinc-400 text-center leading-relaxed">
+          <p className="text-xs text-zinc-400 text-center leading-relaxed">
             Enjoying your experience? A quick Google review helps{' '}
-            <span className="text-white font-medium">{business.name}</span> reach more customers like you.
-            Takes 30 seconds — and staff will add a bonus stamp once they see your review.
+            <span className="text-zinc-200 font-medium">{business.name}</span> reach more customers.
+            Staff will add a bonus stamp once they verify your review.
           </p>
 
-          <button
+          <Button
             onClick={handleGmbClick}
-            className="w-full border-2 border-green-500 text-green-400 font-semibold py-3 px-4 rounded-xl hover:bg-green-500/10 transition-colors flex items-center justify-center gap-2"
+            variant="outline"
+            size="sm"
+            className="w-full"
           >
-            Leave a Review on Google →
-          </button>
+            Leave Review on Google →
+          </Button>
 
           {gmbClicked && (
-            <div className="rounded-xl bg-zinc-800 border border-zinc-700 p-4 text-center space-y-1">
-              <p className="text-sm text-zinc-300 font-medium">Review opened ✅</p>
-              <p className="text-xs text-zinc-500">
-                Once you&apos;ve posted your review, show staff and they&apos;ll add your bonus stamp at the counter.
+            <div className="rounded-md bg-zinc-850/80 border border-zinc-800 p-3 text-center space-y-1 text-xs">
+              <p className="text-emerald-400 font-medium">Review link opened ✓</p>
+              <p className="text-zinc-400 text-[11px]">
+                Show your posted review to staff to receive your bonus stamp.
               </p>
             </div>
           )}
@@ -109,7 +106,7 @@ export default function ReviewPage() {
 
         <button
           onClick={toCard}
-          className="text-sm text-zinc-500 hover:text-zinc-300 w-full text-center"
+          className="text-xs text-zinc-500 hover:text-zinc-300 w-full text-center py-1 cursor-pointer"
         >
           Skip — go to my cards
         </button>

@@ -1,13 +1,13 @@
 import { cn } from '@/lib/utils'
-import { type InputHTMLAttributes, forwardRef } from 'react'
+import { type TextareaHTMLAttributes, forwardRef } from 'react'
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string
   error?: string
   helperText?: string
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
+const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, helperText, id, ...props }, ref) => {
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined)
 
@@ -18,11 +18,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <input
+        <textarea
           id={inputId}
           ref={ref}
           className={cn(
-            'flex h-9 w-full rounded-md border border-zinc-800 bg-zinc-900/70 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 shadow-xs',
+            'flex min-h-[80px] w-full rounded-md border border-zinc-800 bg-zinc-900/70 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 shadow-xs',
             'transition-colors duration-150',
             'focus-visible:outline-none focus-visible:border-zinc-500 focus-visible:ring-1 focus-visible:ring-zinc-500',
             'disabled:cursor-not-allowed disabled:opacity-50',
@@ -37,7 +37,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     )
   }
 )
-Input.displayName = 'Input'
+Textarea.displayName = 'Textarea'
 
-export default Input
-export { Input }
+export default Textarea
+export { Textarea }

@@ -27,7 +27,6 @@ export default function FeatureToggles({ business, onSave, onOpenPinManager }: F
         return
       }
       if (value && !business.has_staff_pin) {
-        // Enforce setting PIN before enabling
         onOpenPinManager('set')
         return
       }
@@ -43,24 +42,26 @@ export default function FeatureToggles({ business, onSave, onOpenPinManager }: F
   }
 
   const active = [
-    dynamicQr && '⚡ Smart QR',
-    staffPin && '🔒 Staff PIN',
-    whatsapp && '📲 WhatsApp',
+    dynamicQr && 'Smart QR',
+    staffPin && 'Staff PIN',
+    whatsapp && 'WhatsApp',
   ].filter(Boolean)
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">Stamp Verification</h3>
+      <div>
+        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Stamp Verification</h3>
+      </div>
 
-      <div className="bg-zinc-900 rounded-xl border border-zinc-800 divide-y divide-zinc-800">
+      <div className="bg-zinc-900/50 rounded-lg border border-zinc-800 divide-y divide-zinc-800/80 shadow-xs">
         <div className="p-4">
           <Toggle
             checked={dynamicQr}
             onChange={(v) => handleToggle('dynamic_qr_enabled', v)}
             label="Auto-Refresh QR"
-            description="QR refreshes automatically to prevent sharing."
-            badge="⚡ Recommended"
-            badgeColor="yellow"
+            description="QR refreshes automatically every 30s to prevent code sharing."
+            badge="Recommended"
+            badgeColor="green"
           />
         </div>
 
@@ -69,16 +70,15 @@ export default function FeatureToggles({ business, onSave, onOpenPinManager }: F
             checked={staffPin}
             onChange={(v) => handleToggle('staff_pin_enabled', v)}
             label="Staff PIN Verification"
-            description="Staff manually verifies each stamp. Max control."
-            badge="🔒 Pro Feature"
+            description="Staff verifies customer number and enters PIN before stamping."
+            badge="Pro Feature"
             badgeColor="purple"
           />
           {showPinNudge && (
-            <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-              <p className="text-sm text-purple-300">
-                Staff PIN Verification requires IntelliStamp Pro (₹2,499/mo)
+            <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/20 rounded-md">
+              <p className="text-xs text-purple-300">
+                Staff PIN Verification requires IntelliStamp Pro.
               </p>
-              <button className="mt-2 text-xs text-purple-400 underline">Upgrade</button>
             </div>
           )}
         </div>
@@ -88,42 +88,40 @@ export default function FeatureToggles({ business, onSave, onOpenPinManager }: F
             checked={whatsapp}
             onChange={(v) => handleToggle('whatsapp_enabled', v)}
             label="WhatsApp Reminders"
-            description="Send automated reminders and offers to customers."
+            description="Send automated reminders and offers to enrolled customers."
             badge="Pro Feature"
             badgeColor="purple"
           />
           {showWaNudge && (
-            <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-              <p className="text-sm text-purple-300">
-                WhatsApp Reminders require IntelliStamp Pro (₹2,499/mo)
+            <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/20 rounded-md">
+              <p className="text-xs text-purple-300">
+                WhatsApp Reminders require IntelliStamp Pro.
               </p>
-              <button className="mt-2 text-xs text-purple-400 underline">Upgrade</button>
             </div>
           )}
         </div>
       </div>
 
-      <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide pt-4">Advanced Settings</h3>
-      <div className="bg-zinc-900 rounded-xl border border-zinc-800 divide-y divide-zinc-800">
-        <div className="p-4">
-          <Toggle
-            checked={true}
-            onChange={() => {}}
-            label="Time Between Stamps"
-            description="Prevent customers from receiving another stamp for 4 hours."
-            badge="Free"
-            badgeColor="green"
-          />
+      <div className="pt-2">
+        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Advanced Security</h3>
+        <div className="bg-zinc-900/50 rounded-lg border border-zinc-800 divide-y divide-zinc-800 shadow-xs">
+          <div className="p-4">
+            <Toggle
+              checked={true}
+              onChange={() => {}}
+              label="Time Between Stamps (Cooldown)"
+              description="Prevent customers from receiving another stamp within 4 hours."
+              badge="Active"
+              badgeColor="green"
+            />
+          </div>
         </div>
       </div>
 
-      {active.length > 0 ? (
-        <p className="text-sm text-zinc-400">⚡ Active: {active.join(', ')}</p>
-      ) : (
-        <p className="text-sm text-yellow-500">⚠️ No security — abuse risk is high</p>
-      )}
-
-      {saving && <p className="text-xs text-zinc-500">Saving...</p>}
+      <div className="flex items-center justify-between text-xs text-zinc-500 pt-1">
+        <span>Active modes: {active.join(', ') || 'None'}</span>
+        {saving && <span>Saving changes...</span>}
+      </div>
     </div>
   )
 }

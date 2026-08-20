@@ -93,8 +93,11 @@ export default function CustomerLookup({ businessId, stampsRequired, onStamped }
   }
 
   return (
-    <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 space-y-4">
-      <h3 className="font-bold text-white">Find customer by mobile number</h3>
+    <div className="bg-zinc-900/50 rounded-lg p-5 border border-zinc-800 space-y-4 shadow-xs">
+      <div>
+        <h3 className="font-semibold text-sm text-zinc-100">Find customer by mobile number</h3>
+        <p className="text-xs text-zinc-400 mt-0.5">Lookup customer record and manually stamp or verify reward status.</p>
+      </div>
 
       {/* Hidden dummy inputs to catch and prevent browser autofill hijack */}
       <input type="text" name="prevent_autofill_username" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
@@ -126,7 +129,7 @@ export default function CustomerLookup({ businessId, stampsRequired, onStamped }
         maxLength={4}
       />
 
-      <Button onClick={handleLookup} loading={loading} className="w-full">
+      <Button onClick={handleLookup} loading={loading} size="sm" className="w-full">
         Find Customer
       </Button>
 
@@ -135,37 +138,41 @@ export default function CustomerLookup({ businessId, stampsRequired, onStamped }
       )}
 
       {result?.found && result.customer && result.card_state && (
-        <div className="rounded-xl border border-zinc-700 p-4 space-y-3">
-          <div>
-            <p className="font-semibold text-white">{result.customer.name || 'Unknown'}</p>
-            <p className="text-sm text-zinc-400">••••{result.customer.phone.slice(-4)}</p>
+        <div className="rounded-md border border-zinc-800 bg-zinc-850/60 p-4 space-y-3 mt-4">
+          <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+            <div>
+              <p className="font-semibold text-sm text-zinc-100">{result.customer.name || 'Unknown'}</p>
+              <p className="text-xs text-zinc-400">••••{result.customer.phone.slice(-4)}</p>
+            </div>
+            {result.card_state.redeemable && (
+              <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-medium">
+                🎁 Reward ready
+              </span>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div>
               <p className="text-zinc-500">Stamps</p>
-              <p className="text-yellow-400 font-bold">{result.card_state.card_stamps}/{stampsRequired}</p>
+              <p className="text-zinc-100 font-semibold mt-0.5">{result.card_state.card_stamps}/{stampsRequired}</p>
             </div>
             <div>
               <p className="text-zinc-500">Total visits</p>
-              <p className="text-white font-bold">{result.card_state.total_stamps}</p>
+              <p className="text-zinc-100 font-semibold mt-0.5">{result.card_state.total_stamps}</p>
             </div>
             <div>
               <p className="text-zinc-500">Reward</p>
-              <p className="text-white">{result.reward}</p>
+              <p className="text-zinc-100 font-medium mt-0.5 truncate">{result.reward}</p>
             </div>
             <div>
               <p className="text-zinc-500">Last visit</p>
-              <p className="text-white">
+              <p className="text-zinc-100 font-medium mt-0.5">
                 {result.last_visit ? new Date(result.last_visit).toLocaleDateString() : 'Never'}
               </p>
             </div>
           </div>
-          {result.card_state.redeemable && (
-            <p className="text-sm text-green-400 font-medium">🎁 Reward ready to redeem</p>
-          )}
           {stampMsg && <Alert type={stampMsg.type} message={stampMsg.msg} />}
-          <Button onClick={handleIssueStamp} loading={stamping} className="w-full">
-            Confirm & Issue Stamp
+          <Button onClick={handleIssueStamp} loading={stamping} size="sm" className="w-full">
+            Confirm &amp; Issue Stamp
           </Button>
         </div>
       )}

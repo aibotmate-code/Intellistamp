@@ -50,7 +50,6 @@ export default function ScannerPage() {
               if (barcodes.length > 0) {
                 const raw = barcodes[0].rawValue
                 let path: string | null = null
-                // Accept full URLs or bare paths
                 try {
                   const u = new URL(raw)
                   if (u.pathname.startsWith('/scan/')) path = u.pathname + u.search
@@ -93,16 +92,16 @@ export default function ScannerPage() {
   }, [router])
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-black text-white">Scan Business QR</h1>
-          <p className="text-zinc-400 text-sm mt-1">Point your camera at the stamp QR code</p>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Scan Merchant QR</h1>
+          <p className="text-xs text-zinc-400 mt-1">Point your camera at the counter display QR code</p>
         </div>
 
         {scanState === 'scanning' && (
           <div className="relative">
-            <div className="rounded-2xl overflow-hidden bg-black aspect-square w-full">
+            <div className="rounded-lg overflow-hidden bg-black aspect-square w-full border border-zinc-800 shadow-md">
               <video
                 ref={videoRef}
                 className="w-full h-full object-cover"
@@ -112,60 +111,59 @@ export default function ScannerPage() {
             </div>
             {/* Corner guides */}
             <div className="absolute inset-6 pointer-events-none">
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-yellow-400 rounded-tl-lg" />
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-yellow-400 rounded-tr-lg" />
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-yellow-400 rounded-bl-lg" />
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-yellow-400 rounded-br-lg" />
+              <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-zinc-100 rounded-tl-sm" />
+              <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-zinc-100 rounded-tr-sm" />
+              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-zinc-100 rounded-bl-sm" />
+              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-zinc-100 rounded-br-sm" />
             </div>
             {hint && (
-              <div className="absolute bottom-4 inset-x-4 text-center bg-black/70 rounded-lg py-2 px-3">
-                <p className="text-sm text-red-400">{hint}</p>
+              <div className="absolute bottom-4 inset-x-4 text-center bg-black/80 rounded-md py-1.5 px-3 border border-zinc-800">
+                <p className="text-xs text-rose-400">{hint}</p>
               </div>
             )}
           </div>
         )}
 
         {scanState === 'checking' && (
-          <div className="aspect-square w-full rounded-2xl bg-zinc-900 flex items-center justify-center">
-            <div className="text-yellow-400 text-4xl animate-pulse">◌</div>
+          <div className="aspect-square w-full rounded-lg bg-zinc-900/50 border border-zinc-800 flex items-center justify-center">
+            <div className="text-zinc-500 text-sm animate-pulse">Initializing camera...</div>
           </div>
         )}
 
         {scanState === 'unsupported' && (
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 text-center space-y-4">
-            <div className="text-4xl">📷</div>
-            <p className="font-bold text-white">In-app scanner not supported</p>
-            <p className="text-sm text-zinc-400">
-              Your browser doesn&apos;t support in-app QR scanning. Use your phone&apos;s
-              <strong className="text-white"> Camera app</strong> to scan the QR code
-              at the business counter — it will open automatically.
+          <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 text-center space-y-3 shadow-xs">
+            <div className="text-3xl">📷</div>
+            <p className="font-semibold text-sm text-zinc-100">In-app camera not supported</p>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Your browser doesn&apos;t support the scanner API. Please use your phone&apos;s
+              <strong className="text-zinc-200"> Camera app</strong> to scan the QR code
+              at the counter directly.
             </p>
           </div>
         )}
 
         {scanState === 'no_permission' && (
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 text-center space-y-4">
-            <div className="text-4xl">🔒</div>
-            <p className="font-bold text-white">Camera access denied</p>
-            <p className="text-sm text-zinc-400">
-              Allow camera access in your browser settings, then reload. Or use
-              your phone&apos;s Camera app to scan directly.
+          <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 text-center space-y-3 shadow-xs">
+            <div className="text-3xl">🔒</div>
+            <p className="font-semibold text-sm text-zinc-100">Camera access required</p>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Allow camera permission in your browser, or open your default Camera app to scan the counter display.
             </p>
           </div>
         )}
 
         {scanState === 'error' && (
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 text-center space-y-4">
-            <div className="text-4xl">⚠️</div>
-            <p className="font-bold text-white">Camera error</p>
-            <p className="text-sm text-zinc-400">
-              Could not start the camera. Try using your phone&apos;s Camera app instead.
+          <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 text-center space-y-3 shadow-xs">
+            <div className="text-3xl">⚠️</div>
+            <p className="font-semibold text-sm text-zinc-100">Camera error</p>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Could not access the camera. Try using your phone&apos;s standard Camera app.
             </p>
           </div>
         )}
 
         <div className="mt-6 text-center">
-          <Link href="/cards" className="text-sm text-zinc-500 hover:text-zinc-300">
+          <Link href="/cards" className="text-xs text-zinc-400 hover:text-zinc-200">
             ← Back to my cards
           </Link>
         </div>
