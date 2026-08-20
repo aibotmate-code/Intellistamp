@@ -57,7 +57,7 @@ export default function SignupPage() {
 
         {/* Header */}
         <div className="text-center mb-6 flex flex-col items-center">
-          <Logo size="md" className="mb-3" />
+          <Logo size="md" withAttribution={true} className="mb-3" />
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Create Business Account</h1>
           <p className="text-xs text-zinc-400 mt-1">Set up your smart loyalty stamp program in minutes</p>
         </div>

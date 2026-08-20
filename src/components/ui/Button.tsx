@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { type ButtonHTMLAttributes, forwardRef } from 'react'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'neutral'
   size?: 'sm' | 'md' | 'lg'
   loading?: boolean
 }
@@ -15,11 +15,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         className={cn(
           'inline-flex items-center justify-center font-medium transition-colors duration-150 select-none cursor-pointer',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-950',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-950',
           'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
           {
-            'bg-zinc-100 text-zinc-950 hover:bg-zinc-200 active:bg-zinc-300 border border-transparent shadow-xs':
+            'bg-amber-500 text-zinc-950 hover:bg-amber-400 active:bg-amber-600 font-semibold border border-amber-600/30 shadow-xs':
               variant === 'primary',
+            'bg-zinc-100 text-zinc-950 hover:bg-zinc-200 active:bg-zinc-300 font-medium border border-transparent shadow-xs':
+              variant === 'neutral',
             'bg-zinc-900 text-zinc-200 hover:bg-zinc-800 hover:text-white active:bg-zinc-850 border border-zinc-800':
               variant === 'secondary',
             'bg-transparent text-zinc-300 hover:bg-zinc-900 hover:text-white border border-zinc-800':

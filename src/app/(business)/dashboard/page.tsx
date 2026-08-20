@@ -278,8 +278,8 @@ export default function DashboardPage() {
       {/* Topbar */}
       <header className="border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <IntelliStampLogo size="sm" />
+          <div className="flex items-center gap-2.5">
+            <IntelliStampLogo size="sm" withAttribution={true} />
             <span className="text-[11px] bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium">Business</span>
           </div>
           {ownerEmail && (
@@ -394,9 +394,9 @@ export default function DashboardPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 style={isTabActive ? { color: activeColor, borderColor: activeColor } : undefined}
-                className={`px-3.5 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
+                className={`px-3.5 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
                   isTabActive
-                    ? ''
+                    ? 'font-semibold bg-amber-500/5 rounded-t-md'
                     : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
                 }`}
               >

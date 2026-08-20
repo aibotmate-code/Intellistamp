@@ -318,7 +318,7 @@ describe('StampCard Branding Integration', () => {
     expect(emptyDot.props.style.border).toBe('2px solid #99BFBD')
   })
 
-  test('loyalty card attribution: powered by Intellical Labs', () => {
+  test('loyalty card attribution: by Intellical Labs', () => {
     const element = StampCard({
       stampsRequired: 5,
       cardStamps: 2,
@@ -333,7 +333,7 @@ describe('StampCard Branding Integration', () => {
     expect(attributionDiv).toBeDefined()
 
     const pText = attributionDiv.props.children
-    expect(pText.props.children[0]).toContain('Powered by')
+    expect(pText.props.children[0]).toContain('by')
 
     const link = pText.props.children[2]
     expect(link.type).toBe('a')

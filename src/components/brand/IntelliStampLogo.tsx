@@ -1,5 +1,6 @@
 import React from 'react'
 import IntelliStampMark from './IntelliStampMark'
+import IntellicalLabsAttribution from './IntellicalLabsAttribution'
 
 export interface IntelliStampLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl'
@@ -37,9 +38,9 @@ export default function IntelliStampLogo({
           <span className="text-amber-500">Stamp</span>
         </div>
         {withAttribution && (
-          <span className="text-[10px] text-zinc-500 font-medium tracking-wide mt-0.5">
-            by Intellical Labs
-          </span>
+          <div className="mt-1">
+            <IntellicalLabsAttribution size="xs" asLink={false} />
+          </div>
         )}
       </div>
     )
@@ -48,15 +49,15 @@ export default function IntelliStampLogo({
   return (
     <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
       {showMark && <IntelliStampMark size={markSize} variant={markVariant} />}
-      <div className="flex flex-col">
+      <div className="flex flex-col justify-center">
         <div className={`${textClasses} flex items-center leading-none`}>
           <span className="text-zinc-100">Intelli</span>
           <span className="text-amber-500">Stamp</span>
         </div>
         {withAttribution && (
-          <span className="text-[9px] text-zinc-500 font-medium tracking-wider uppercase mt-1">
-            by Intellical Labs
-          </span>
+          <div className="mt-1">
+            <IntellicalLabsAttribution size="xs" asLink={false} />
+          </div>
         )}
       </div>
     </div>

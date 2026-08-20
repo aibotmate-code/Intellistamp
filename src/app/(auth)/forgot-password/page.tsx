@@ -104,7 +104,7 @@ export default function ForgotPasswordPage() {
 
         {/* Header */}
         <div className="text-center mb-6 flex flex-col items-center">
-          <IntelliStampLogo size="md" className="mb-3" />
+          <IntelliStampLogo size="md" withAttribution={true} className="mb-3" />
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Forgot Password?</h1>
           <p className="text-xs text-zinc-400 mt-1">
             Enter your business email to receive a password reset link.

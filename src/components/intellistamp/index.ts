@@ -1,4 +1,6 @@
 export { default as IntelliStampMark } from '../brand/IntelliStampMark'
 export { default as IntelliStampLogo } from '../brand/IntelliStampLogo'
+export { default as IntellicalLabsAttribution } from '../brand/IntellicalLabsAttribution'
 export type { IntelliStampMarkProps } from '../brand/IntelliStampMark'
 export type { IntelliStampLogoProps } from '../brand/IntelliStampLogo'
+export type { IntellicalLabsAttributionProps } from '../brand/IntellicalLabsAttribution'

@@ -151,7 +151,7 @@ function ResetPasswordInner() {
     <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 text-zinc-100 is-dot-grid">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6 flex flex-col items-center">
-          <IntelliStampLogo size="md" className="mb-3" />
+          <IntelliStampLogo size="md" withAttribution={true} className="mb-3" />
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Set New Password</h1>
           <p className="text-xs text-zinc-400 mt-1">Choose a strong password for your business account.</p>
         </div>

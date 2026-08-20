@@ -490,7 +490,7 @@ export default function StampCard({
       {/* ── Subtle Platform Attribution ── */}
       <div className="mt-6 pt-4 border-t border-zinc-800/60 flex justify-center text-center">
         <p className="text-[10px] text-zinc-500 font-medium tracking-wide uppercase">
-          Powered by{' '}
+          by{' '}
           <a
             href="https://intellicallabs.com"
             target="_blank"

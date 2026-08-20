@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import HomeAuthMenu from '@/components/auth/HomeAuthMenu'
 import Logo from '@/components/brand/Logo'
+import IntellicalLabsAttribution from '@/components/brand/IntellicalLabsAttribution'
 import { CreditCard, Storefront, UserPlus } from '@phosphor-icons/react/dist/ssr'
 
 export const metadata = {
@@ -30,8 +31,8 @@ export default async function Home() {
 
         {/* Brand Header */}
         <div className="text-center mb-8 flex flex-col items-center">
-          <Logo size="lg" className="mb-3" />
-          <p className="text-xs text-zinc-400">Smart loyalty cards &amp; counter displays for businesses</p>
+          <Logo size="lg" withAttribution={true} className="mb-3" />
+          <p className="text-xs text-zinc-400 mt-1">Smart loyalty cards &amp; counter displays for businesses</p>
         </div>
 
         {/* Business Section */}
@@ -44,7 +45,7 @@ export default async function Home() {
             <div className="space-y-2">
               <Link
                 href="/login"
-                className="flex items-center justify-center gap-2 w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 px-4 rounded-md text-sm hover:bg-zinc-200 transition-colors shadow-xs"
+                className="flex items-center justify-center gap-2 w-full bg-amber-500 text-zinc-950 font-semibold py-2.5 px-4 rounded-md text-sm hover:bg-amber-400 transition-colors shadow-xs"
                 aria-label="Business Login"
               >
                 <Storefront size={16} weight="bold" />
@@ -84,12 +85,9 @@ export default async function Home() {
           </p>
         </div>
 
-        <p className="text-zinc-600 text-[11px] text-center mt-10">
-          IntelliStamp · A product of{' '}
-          <a href="https://intellicallabs.com" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-zinc-400 transition-colors underline">
-            Intellical Labs
-          </a>
-        </p>
+        <div className="text-center mt-10">
+          <IntellicalLabsAttribution size="xs" />
+        </div>
       </div>
     </main>
   )

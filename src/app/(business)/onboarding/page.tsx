@@ -204,7 +204,7 @@ export default function OnboardingPage() {
           >
             Sign Out
           </button>
-          <Logo size="md" className="mb-3" />
+          <Logo size="md" withAttribution={true} className="mb-3" />
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100">IntelliStamp Setup</h1>
           <p className="text-xs text-zinc-400 mt-1">Configure your digital loyalty card in 5 simple steps</p>
         </div>
