@@ -256,12 +256,22 @@ export default function StampCard({
   const textOnPrimaryBrandColor = resolved.text_on_primary
 
   const visitsRemaining = Math.max(0, stampsRequired - cardStamps)
+  const cols =
+    stampsRequired <= 4
+      ? stampsRequired
+      : stampsRequired <= 6
+      ? 3
+      : stampsRequired <= 8
+      ? 4
+      : stampsRequired <= 10
+      ? 5
+      : 6
 
   return (
     <div
       className={cn(
-        'rounded-xl p-5 border transition-all duration-300 shadow-sm',
-        redeemable && 'is-reward-glow'
+        'rounded-xl p-5 border transition-all duration-300 shadow-sm relative overflow-hidden',
+        redeemable && 'is-reward-glow border-amber-500/40'
       )}
       style={{ background: cardBgColor, borderColor: resolved.empty_stamp_border_color }}
     >
@@ -274,7 +284,7 @@ export default function StampCard({
       )}
 
       {/* ── Header: Merchant Identity First ── */}
-      <div className="flex items-center gap-3.5 mb-5">
+      <div className="flex items-center gap-3.5 mb-4">
         <BusinessVisual
           logoUrl={activeBranding?.logo_url}
           emoji={businessEmoji}
@@ -288,7 +298,7 @@ export default function StampCard({
           >
             {businessName}
           </h3>
-          <p className="text-xs mt-0.5 truncate" style={{ color: resolved.card_muted_text_color }}>
+          <p className="text-xs mt-0.5 truncate font-medium" style={{ color: resolved.card_muted_text_color }}>
             {reward}
           </p>
         </div>
@@ -302,10 +312,32 @@ export default function StampCard({
         </div>
       </div>
 
-      {/* ── Stamp Grid: Signature Punch Trail ── */}
+      {/* ── Progress Highlight ── */}
+      <div className="mb-2 flex items-baseline justify-between">
+        <div>
+          <h4
+            className="text-sm font-semibold tracking-tight"
+            style={{ color: resolved.card_text_color }}
+          >
+            {cardStamps} of {stampsRequired} visits
+          </h4>
+          <p className="text-[11px] mt-0.5" style={{ color: resolved.card_muted_text_color }}>
+            {visitsRemaining === 0
+              ? 'Your reward is ready to redeem!'
+              : `${visitsRemaining} ${visitsRemaining === 1 ? 'visit' : 'visits'} until your reward`}
+          </p>
+        </div>
+        {totalVisits !== undefined && totalVisits > 0 && (
+          <span className="text-[10px] font-mono" style={{ color: resolved.card_muted_text_color }}>
+            {totalVisits} total visits
+          </span>
+        )}
+      </div>
+
+      {/* ── Stamp Grid: Tactile Signature Punch Trail ── */}
       <div
         className="grid gap-2.5 my-4"
-        style={{ gridTemplateColumns: `repeat(${Math.min(5, stampsRequired)}, 1fr)` }}
+        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
         aria-label={`${cardStamps} of ${stampsRequired} stamps collected`}
         role="img"
       >
@@ -319,9 +351,9 @@ export default function StampCard({
             <div key={i} className="relative aspect-square flex items-center justify-center">
               <div
                 className={cn(
-                  'w-full h-full rounded-full flex items-center justify-center text-xs font-semibold transition-transform duration-200',
+                  'w-full h-full rounded-full flex items-center justify-center text-xs font-semibold transition-transform duration-200 select-none',
                   isNew && 'stamp-dot-fill scale-105',
-                  isPulsing && 'stamp-dot-pulse',
+                  isPulsing && 'stamp-dot-pulse'
                 )}
                 style={
                   filled
@@ -359,26 +391,11 @@ export default function StampCard({
         })}
       </div>
 
-      {/* ── Progress statement ── */}
-      <div className="flex items-center justify-between mt-3 text-xs">
-        <span
-          className="font-medium font-mono text-[11px]"
-          style={{ color: resolved.card_muted_text_color }}
-        >
-          {cardStamps} of {stampsRequired} stamps collected
-          {totalVisits !== undefined && (
-            <span style={{ color: resolved.card_muted_text_color + 'cc' }}>
-              {' '}· {totalVisits} total visits
-            </span>
-          )}
-        </span>
-      </div>
-
       {/* ── Claim reward button ── */}
       {showClaim && onClaim && (
         <button
           onClick={onClaim}
-          className="claim-btn-enter glow-pulse mt-4 w-full flex items-center justify-center gap-2 font-semibold py-2.5 px-4 rounded-lg text-sm transition-all hover:brightness-110 active:scale-[0.99] cursor-pointer"
+          className="claim-btn-enter glow-pulse mt-4 w-full flex items-center justify-center gap-2 font-semibold py-2.5 px-4 rounded-lg text-sm transition-all hover:brightness-110 active:scale-[0.99] cursor-pointer shadow-md"
           style={{ background: primaryBrandColor, color: textOnPrimaryBrandColor, minHeight: 44 }}
         >
           <Gift size={18} weight="fill" />
@@ -411,7 +428,7 @@ export default function StampCard({
           </p>
 
           <div className="space-y-2.5">
-            {sortedMilestones.map(m => {
+            {sortedMilestones.map((m) => {
               const pct =
                 totalVisits != null
                   ? Math.min(100, (totalVisits / m.visit_number) * 100)
@@ -453,30 +470,31 @@ export default function StampCard({
                       </p>
                     </div>
 
-                    {m.earned ? (
-                      <span
-                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0"
-                        style={{
-                          color: primaryBrandColor,
-                          background: isBrandingEnabled ? primaryBrandColor + '1A' : 'rgba(245, 158, 11, 0.15)',
-                          border: `1px solid ${isBrandingEnabled ? primaryBrandColor + '33' : 'rgba(245, 158, 11, 0.3)'}`,
-                        }}
-                      >
-                        <Check size={11} weight="bold" />
-                        <span>Earned</span>
-                      </span>
-                    ) : (
-                      <span
-                        className="text-[11px] shrink-0 font-mono"
-                        style={{ color: resolved.card_muted_text_color + 'bb' }}
-                      >
-                        {visitsAway} visit{visitsAway !== 1 ? 's' : ''} away
-                      </span>
-                    )}
+                    <div className="text-right shrink-0">
+                      {m.earned ? (
+                        <span
+                          className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                          style={{
+                            background: isBrandingEnabled && resolved.primary_color ? resolved.primary_color + '26' : 'rgba(245, 158, 11, 0.15)',
+                            color: primaryBrandColor,
+                          }}
+                        >
+                          Earned
+                        </span>
+                      ) : (
+                        <span
+                          className="text-[11px] font-mono"
+                          style={{ color: resolved.card_muted_text_color }}
+                        >
+                          {visitsAway} {visitsAway === 1 ? 'visit' : 'visits'} left
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {!m.earned && (
-                    <div className="px-3 mt-1">
+                  {/* Progress towards milestone */}
+                  {!m.earned && totalVisits != null && (
+                    <div className="mt-1 px-3">
                       <MilestoneProgressBar pct={pct} />
                     </div>
                   )}

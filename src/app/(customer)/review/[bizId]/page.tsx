@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
+import BusinessVisual from '@/components/branding/BusinessVisual'
 import type { Business } from '@/types'
 import { Star, CheckCircle, ArrowRight } from '@phosphor-icons/react'
 
@@ -75,7 +76,7 @@ export default function ReviewPage() {
         </div>
 
         <div className="bg-zinc-900/60 rounded-xl p-6 border border-zinc-800 space-y-4 shadow-xs">
-          <div className="text-center space-y-1">
+          <div className="text-center space-y-2 flex flex-col items-center">
             <div className="flex items-center justify-center gap-1 text-amber-400 py-1">
               <Star size={20} weight="fill" />
               <Star size={20} weight="fill" />
@@ -83,7 +84,15 @@ export default function ReviewPage() {
               <Star size={20} weight="fill" />
               <Star size={20} weight="fill" />
             </div>
-            <div className="text-base font-semibold text-zinc-100">{business.emoji} {business.name}</div>
+            <div className="flex items-center gap-2">
+              <BusinessVisual
+                logoUrl={business.branding?.logo_url}
+                emoji={business.emoji}
+                name={business.name}
+                className="text-2xl"
+              />
+              <span className="text-base font-semibold text-zinc-100">{business.name}</span>
+            </div>
           </div>
 
           <p className="text-xs text-zinc-400 text-center leading-relaxed">

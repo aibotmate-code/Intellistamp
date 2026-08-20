@@ -88,15 +88,15 @@ export default function CardPage({ params }: PageParams) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-bg)' }}>
-        <Spinner size="lg" />
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-100 is-dot-grid">
+        <Spinner size="lg" className="text-amber-500" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen p-4 page-enter" style={{ background: 'var(--color-bg)' }}>
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen bg-zinc-950 p-4 text-zinc-100 page-enter">
+      <div className="max-w-md mx-auto py-2">
         <Link
           href="/cards"
           className="inline-flex items-center gap-1.5 text-xs mb-4 text-zinc-400 hover:text-zinc-200 transition-colors"
@@ -126,7 +126,7 @@ export default function CardPage({ params }: PageParams) {
             {cardState.cards_redeemed > 0 && (
               <p className="text-center text-xs font-medium text-emerald-400 flex items-center justify-center gap-1.5">
                 <Trophy size={14} weight="duotone" />
-                <span>{cardState.cards_redeemed}x redeemed</span>
+                <span>{cardState.cards_redeemed}x reward{cardState.cards_redeemed > 1 ? 's' : ''} redeemed</span>
               </p>
             )}
 
@@ -156,12 +156,12 @@ export default function CardPage({ params }: PageParams) {
         )}
 
         {!cardState && !error && (
-          <div className="text-center py-12">
-            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+          <div className="text-center py-12 bg-zinc-900/40 rounded-xl border border-zinc-800 p-6 space-y-3">
+            <p className="text-sm text-zinc-400">
               No card found for this business.
             </p>
-            <Button onClick={() => router.push('/scanner')} className="mt-4">
-              Scan to enroll
+            <Button onClick={() => router.push('/scanner')} size="sm">
+              Scan to Enroll
             </Button>
           </div>
         )}

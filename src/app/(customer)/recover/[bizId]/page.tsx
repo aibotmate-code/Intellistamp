@@ -106,6 +106,15 @@ export default function RecoverPage({ params }: PageParams) {
             </div>
           )}
         </div>
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => router.push('/cards')}
+            className="text-xs text-zinc-500 hover:text-zinc-300 cursor-pointer"
+          >
+            Back to my cards
+          </button>
+        </div>
       </div>
     </div>
   )

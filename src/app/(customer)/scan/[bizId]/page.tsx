@@ -7,6 +7,8 @@ import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
 import Spinner from '@/components/ui/Spinner'
 import StampCard from '@/components/customer/StampCard'
+import BusinessVisual from '@/components/branding/BusinessVisual'
+import { CheckCircle } from '@phosphor-icons/react'
 import type { Business, StampCardState } from '@/types'
 
 type FlowState = 'loading' | 'login' | 'name' | 'stamping' | 'success' | 'error' | 'cooldown'
@@ -193,41 +195,52 @@ export default function ScanPage() {
 
   if (flowState === 'loading' || loadingStamp) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-100">
-        <div className="text-center">
-          <Spinner size="md" className="mx-auto mb-3" />
-          <p className="text-zinc-400 text-xs">
-            {loadingStamp ? 'Adding your loyalty stamp...' : 'Loading...'}
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-100 is-dot-grid">
+        <div className="text-center space-y-3">
+          <Spinner size="md" className="mx-auto text-amber-500" />
+          <p className="text-zinc-300 text-xs font-medium">
+            {loadingStamp ? 'Adding your loyalty stamp...' : 'Connecting to counter...'}
           </p>
         </div>
       </div>
     )
   }
 
+  const visitsRemaining =
+    business && cardState ? Math.max(0, business.stamps_required - cardState.card_stamps) : 0
+
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100">
+    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100 is-dot-grid">
       <div className="w-full max-w-sm">
-        {business && (
-          <div className="text-center mb-6">
-            <div className="text-3xl mb-1">{business.emoji}</div>
+        {business && flowState !== 'success' && (
+          <div className="text-center mb-6 flex flex-col items-center">
+            <BusinessVisual
+              logoUrl={business.branding?.logo_url}
+              emoji={business.emoji}
+              name={business.name}
+              className="text-3xl mb-2"
+            />
             <h1 className="text-lg font-semibold tracking-tight text-zinc-100">{business.name}</h1>
+            <p className="text-xs text-zinc-400 mt-0.5">Earn: {business.reward}</p>
           </div>
         )}
 
         {flowState === 'login' && (
-          <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
+          <div className="bg-zinc-900/60 rounded-xl p-6 border border-zinc-800 space-y-4 shadow-xs backdrop-blur-xs">
             <div>
-              <h2 className="text-sm font-semibold text-zinc-200">Collect Loyalty Stamp</h2>
-              <p className="text-xs text-zinc-400 mt-0.5">Enter your mobile number to add your stamp.</p>
+              <h2 className="text-sm font-semibold text-zinc-200">Collect Your Stamp</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">Enter your mobile number to check in.</p>
             </div>
             <Input
               label="Mobile Number"
               placeholder="9876543210"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
               error={phoneError}
               inputMode="numeric"
               maxLength={10}
+              autoFocus
             />
             <Button onClick={handleContinue} loading={loadingIdentify} size="sm" className="w-full">
               Continue →
@@ -242,9 +255,9 @@ export default function ScanPage() {
         )}
 
         {flowState === 'name' && (
-          <div className="bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
+          <div className="bg-zinc-900/60 rounded-xl p-6 border border-zinc-800 space-y-4 shadow-xs backdrop-blur-xs">
             <div>
-              <h2 className="text-sm font-semibold text-zinc-200">Welcome! What&apos;s your name?</h2>
+              <h2 className="text-sm font-semibold text-zinc-200">Welcome! What is your name?</h2>
               <p className="text-xs text-zinc-400 mt-0.5">First visit — just your name to get started.</p>
             </div>
             <Input
@@ -252,11 +265,12 @@ export default function ScanPage() {
               placeholder="Rahul Sharma"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
               error={nameError}
               autoFocus
             />
             <Button onClick={handleJoin} loading={loadingIdentify} size="sm" className="w-full">
-              Join &amp; Get Stamp →
+              Join &amp; Collect Stamp →
             </Button>
             <button
               onClick={() => setFlowState('login')}
@@ -269,6 +283,19 @@ export default function ScanPage() {
 
         {flowState === 'success' && business && cardState && (
           <div className="space-y-4">
+            {/* Stamp Earned Header Banner */}
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center space-y-1 shadow-xs">
+              <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto mb-1">
+                <CheckCircle size={20} weight="fill" />
+              </div>
+              <h2 className="text-base font-semibold text-emerald-300 tracking-tight">Stamp added</h2>
+              <p className="text-xs text-zinc-300">
+                {visitsRemaining === 0
+                  ? 'Your reward is unlocked!'
+                  : `${visitsRemaining} ${visitsRemaining === 1 ? 'visit' : 'visits'} to your reward`}
+              </p>
+            </div>
+
             <StampCard
               stampsRequired={business.stamps_required}
               cardStamps={cardState.card_stamps}
@@ -287,6 +314,7 @@ export default function ScanPage() {
               }}
               businessBranding={business.branding}
             />
+
             <Button
               onClick={() => {
                 const token = customer?.customer_token
@@ -294,6 +322,8 @@ export default function ScanPage() {
                   router.push(`/card/${token}?biz=${bizId}`)
                 } else if (accessGrant) {
                   router.push(`/api/customer/grant-exchange?grant=${accessGrant}&bizId=${bizId}`)
+                } else {
+                  router.push('/cards')
                 }
               }}
               variant="outline"

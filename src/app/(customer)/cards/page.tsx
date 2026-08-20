@@ -112,7 +112,7 @@ export default function CardsPage() {
               <CreditCard size={22} weight="duotone" />
             </div>
             <h1 className="text-xl font-semibold tracking-tight text-zinc-100">My Loyalty Cards</h1>
-            <p className="text-xs text-zinc-400 mt-1">Enter your mobile number to view active cards</p>
+            <p className="text-xs text-zinc-400 mt-1">Enter your mobile number to access your stamp cards</p>
           </div>
 
           <div className="bg-zinc-900/60 rounded-lg p-6 border border-zinc-800 space-y-4 shadow-xs">
@@ -125,6 +125,7 @@ export default function CardsPage() {
               onChange={(e) => setPhone(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handlePhoneLookup()}
               error={phoneError}
+              autoFocus
             />
             <Button
               onClick={handlePhoneLookup}
@@ -133,10 +134,10 @@ export default function CardsPage() {
               className="w-full"
               size="sm"
             >
-              View My Cards →
+              View My Cards
             </Button>
             <p className="text-center text-[11px] text-zinc-500">
-              New here? Scan a merchant QR code at the counter to start.
+              New to IntelliStamp? Scan a merchant QR code at the counter to start.
             </p>
           </div>
 
@@ -162,14 +163,14 @@ export default function CardsPage() {
           <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-500 mx-auto mb-3 shadow-xs">
             <MagnifyingGlass size={22} weight="duotone" />
           </div>
-          <h2 className="text-lg font-semibold text-zinc-100 mb-2">No Account Found</h2>
+          <h2 className="text-lg font-semibold text-zinc-100 mb-2">No Cards Found</h2>
           <p className="text-zinc-400 text-xs mb-6 leading-relaxed">
             We couldn&apos;t find loyalty cards for this number. Scan a merchant QR code at the counter first to create your account.
           </p>
           <div className="flex items-center justify-center gap-3 text-xs">
             <button
               onClick={() => { setFlow('phone'); setPhone('') }}
-              className="text-zinc-100 hover:underline cursor-pointer font-medium"
+              className="text-amber-500 hover:underline cursor-pointer font-medium"
             >
               Try another number
             </button>
@@ -191,21 +192,30 @@ export default function CardsPage() {
             onClick={handleLogout}
             className="text-xs text-zinc-400 hover:text-zinc-200 cursor-pointer"
           >
-            Logout
+            Sign Out
           </button>
         </div>
 
         {cards.length === 0 ? (
-          <div className="text-center py-12 text-zinc-400 rounded-lg border border-zinc-800 bg-zinc-900/30 p-6">
-            <CreditCard size={36} weight="duotone" className="text-zinc-600 mx-auto mb-3" />
-            <p className="font-semibold text-sm text-zinc-100">No active loyalty cards</p>
-            <p className="text-xs text-zinc-400 mt-1">Scan a merchant QR code to earn your first stamp.</p>
-            <Link
-              href="/"
-              className="mt-4 inline-block text-xs font-medium text-amber-500 hover:underline"
-            >
-              Back to Home →
-            </Link>
+          <div className="text-center py-12 text-zinc-400 rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-4 shadow-xs">
+            <div className="w-12 h-12 rounded-full bg-zinc-800/60 border border-zinc-700 flex items-center justify-center text-zinc-400 mx-auto">
+              <CreditCard size={24} weight="duotone" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-zinc-100">No loyalty cards yet</p>
+              <p className="text-xs text-zinc-400 mt-1 max-w-xs mx-auto leading-relaxed">
+                Scan a QR code at any participating business counter to start collecting stamps and unlock rewards.
+              </p>
+            </div>
+            <div className="pt-2">
+              <Link
+                href="/scanner"
+                className="inline-flex items-center justify-center gap-2 bg-amber-500 text-zinc-950 font-semibold text-xs px-4 py-2 rounded-md hover:bg-amber-400 transition-colors shadow-xs"
+              >
+                <Camera size={15} weight="bold" />
+                <span>Scan Merchant QR</span>
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
@@ -213,6 +223,7 @@ export default function CardsPage() {
               const { business, card_stamps, cards_completed, cards_redeemed } = card
               const redeemable = cards_completed > (cards_redeemed ?? 0)
               const segCount = business.stamps_required
+              const visitsRemaining = Math.max(0, business.stamps_required - card_stamps)
 
               const activeBranding = business.branding
               const isBrandingEnabled = !!(activeBranding && activeBranding.is_enabled !== false)
@@ -223,8 +234,8 @@ export default function CardsPage() {
                   key={card.business_id}
                   href={customerToken ? `/card/${customerToken}?biz=${card.business_id}` : '#'}
                   className={cn(
-                    'block rounded-xl p-4 border transition-all hover:border-zinc-700 shadow-xs',
-                    redeemable && 'is-reward-glow'
+                    'block rounded-xl p-4 border transition-all hover:scale-[1.01] hover:border-zinc-700 shadow-sm active:scale-[0.99] select-none',
+                    redeemable && 'is-reward-glow border-amber-500/40'
                   )}
                   style={{
                     background: resolved.surface_color,
@@ -246,36 +257,49 @@ export default function CardsPage() {
                         {business.name}
                       </p>
                       <p className="text-xs mt-0.5 truncate" style={{ color: resolved.card_muted_text_color }}>
-                        {business.reward} ({business.stamps_required} stamps)
+                        {business.reward}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-lg font-mono font-semibold" style={{ color: resolved.primary_color }}>
+                      <p className="text-base font-mono font-semibold" style={{ color: resolved.primary_color }}>
                         {card_stamps}/{business.stamps_required}
                       </p>
-                      {cards_completed > 0 && (
-                        <p className="text-[10px] text-emerald-400">{cards_completed} completed</p>
-                      )}
+                      <p className="text-[10px]" style={{ color: resolved.card_muted_text_color }}>
+                        {redeemable ? 'Ready to claim' : `${visitsRemaining} to reward`}
+                      </p>
                     </div>
                   </div>
 
                   {/* Punch trail dots */}
-                  <div className="mt-3 flex gap-1">
-                    {Array.from({ length: segCount }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-1.5 flex-1 rounded-full transition-colors"
-                        style={{
-                          background: i < card_stamps ? resolved.primary_color : resolved.empty_stamp_color,
-                        }}
-                      />
-                    ))}
+                  <div className="mt-3 flex gap-1.5 items-center">
+                    {Array.from({ length: segCount }).map((_, i) => {
+                      const filled = i < card_stamps
+                      return (
+                        <div
+                          key={i}
+                          className="h-2 flex-1 rounded-full flex items-center justify-center transition-all"
+                          style={{
+                            background: filled ? resolved.primary_color : resolved.empty_stamp_color,
+                            border: filled ? 'none' : `1px solid ${resolved.empty_stamp_border_color}`,
+                          }}
+                        />
+                      )
+                    })}
                   </div>
 
                   {redeemable && (
-                    <div className="mt-2.5 flex items-center gap-1.5 text-xs font-semibold" style={{ color: resolved.primary_color }}>
-                      <Gift size={14} weight="fill" />
-                      <span>Reward ready to redeem!</span>
+                    <div
+                      className="mt-3 pt-2.5 border-t flex items-center justify-between text-xs font-semibold"
+                      style={{
+                        borderColor: resolved.empty_stamp_border_color,
+                        color: resolved.primary_color,
+                      }}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Gift size={14} weight="fill" />
+                        <span>Reward unlocked</span>
+                      </span>
+                      <span className="text-[11px] underline underline-offset-2">View &amp; Redeem &rsaquo;</span>
                     </div>
                   )}
                 </Link>
@@ -289,7 +313,7 @@ export default function CardsPage() {
           className="flex items-center justify-center gap-2 border border-dashed border-zinc-800 rounded-lg p-3.5 text-xs font-medium text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 transition-colors"
         >
           <Camera size={16} weight="duotone" className="text-amber-500" />
-          <span>Scan a new business QR code</span>
+          <span>Scan a new merchant QR code</span>
         </Link>
       </div>
     </div>
