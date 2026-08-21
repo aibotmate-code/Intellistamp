@@ -6,6 +6,7 @@ import AnalyticsKpiCards from './analytics/AnalyticsKpiCards'
 import CustomerActivityChart from './analytics/CustomerActivityChart'
 import NewVsReturningChart from './analytics/NewVsReturningChart'
 import CustomerSegmentsChart from './analytics/CustomerSegmentsChart'
+import AdminExportMenu from './AdminExportMenu'
 import Spinner from '@/components/ui/Spinner'
 import Alert from '@/components/ui/Alert'
 import { Sparkle, ChartLineUp } from '@phosphor-icons/react'
@@ -69,7 +70,7 @@ export default function AdminAnalyticsView({ businessId }: AdminAnalyticsViewPro
 
   return (
     <div className="space-y-6">
-      {/* Top Controls: Period Selection & Health Summary */}
+      {/* Top Controls: Period Selection, Export Menu & Health Summary */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
         <div>
           <div className="flex items-center gap-2">
@@ -81,26 +82,30 @@ export default function AdminAnalyticsView({ businessId }: AdminAnalyticsViewPro
           </p>
         </div>
 
-        {/* Period Selector Tabs */}
-        <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-1 text-xs">
-          {(['7d', '30d', '90d'] as AnalyticsPeriod[]).map((p) => {
-            const isSel = period === p
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  'px-3 py-1 rounded-md font-medium cursor-pointer transition-colors',
-                  isSel
-                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                )}
-              >
-                {p.toUpperCase()}
-              </button>
-            )
-          })}
+        {/* Period Selector Tabs & Export Menu */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-1 text-xs">
+            {(['7d', '30d', '90d'] as AnalyticsPeriod[]).map((p) => {
+              const isSel = period === p
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPeriod(p)}
+                  className={cn(
+                    'px-3 py-1 rounded-md font-medium cursor-pointer transition-colors',
+                    isSel
+                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  )}
+                >
+                  {p.toUpperCase()}
+                </button>
+              )
+            })}
+          </div>
+
+          <AdminExportMenu businessId={businessId} period={period} />
         </div>
       </div>
 
