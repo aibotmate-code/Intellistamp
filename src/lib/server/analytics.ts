@@ -5,8 +5,9 @@ export type AnalyticsPeriod = '7d' | '30d' | '90d'
 export interface PeriodComparison {
   current: number
   previous: number
-  percentChange: number | null // null if undefined/meaningless
-  direction: 'up' | 'down' | 'neutral'
+  percentChange: number | null // null if zero-baseline with new activity or lifetime
+  direction: 'up' | 'down' | 'neutral' | 'new_activity'
+  displayChange?: string
 }
 
 export interface BusinessAnalyticsKPIs {
@@ -22,6 +23,8 @@ export interface BusinessAnalyticsKPIs {
     returningCustomers: number
     activeCustomers: number
     percentChange: number | null
+    direction: 'up' | 'down' | 'neutral' | 'new_activity'
+    displayChange?: string
   }
 }
 
@@ -86,24 +89,28 @@ export interface TenantActivityEvent {
 
 /**
  * Calculates percentage change safely handling zero denominators.
+ * - Previous = 0, Current > 0 → 'New activity'
+ * - Previous = 0, Current = 0 → 'No change'
+ * - Previous > 0 → normal percentage change
  */
 export function calculatePercentChange(current: number, previous: number): {
   percentChange: number | null
-  direction: 'up' | 'down' | 'neutral'
+  direction: 'up' | 'down' | 'neutral' | 'new_activity'
+  displayChange: string
 } {
   if (previous === 0) {
     if (current === 0) {
-      return { percentChange: 0, direction: 'neutral' }
+      return { percentChange: 0, direction: 'neutral', displayChange: 'No change' }
     }
-    return { percentChange: 100, direction: 'up' }
+    return { percentChange: null, direction: 'new_activity', displayChange: 'New activity' }
   }
 
   const change = ((current - previous) / previous) * 100
   const rounded = Math.round(change * 10) / 10
 
-  if (rounded > 0) return { percentChange: rounded, direction: 'up' }
-  if (rounded < 0) return { percentChange: rounded, direction: 'down' }
-  return { percentChange: 0, direction: 'neutral' }
+  if (rounded > 0) return { percentChange: rounded, direction: 'up', displayChange: `+${rounded}%` }
+  if (rounded < 0) return { percentChange: rounded, direction: 'down', displayChange: `${rounded}%` }
+  return { percentChange: 0, direction: 'neutral', displayChange: '0%' }
 }
 
 /**
@@ -167,24 +174,34 @@ export function classifyCustomerStatus(
  * Computes deterministic business health summary statement.
  */
 export function generateHealthSummary(
-  activeChange: number | null,
-  returningChange: number | null,
+  activeComparison: { current: number; previous: number; percentChange: number | null },
+  returningComparison: { current: number; previous: number; percentChange: number | null },
   totalCustomers: number
 ): string {
   if (totalCustomers === 0) {
     return 'New loyalty program — awaiting initial customer enrollment.'
   }
 
-  if (returningChange !== null && returningChange > 10) {
-    return `Returning customer loyalty activity is up ${returningChange > 0 ? '+' : ''}${returningChange}% compared with the previous period.`
+  // Zero-baseline start for returning customers
+  if (returningComparison.previous === 0 && returningComparison.current > 0) {
+    return 'Returning customer activity started during this period.'
   }
 
-  if (activeChange !== null && activeChange > 10) {
-    return `Active customer engagement is up ${activeChange > 0 ? '+' : ''}${activeChange}% compared with the previous period.`
+  if (returningComparison.percentChange !== null && returningComparison.percentChange > 10) {
+    return `Returning customer loyalty activity is up ${returningComparison.percentChange > 0 ? '+' : ''}${returningComparison.percentChange}% compared with the previous period.`
   }
 
-  if (activeChange !== null && activeChange < -10) {
-    return `Customer loyalty activity is down ${Math.abs(activeChange)}% compared with the previous period.`
+  // Zero-baseline start for active customers
+  if (activeComparison.previous === 0 && activeComparison.current > 0) {
+    return 'Customer loyalty activity started during this period.'
+  }
+
+  if (activeComparison.percentChange !== null && activeComparison.percentChange > 10) {
+    return `Active customer engagement is up ${activeComparison.percentChange > 0 ? '+' : ''}${activeComparison.percentChange}% compared with the previous period.`
+  }
+
+  if (activeComparison.percentChange !== null && activeComparison.percentChange < -10) {
+    return `Customer loyalty activity is down ${Math.abs(activeComparison.percentChange)}% compared with the previous period.`
   }
 
   return 'Loyalty engagement and customer activity are broadly stable compared with the previous period.'
@@ -456,8 +473,16 @@ export async function getBusinessAnalytics(
   ]
 
   const summaryStatement = generateHealthSummary(
-    activeCustomersDelta.percentChange,
-    returningCustomersDelta.percentChange,
+    {
+      current: currentActiveCount,
+      previous: previousActiveCount,
+      percentChange: activeCustomersDelta.percentChange,
+    },
+    {
+      current: currentReturningCount,
+      previous: previousReturningCount,
+      percentChange: returningCustomersDelta.percentChange,
+    },
     totalCustomersCount
   )
 
@@ -478,36 +503,42 @@ export async function getBusinessAnalytics(
         previous: totalCustomersCount - currentNewCustomers,
         percentChange: totalCustomersDelta.percentChange,
         direction: totalCustomersDelta.direction,
+        displayChange: totalCustomersDelta.displayChange,
       },
       newCustomers: {
         current: currentNewCustomers,
         previous: previousNewCustomers,
         percentChange: newCustomersDelta.percentChange,
         direction: newCustomersDelta.direction,
+        displayChange: newCustomersDelta.displayChange,
       },
       activeCustomers: {
         current: currentActiveCount,
         previous: previousActiveCount,
         percentChange: activeCustomersDelta.percentChange,
         direction: activeCustomersDelta.direction,
+        displayChange: activeCustomersDelta.displayChange,
       },
       returningCustomers: {
         current: currentReturningCount,
         previous: previousReturningCount,
         percentChange: returningCustomersDelta.percentChange,
         direction: returningCustomersDelta.direction,
+        displayChange: returningCustomersDelta.displayChange,
       },
       stampsIssued: {
         current: currentStampsCount,
         previous: previousStampsCount,
         percentChange: stampsIssuedDelta.percentChange,
         direction: stampsIssuedDelta.direction,
+        displayChange: stampsIssuedDelta.displayChange,
       },
       rewardsRedeemed: {
         current: totalCardsRedeemed,
         previous: totalCardsRedeemed, // Lifetime metric
         percentChange: null,
         direction: 'neutral',
+        displayChange: 'Total',
       },
       nearRewardCount,
       returnRate: {
@@ -515,6 +546,8 @@ export async function getBusinessAnalytics(
         returningCustomers: currentReturningCount,
         activeCustomers: currentActiveCount,
         percentChange: returnRateDelta.percentChange,
+        direction: returnRateDelta.direction,
+        displayChange: returnRateDelta.displayChange,
       },
     },
     timeSeries,

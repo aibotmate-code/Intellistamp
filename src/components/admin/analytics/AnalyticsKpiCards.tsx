@@ -21,20 +21,46 @@ interface AnalyticsKpiCardsProps {
 }
 
 function DeltaBadge({
-  percent,
-  direction,
+  comparison,
   periodLabel,
 }: {
-  percent: number | null
-  direction: 'up' | 'down' | 'neutral'
+  comparison: {
+    current?: number
+    previous?: number
+    percentChange: number | null
+    direction?: 'up' | 'down' | 'neutral' | 'new_activity'
+    displayChange?: string
+  }
   periodLabel: string
 }) {
-  if (percent === null) {
+  // Previous = 0, Current > 0 → 'New activity'
+  if (comparison.direction === 'new_activity' || (comparison.previous === 0 && (comparison.current ?? 0) > 0)) {
+    return (
+      <span className="inline-flex items-center font-medium text-[11px] px-1.5 py-0.5 rounded-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        New activity
+      </span>
+    )
+  }
+
+  // Previous = 0, Current = 0 → 'No change'
+  if (comparison.previous === 0 && (comparison.current ?? 0) === 0) {
+    return (
+      <span className="inline-flex items-center font-medium text-[11px] px-1.5 py-0.5 rounded-sm bg-zinc-800 text-zinc-400 border border-zinc-700">
+        No change
+      </span>
+    )
+  }
+
+  if (comparison.percentChange === null && !comparison.displayChange) {
     return <span className="text-[11px] text-zinc-500">Lifetime metric</span>
   }
 
-  const isPositive = direction === 'up'
-  const isNegative = direction === 'down'
+  const isPositive =
+    comparison.direction === 'up' ||
+    (comparison.percentChange !== null && comparison.percentChange > 0)
+  const isNegative =
+    comparison.direction === 'down' ||
+    (comparison.percentChange !== null && comparison.percentChange < 0)
 
   return (
     <div className="flex items-center gap-1 text-[11px]">
@@ -49,7 +75,12 @@ function DeltaBadge({
         {isPositive && <TrendUp size={12} weight="bold" />}
         {isNegative && <TrendDown size={12} weight="bold" />}
         {!isPositive && !isNegative && <Minus size={12} />}
-        <span>{percent > 0 ? `+${percent}%` : `${percent}%`}</span>
+        <span>
+          {comparison.displayChange ||
+            (comparison.percentChange !== null
+              ? `${comparison.percentChange > 0 ? '+' : ''}${comparison.percentChange}%`
+              : '0%')}
+        </span>
       </span>
       <span className="text-zinc-500">vs prev {periodLabel}</span>
     </div>
@@ -62,84 +93,42 @@ export default function AnalyticsKpiCards({ kpis, periodLabel }: AnalyticsKpiCar
       label: 'Total Customers',
       value: kpis.totalCustomers.current.toLocaleString(),
       icon: <Users size={18} className="text-zinc-400" />,
-      delta: (
-        <DeltaBadge
-          percent={kpis.totalCustomers.percentChange}
-          direction={kpis.totalCustomers.direction}
-          periodLabel={periodLabel}
-        />
-      ),
+      delta: <DeltaBadge comparison={kpis.totalCustomers} periodLabel={periodLabel} />,
       subtitle: `${kpis.nearRewardCount} near reward`,
     },
     {
       label: `New Customers (${periodLabel})`,
       value: kpis.newCustomers.current.toLocaleString(),
       icon: <UserPlus size={18} className="text-amber-400" />,
-      delta: (
-        <DeltaBadge
-          percent={kpis.newCustomers.percentChange}
-          direction={kpis.newCustomers.direction}
-          periodLabel={periodLabel}
-        />
-      ),
+      delta: <DeltaBadge comparison={kpis.newCustomers} periodLabel={periodLabel} />,
       subtitle: 'First enrolled during period',
     },
     {
       label: `Active Customers (${periodLabel})`,
       value: kpis.activeCustomers.current.toLocaleString(),
       icon: <UserCheck size={18} className="text-blue-400" />,
-      delta: (
-        <DeltaBadge
-          percent={kpis.activeCustomers.percentChange}
-          direction={kpis.activeCustomers.direction}
-          periodLabel={periodLabel}
-        />
-      ),
+      delta: <DeltaBadge comparison={kpis.activeCustomers} periodLabel={periodLabel} />,
       subtitle: 'Unique visitors with activity',
     },
     {
       label: `Returning Customers (${periodLabel})`,
       value: kpis.returningCustomers.current.toLocaleString(),
       icon: <ArrowClockwise size={18} className="text-indigo-400" />,
-      delta: (
-        <DeltaBadge
-          percent={kpis.returningCustomers.percentChange}
-          direction={kpis.returningCustomers.direction}
-          periodLabel={periodLabel}
-        />
-      ),
+      delta: <DeltaBadge comparison={kpis.returningCustomers} periodLabel={periodLabel} />,
       subtitle: 'Repeat qualifying loyalty activity',
     },
     {
       label: `Stamps Issued (${periodLabel})`,
       value: kpis.stampsIssued.current.toLocaleString(),
       icon: <Stamp size={18} className="text-amber-500" />,
-      delta: (
-        <DeltaBadge
-          percent={kpis.stampsIssued.percentChange}
-          direction={kpis.stampsIssued.direction}
-          periodLabel={periodLabel}
-        />
-      ),
+      delta: <DeltaBadge comparison={kpis.stampsIssued} periodLabel={periodLabel} />,
       subtitle: `${kpis.rewardsRedeemed.current} lifetime rewards claimed`,
     },
     {
       label: 'Return Rate',
       value: `${kpis.returnRate.rate}%`,
       icon: <Percent size={18} className="text-emerald-400" />,
-      delta: (
-        <DeltaBadge
-          percent={kpis.returnRate.percentChange}
-          direction={
-            kpis.returnRate.percentChange && kpis.returnRate.percentChange > 0
-              ? 'up'
-              : kpis.returnRate.percentChange && kpis.returnRate.percentChange < 0
-              ? 'down'
-              : 'neutral'
-          }
-          periodLabel={periodLabel}
-        />
-      ),
+      delta: <DeltaBadge comparison={kpis.returnRate} periodLabel={periodLabel} />,
       subtitle: 'Customers who returned during period',
     },
   ]
