@@ -253,6 +253,8 @@ export interface ResolvedBranding {
   surface_color: string
   text_on_primary: string
   logo_url?: string | null
+  card_background_image_url?: string | null
+  card_background_overlay: number
 }
 
 export function resolveBrandingColors(
@@ -274,11 +276,23 @@ export function resolveBrandingColors(
       surface_color: 'var(--color-surface)',
       text_on_primary: '#000000',
       logo_url: null,
+      card_background_image_url: null,
+      card_background_overlay: 0.6,
     }
   }
 
   const surface = branding.surface_color || '#18181B'
   const isLight = isLightColor(surface)
+
+  const rawOverlay =
+    typeof branding.card_bg_overlay_opacity === 'number'
+      ? Number(branding.card_bg_overlay_opacity)
+      : typeof branding.card_background_overlay === 'number'
+      ? Number(branding.card_background_overlay)
+      : 0.6
+
+  // Ensure overlay is within [0.2, 0.9]
+  const card_background_overlay = Math.max(0.2, Math.min(0.9, isNaN(rawOverlay) ? 0.6 : rawOverlay))
 
   return {
     primary_color: branding.primary_color,
@@ -290,11 +304,43 @@ export function resolveBrandingColors(
     surface_color: surface,
     text_on_primary: branding.text_on_primary,
     logo_url: branding.logo_url || null,
+    card_background_image_url: branding.card_background_image_url || null,
+    card_background_overlay,
     
     card_text_color: branding.card_text_color || (isLight ? '#111827' : '#F5F5F5'),
     card_muted_text_color: branding.card_muted_text_color || (isLight ? '#6B7280' : '#A1A1AA'),
     empty_stamp_color: branding.empty_stamp_color || (isLight ? '#E7EFEE' : '#18181B'),
     empty_stamp_border_color: branding.empty_stamp_border_color || (isLight ? '#99BFBD' : '#3F3F46'),
+  }
+}
+
+/**
+ * Derives a contrast-safe auto-theme from an uploaded logo image.
+ * Updates primary colors and typography while keeping empty stamp slots default/manual.
+ */
+export function deriveAutoThemeFromLogo(
+  imgElement: HTMLImageElement,
+  currentSurfaceColor: string = '#18181B'
+): {
+  primary_color: string
+  primary_dark_color: string
+  primary_light_color: string
+  text_on_primary: string
+  accent_color: string
+  card_text_color: string
+  card_muted_text_color: string
+} {
+  const extracted = extractPaletteFromImage(imgElement)
+  const isLightSurface = isLightColor(currentSurfaceColor)
+
+  return {
+    primary_color: extracted.primary_color,
+    primary_dark_color: extracted.primary_dark_color,
+    primary_light_color: extracted.primary_light_color,
+    text_on_primary: extracted.text_on_primary,
+    accent_color: extracted.accent_color || extracted.primary_color,
+    card_text_color: isLightSurface ? '#111827' : '#F5F5F5',
+    card_muted_text_color: isLightSurface ? '#6B7280' : '#A1A1AA',
   }
 }
 

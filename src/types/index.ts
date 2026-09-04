@@ -70,6 +70,10 @@ export interface BusinessBranding {
   card_muted_text_color?: string | null
   empty_stamp_color?: string | null
   empty_stamp_border_color?: string | null
+  card_bg_image_path?: string | null
+  card_bg_overlay_opacity?: number | null
+  card_background_image_url?: string | null
+  card_background_overlay?: number | null
   created_at?: string
   updated_at?: string
 }

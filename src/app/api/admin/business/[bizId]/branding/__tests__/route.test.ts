@@ -160,7 +160,27 @@ describe('Admin Co-Branding API: /api/admin/business/[bizId]/branding', () => {
       expect(data.error).toContain('Invalid color format')
     })
 
-    test('admin saves valid branding → 200 and tenant scoped', async () => {
+    test('admin with out-of-range overlay opacity (0.1) → 400 error', async () => {
+      mockGetSession.mockResolvedValueOnce({
+        data: { session: { user: { id: 'admin-1', email: ADMIN_EMAIL } } },
+      })
+      mockQueue.push({ data: { id: BIZ_ID }, error: null })
+
+      const fd = new FormData()
+      fd.append('primary_color', '#10B981')
+      fd.append('card_bg_overlay_opacity', '0.1')
+
+      const req = new NextRequest(`http://localhost/api/admin/business/${BIZ_ID}/branding`, {
+        method: 'POST',
+        body: fd,
+      })
+      const res = await POST(req, { params: Promise.resolve({ bizId: BIZ_ID }) })
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toContain('overlay opacity must be between 0.2 and 0.9')
+    })
+
+    test('admin saves valid branding with overlay opacity → 200 and tenant scoped', async () => {
       mockGetSession.mockResolvedValueOnce({
         data: { session: { user: { id: 'admin-1', email: ADMIN_EMAIL } } },
       })
@@ -181,6 +201,7 @@ describe('Admin Co-Branding API: /api/admin/business/[bizId]/branding', () => {
       fd.append('card_text_color', '#F9FAFB')
       fd.append('empty_stamp_color', '#1F2937')
       fd.append('empty_stamp_border_color', '#374151')
+      fd.append('card_bg_overlay_opacity', '0.75')
 
       const req = new NextRequest(`http://localhost/api/admin/business/${BIZ_ID}/branding`, {
         method: 'POST',
@@ -192,6 +213,7 @@ describe('Admin Co-Branding API: /api/admin/business/[bizId]/branding', () => {
       expect(data.success).toBe(true)
       expect(data.branding.business_id).toBe(BIZ_ID)
       expect(data.branding.primary_color).toBe('#10B981')
+      expect(data.branding.card_bg_overlay_opacity).toBe(0.75)
     })
   })
 
@@ -207,12 +229,31 @@ describe('Admin Co-Branding API: /api/admin/business/[bizId]/branding', () => {
       expect(res.status).toBe(403)
     })
 
+    test('admin remove-bg-image → updates row and removes storage object', async () => {
+      mockGetSession.mockResolvedValueOnce({
+        data: { session: { user: { id: 'admin-1', email: ADMIN_EMAIL } } },
+      })
+      // 1. Fetch current branding
+      mockQueue.push({ data: { card_bg_image_path: `${BIZ_ID}/bg_pattern.png` }, error: null })
+      // 2. Update DB
+      mockQueue.push({ data: {}, error: null })
+
+      const req = new NextRequest(`http://localhost/api/admin/business/${BIZ_ID}/branding?action=remove-bg-image`, {
+        method: 'DELETE',
+      })
+      const res = await DELETE(req, { params: Promise.resolve({ bizId: BIZ_ID }) })
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.success).toBe(true)
+      expect(data.message).toContain('Card background image removed')
+    })
+
     test('admin reset-branding → deletes row and resets', async () => {
       mockGetSession.mockResolvedValueOnce({
         data: { session: { user: { id: 'admin-1', email: ADMIN_EMAIL } } },
       })
       // 1. Fetch current branding
-      mockQueue.push({ data: { logo_path: 'logos/demo.png' }, error: null })
+      mockQueue.push({ data: { logo_path: 'logos/demo.png', card_bg_image_path: 'bg/pattern.png' }, error: null })
       // 2. Delete row
       mockQueue.push({ data: {}, error: null })
 

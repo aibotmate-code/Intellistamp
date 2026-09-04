@@ -28,7 +28,14 @@ export async function GET(req: NextRequest) {
 
     let businessWithBranding = null
     if (business) {
-      const rawBranding = (business as { branding?: { logo_path?: string | null } | null }).branding
+      const rawBranding = (business as unknown as {
+        branding?: {
+          logo_path?: string | null
+          card_bg_image_path?: string | null
+          card_bg_overlay_opacity?: number | null
+          [key: string]: unknown
+        } | null
+      }).branding
       let mappedBranding = null
       if (rawBranding) {
         let logo_url = null
@@ -36,9 +43,16 @@ export async function GET(req: NextRequest) {
           const { data } = adminClient.storage.from('branding').getPublicUrl(rawBranding.logo_path)
           logo_url = data?.publicUrl || null
         }
+        let card_background_image_url = null
+        if (rawBranding.card_bg_image_path) {
+          const { data } = adminClient.storage.from('branding').getPublicUrl(rawBranding.card_bg_image_path)
+          card_background_image_url = data?.publicUrl || null
+        }
         mappedBranding = {
           ...rawBranding,
-          logo_url
+          logo_url,
+          card_background_image_url,
+          card_background_overlay: rawBranding.card_bg_overlay_opacity ? Number(rawBranding.card_bg_overlay_opacity) : 0.6,
         }
       }
       businessWithBranding = {

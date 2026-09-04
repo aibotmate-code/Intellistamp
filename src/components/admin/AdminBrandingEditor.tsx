@@ -5,8 +5,17 @@ import type { Business, BusinessBranding } from '@/types'
 import Button from '@/components/ui/Button'
 import Alert from '@/components/ui/Alert'
 import StampCard from '@/components/customer/StampCard'
-import { Check, UploadSimple, Trash, ArrowCounterClockwise, Eye } from '@phosphor-icons/react'
+import {
+  Check,
+  UploadSimple,
+  Trash,
+  ArrowCounterClockwise,
+  Eye,
+  Sparkle,
+  Image as ImageIcon,
+} from '@phosphor-icons/react'
 import { isValidHexColor } from '@/lib/branding/validation'
+import { deriveAutoThemeFromLogo } from '@/lib/branding/palette'
 import { cn } from '@/lib/utils'
 
 const normalizeHexColor = (c: string) => (c.startsWith('#') ? c : `#${c}`).slice(0, 7)
@@ -87,11 +96,17 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [autoThemeNote, setAutoThemeNote] = useState<string | null>(null)
 
   // Form State
   const [isEnabled, setIsEnabled] = useState(true)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
+
+  // Background Pattern / Image State
+  const [bgImagePreview, setBgImagePreview] = useState<string | null>(null)
+  const [bgImageFile, setBgImageFile] = useState<File | null>(null)
+  const [bgOverlayOpacity, setBgOverlayOpacity] = useState<number>(0.6)
 
   // Primary & Standard Brand Colors
   const [primaryColor, setPrimaryColor] = useState('#F59E0B')
@@ -112,7 +127,8 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
   // Preview interactive controls
   const [previewStamps, setPreviewStamps] = useState(2)
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const logoFileInputRef = useRef<HTMLInputElement>(null)
+  const bgFileInputRef = useRef<HTMLInputElement>(null)
 
   // Load existing branding
   useEffect(() => {
@@ -131,6 +147,10 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
           const b = data.branding
           setIsEnabled(b.is_enabled !== false)
           setLogoPreview(b.logo_url ?? null)
+          setBgImagePreview(b.card_background_image_url ?? null)
+          if (typeof b.card_bg_overlay_opacity === 'number') {
+            setBgOverlayOpacity(b.card_bg_overlay_opacity)
+          }
           if (b.primary_color) setPrimaryColor(b.primary_color)
           if (b.primary_dark_color) setPrimaryDarkColor(b.primary_dark_color)
           if (b.primary_light_color) setPrimaryLightColor(b.primary_light_color)
@@ -157,7 +177,7 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
     return () => { active = false }
   }, [business.id])
 
-  // Handle Logo selection
+  // Handle Logo selection + Auto Palette Detection
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -167,10 +187,56 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
       return
     }
 
+    setErrorMsg('')
+    setAutoThemeNote(null)
     setLogoFile(file)
+
     const reader = new FileReader()
     reader.onload = () => {
-      setLogoPreview(reader.result as string)
+      const dataUrl = reader.result as string
+      setLogoPreview(dataUrl)
+
+      // Auto color extraction from uploaded logo image
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        try {
+          const autoTheme = deriveAutoThemeFromLogo(img, surfaceColor)
+          setPrimaryColor(autoTheme.primary_color)
+          setPrimaryDarkColor(autoTheme.primary_dark_color)
+          setPrimaryLightColor(autoTheme.primary_light_color)
+          setTextOnPrimary(autoTheme.text_on_primary)
+          setAccentColor(autoTheme.accent_color)
+          setCardTextColor(autoTheme.card_text_color)
+          setCardMutedTextColor(autoTheme.card_muted_text_color)
+
+          // Note: Empty stamp background and border remain manual/default
+          setAutoThemeNote(`Main brand color (${autoTheme.primary_color}) detected from logo with contrast-safe styling applied.`)
+        } catch (err) {
+          console.error('Palette extraction error:', err)
+        }
+      }
+      img.src = dataUrl
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // Handle Card Background Pattern selection
+  const handleBgImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      setErrorMsg('Background pattern image exceeds 2 MB limit')
+      return
+    }
+
+    setErrorMsg('')
+    setBgImageFile(file)
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setBgImagePreview(reader.result as string)
     }
     reader.readAsDataURL(file)
   }
@@ -179,6 +245,7 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
   const handleRemoveLogo = async () => {
     setErrorMsg('')
     setSuccessMsg('')
+    setAutoThemeNote(null)
     setLogoFile(null)
     setLogoPreview(null)
 
@@ -197,12 +264,35 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
     }
   }
 
+  // Handle Remove Background Pattern
+  const handleRemoveBgImage = async () => {
+    setErrorMsg('')
+    setSuccessMsg('')
+    setBgImageFile(null)
+    setBgImagePreview(null)
+
+    try {
+      const res = await fetch(`/api/admin/business/${business.id}/branding?action=remove-bg-image`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        setErrorMsg(err.error || 'Failed to remove background image')
+        return
+      }
+      setSuccessMsg('Background pattern removed successfully')
+    } catch {
+      setErrorMsg('Network error while removing background pattern')
+    }
+  }
+
   // Handle Reset to Defaults
   const handleResetDefaults = async () => {
     if (!confirm('Reset all co-branding for this business to default IntelliStamp styling?')) return
 
     setErrorMsg('')
     setSuccessMsg('')
+    setAutoThemeNote(null)
     try {
       const res = await fetch(`/api/admin/business/${business.id}/branding?action=reset-branding`, {
         method: 'DELETE',
@@ -216,6 +306,9 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
       setIsEnabled(true)
       setLogoPreview(null)
       setLogoFile(null)
+      setBgImagePreview(null)
+      setBgImageFile(null)
+      setBgOverlayOpacity(0.6)
       setPrimaryColor('#F59E0B')
       setPrimaryDarkColor('#D97706')
       setPrimaryLightColor('#FEF3C7')
@@ -254,6 +347,7 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
       fd.append('primary_dark_color', primaryDarkColor || primaryColor)
       fd.append('primary_light_color', primaryLightColor || primaryColor)
       fd.append('text_on_primary', textOnPrimary || '#09090B')
+      fd.append('card_bg_overlay_opacity', String(bgOverlayOpacity))
 
       if (secondaryColor) fd.append('secondary_color', secondaryColor)
       if (accentColor) fd.append('accent_color', accentColor)
@@ -266,6 +360,9 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
 
       if (logoFile) {
         fd.append('logo', logoFile)
+      }
+      if (bgImageFile) {
+        fd.append('bg_image', bgImageFile)
       }
 
       const res = await fetch(`/api/admin/business/${business.id}/branding`, {
@@ -282,7 +379,12 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
       if (data.branding?.logo_url) {
         setLogoPreview(data.branding.logo_url)
       }
+      if (data.branding?.card_background_image_url) {
+        setBgImagePreview(data.branding.card_background_image_url)
+      }
       setLogoFile(null)
+      setBgImageFile(null)
+      setAutoThemeNote(null)
       setSuccessMsg('Branding saved successfully! Customer loyalty card updated.')
     } catch {
       setErrorMsg('Network error. Failed to save branding.')
@@ -295,6 +397,9 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
   const liveBranding: BusinessBranding = {
     business_id: business.id,
     logo_url: logoPreview,
+    card_background_image_url: bgImagePreview,
+    card_background_overlay: bgOverlayOpacity,
+    card_bg_overlay_opacity: bgOverlayOpacity,
     primary_color: primaryColor,
     primary_dark_color: primaryDarkColor || primaryColor,
     primary_light_color: primaryLightColor || primaryColor,
@@ -314,6 +419,12 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
     <div className="space-y-6">
       {errorMsg && <Alert type="error" message={errorMsg} />}
       {successMsg && <Alert type="success" message={successMsg} />}
+      {autoThemeNote && (
+        <div className="flex items-center gap-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs">
+          <Sparkle size={16} weight="fill" className="shrink-0 text-amber-400" />
+          <span>{autoThemeNote}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Admin Branding Controls (7 cols) */}
@@ -336,11 +447,17 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
             </label>
           </div>
 
-          {/* Logo Section */}
+          {/* 1. Merchant Logo Section */}
           <div className="space-y-3 pb-4 border-b border-zinc-800">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
-              Merchant Logo
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                Merchant Logo
+              </label>
+              <span className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
+                <Sparkle size={12} weight="fill" />
+                Auto-colors theme on upload
+              </span>
+            </div>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-lg border border-zinc-700 bg-zinc-950 flex items-center justify-center overflow-hidden shrink-0">
                 {logoPreview ? (
@@ -354,7 +471,7 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
               <div className="space-y-2">
                 <input
                   type="file"
-                  ref={fileInputRef}
+                  ref={logoFileInputRef}
                   onChange={handleLogoChange}
                   accept="image/png,image/jpeg,image/webp"
                   className="hidden"
@@ -364,7 +481,7 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
                     type="button"
                     size="sm"
                     variant="secondary"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => logoFileInputRef.current?.click()}
                     className="flex items-center gap-1.5 text-xs"
                   >
                     <UploadSimple size={14} />
@@ -389,7 +506,88 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
             </div>
           </div>
 
-          {/* Primary & Punch Colors */}
+          {/* 2. Card Background Pattern / Image Upload */}
+          <div className="space-y-3 pb-4 border-b border-zinc-800">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                Card Background Pattern / Texture
+              </label>
+              <span className="text-[11px] text-zinc-400">
+                Optional card texture
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-lg border border-zinc-700 bg-zinc-950 flex items-center justify-center overflow-hidden shrink-0 relative">
+                {bgImagePreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={bgImagePreview} alt="Pattern Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon size={24} className="text-zinc-600" />
+                )}
+              </div>
+
+              <div className="space-y-2 flex-1">
+                <input
+                  type="file"
+                  ref={bgFileInputRef}
+                  onChange={handleBgImageChange}
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => bgFileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 text-xs"
+                  >
+                    <UploadSimple size={14} />
+                    <span>{bgImagePreview ? 'Change Pattern' : 'Upload Pattern'}</span>
+                  </Button>
+
+                  {bgImagePreview && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRemoveBgImage}
+                      className="text-rose-400 hover:text-rose-300 border-zinc-800 flex items-center gap-1.5 text-xs"
+                    >
+                      <Trash size={14} />
+                      <span>Remove</span>
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-500">Subtle background patterns or textures (PNG, JPG, WebP up to 2MB).</p>
+              </div>
+            </div>
+
+            {/* Pattern Overlay Opacity Slider */}
+            {bgImagePreview && (
+              <div className="pt-2">
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="text-zinc-300 font-medium">Overlay Contrast Tint</span>
+                  <span className="font-mono text-zinc-400 text-[11px]">{Math.round(bgOverlayOpacity * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.2"
+                  max="0.9"
+                  step="0.05"
+                  value={bgOverlayOpacity}
+                  onChange={(e) => setBgOverlayOpacity(parseFloat(e.target.value))}
+                  className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                />
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  Adjusts surface tint opacity over the pattern so card text and stamps stay 100% readable.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* 3. Primary & Punch Colors */}
           <div className="space-y-1 pb-4 border-b border-zinc-800">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
               Primary &amp; Stamp Punch
@@ -418,7 +616,7 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
 
             <ColorControl
               label="Empty Stamp Background"
-              description="Unfilled circular slot background"
+              description="Unfilled circular slot background (default/manual)"
               value={emptyStampColor}
               fallbackValue="#27272A"
               onChange={setEmptyStampColor}
@@ -427,7 +625,7 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
 
             <ColorControl
               label="Empty Stamp Border"
-              description="Border ring on unfilled slots"
+              description="Border ring on unfilled slots (default/manual)"
               value={emptyStampBorderColor}
               fallbackValue="#3F3F46"
               onChange={setEmptyStampBorderColor}
@@ -435,7 +633,7 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
             />
           </div>
 
-          {/* Card Surface & Typography */}
+          {/* 4. Card Surface & Typography */}
           <div className="space-y-1 pb-4 border-b border-zinc-800">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
               Card Surface &amp; Text

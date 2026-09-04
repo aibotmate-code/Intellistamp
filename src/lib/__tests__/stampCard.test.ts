@@ -8,6 +8,19 @@ import type { BusinessBranding } from '@/types'
 
 const STAMPS_REQUIRED = 8
 
+function findDeep(node: any, predicate: (node: any) => boolean): any {
+  if (!node) return null
+  if (predicate(node)) return node
+  if (node.props && node.props.children) {
+    const children = Array.isArray(node.props.children) ? node.props.children : [node.props.children]
+    for (const child of children) {
+      const found = findDeep(child, predicate)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 function makeStamp(hoursAgo: number, id = '1'): Stamp {
   return {
     id,
@@ -234,7 +247,8 @@ describe('StampCard Branding Integration', () => {
 
     expect(element.props.style.background).toBe('#18181B')
 
-    const gridChild = element.props.children.find(
+    const gridChild = findDeep(
+      element,
       (child: any) => child && child.props && child.props.className && child.props.className.includes('grid')
     )
     expect(gridChild).toBeDefined()
@@ -277,7 +291,8 @@ describe('StampCard Branding Integration', () => {
 
     expect(element.props.style.background).toBe('var(--color-surface)')
 
-    const gridChild = element.props.children.find(
+    const gridChild = findDeep(
+      element,
       (child: any) => child && child.props && child.props.className && child.props.className.includes('grid')
     )
     const filledDot = gridChild.props.children[0].props.children[0]
@@ -310,7 +325,8 @@ describe('StampCard Branding Integration', () => {
       businessBranding: mockBranding,
     })
 
-    const gridChild = element.props.children.find(
+    const gridChild = findDeep(
+      element,
       (child: any) => child && child.props && child.props.className && child.props.className.includes('grid')
     )
     const emptyDot = gridChild.props.children[1].props.children[0]
@@ -327,7 +343,8 @@ describe('StampCard Branding Integration', () => {
       reward: 'Free Cookie',
     })
 
-    const attributionDiv = element.props.children.find(
+    const attributionDiv = findDeep(
+      element,
       (child: any) => child && child.props && child.props.className && child.props.className.includes('border-t')
     )
     expect(attributionDiv).toBeDefined()

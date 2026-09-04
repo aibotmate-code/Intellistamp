@@ -33,6 +33,10 @@ export async function GET(
       return NextResponse.json({ branding: null })
     }
 
+    const overlayOpacity = data.card_bg_overlay_opacity !== null && data.card_bg_overlay_opacity !== undefined
+      ? Number(data.card_bg_overlay_opacity)
+      : 0.6
+
     return NextResponse.json({
       branding: {
         business_id: data.business_id,
@@ -50,6 +54,8 @@ export async function GET(
         card_muted_text_color: data.card_muted_text_color,
         empty_stamp_color: data.empty_stamp_color,
         empty_stamp_border_color: data.empty_stamp_border_color,
+        card_background_image_url: getPublicUrl(data.card_bg_image_path),
+        card_bg_overlay_opacity: overlayOpacity,
       },
     })
   } catch {
@@ -95,11 +101,26 @@ export async function POST(
     const textOnPrimary = (formData.get('text_on_primary') as string) || '#09090B'
     const isEnabled = formData.get('is_enabled') !== 'false'
     const logoFile = formData.get('logo') as File | null
+    const bgImageFile = formData.get('bg_image') as File | null
 
     const cardTextColor = parseOptionalColor(formData.get('card_text_color'))
     const cardMutedTextColor = parseOptionalColor(formData.get('card_muted_text_color'))
     const emptyStampColor = parseOptionalColor(formData.get('empty_stamp_color'))
     const emptyStampBorderColor = parseOptionalColor(formData.get('empty_stamp_border_color'))
+
+    // Parse and validate overlay opacity (0.2 to 0.9, default 0.6)
+    const rawOverlay = formData.get('card_bg_overlay_opacity')
+    let cardBgOverlayOpacity = 0.6
+    if (rawOverlay !== null && rawOverlay !== undefined && String(rawOverlay).trim() !== '') {
+      const parsed = parseFloat(String(rawOverlay))
+      if (isNaN(parsed) || parsed < 0.2 || parsed > 0.9) {
+        return NextResponse.json(
+          { error: 'Card background overlay opacity must be between 0.2 and 0.9' },
+          { status: 400 }
+        )
+      }
+      cardBgOverlayOpacity = Math.round(parsed * 100) / 100
+    }
 
     // Validate required colors
     const requiredColorFields = [
@@ -135,14 +156,17 @@ export async function POST(
     // Existing branding record check
     const { data: existingBranding } = await adminClient
       .from('business_branding')
-      .select('logo_path')
+      .select('logo_path, card_bg_image_path')
       .eq('business_id', bizId)
       .maybeSingle()
 
     let newLogoPath: string | null = existingBranding?.logo_path || null
-    let uploadedToStorage = false
+    let uploadedLogoToStorage = false
 
-    // File upload handling
+    let newBgImagePath: string | null = existingBranding?.card_bg_image_path || null
+    let uploadedBgToStorage = false
+
+    // Logo upload handling
     if (logoFile && typeof logoFile !== 'string' && logoFile.size > 0) {
       if (logoFile.size > 2 * 1024 * 1024) {
         return NextResponse.json({ error: 'Logo file size exceeds 2 MB limit' }, { status: 400 })
@@ -161,7 +185,7 @@ export async function POST(
       const randomId = crypto.randomUUID()
       const ext = logoFile.name.split('.').pop() || 'png'
       const sanitizedExt = ['png', 'jpg', 'jpeg', 'webp'].includes(ext.toLowerCase()) ? ext.toLowerCase() : 'png'
-      const filePath = `${bizId}/${randomId}.${sanitizedExt}`
+      const filePath = `${bizId}/logo_${randomId}.${sanitizedExt}`
 
       const { error: uploadError } = await adminClient.storage
         .from('branding')
@@ -175,12 +199,59 @@ export async function POST(
       }
 
       newLogoPath = filePath
-      uploadedToStorage = true
+      uploadedLogoToStorage = true
+    }
+
+    // Card background pattern / image upload handling
+    if (bgImageFile && typeof bgImageFile !== 'string' && bgImageFile.size > 0) {
+      if (bgImageFile.size > 2 * 1024 * 1024) {
+        if (uploadedLogoToStorage && newLogoPath) {
+          await adminClient.storage.from('branding').remove([newLogoPath])
+        }
+        return NextResponse.json({ error: 'Background image size exceeds 2 MB limit' }, { status: 400 })
+      }
+
+      const arrayBuffer = await bgImageFile.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+
+      try {
+        parseAndValidateImage(buffer)
+      } catch (err) {
+        if (uploadedLogoToStorage && newLogoPath) {
+          await adminClient.storage.from('branding').remove([newLogoPath])
+        }
+        const message = err instanceof Error ? err.message : 'Invalid background image'
+        return NextResponse.json({ error: message }, { status: 400 })
+      }
+
+      const randomId = crypto.randomUUID()
+      const ext = bgImageFile.name.split('.').pop() || 'png'
+      const sanitizedExt = ['png', 'jpg', 'jpeg', 'webp'].includes(ext.toLowerCase()) ? ext.toLowerCase() : 'png'
+      const filePath = `${bizId}/bg_${randomId}.${sanitizedExt}`
+
+      const { error: uploadError } = await adminClient.storage
+        .from('branding')
+        .upload(filePath, buffer, {
+          contentType: bgImageFile.type,
+          upsert: true,
+        })
+
+      if (uploadError) {
+        if (uploadedLogoToStorage && newLogoPath) {
+          await adminClient.storage.from('branding').remove([newLogoPath])
+        }
+        return NextResponse.json({ error: 'Background image storage upload failed' }, { status: 500 })
+      }
+
+      newBgImagePath = filePath
+      uploadedBgToStorage = true
     }
 
     const brandingData = {
       business_id: bizId,
       logo_path: newLogoPath,
+      card_bg_image_path: newBgImagePath,
+      card_bg_overlay_opacity: cardBgOverlayOpacity,
       primary_color: primaryColor,
       primary_dark_color: primaryDarkColor,
       primary_light_color: primaryLightColor,
@@ -213,14 +284,21 @@ export async function POST(
     }
 
     if (saveError) {
-      if (uploadedToStorage && newLogoPath) {
+      if (uploadedLogoToStorage && newLogoPath) {
         await adminClient.storage.from('branding').remove([newLogoPath])
+      }
+      if (uploadedBgToStorage && newBgImagePath) {
+        await adminClient.storage.from('branding').remove([newBgImagePath])
       }
       return NextResponse.json({ error: 'Database save failed.' }, { status: 500 })
     }
 
-    if (uploadedToStorage && existingBranding?.logo_path) {
+    // Clean up replaced files from storage
+    if (uploadedLogoToStorage && existingBranding?.logo_path && existingBranding.logo_path !== newLogoPath) {
       await adminClient.storage.from('branding').remove([existingBranding.logo_path])
+    }
+    if (uploadedBgToStorage && existingBranding?.card_bg_image_path && existingBranding.card_bg_image_path !== newBgImagePath) {
+      await adminClient.storage.from('branding').remove([existingBranding.card_bg_image_path])
     }
 
     return NextResponse.json({
@@ -228,6 +306,8 @@ export async function POST(
       branding: {
         business_id: bizId,
         logo_url: getPublicUrl(newLogoPath),
+        card_background_image_url: getPublicUrl(newBgImagePath),
+        card_bg_overlay_opacity: cardBgOverlayOpacity,
         primary_color: primaryColor,
         primary_dark_color: primaryDarkColor,
         primary_light_color: primaryLightColor,
@@ -258,15 +338,18 @@ export async function DELETE(
     if (adminOrError instanceof NextResponse) return adminOrError
 
     const { searchParams } = new URL(req.url)
-    const action = searchParams.get('action') // 'remove-logo' or 'reset-branding'
+    const action = searchParams.get('action') // 'remove-logo', 'remove-bg-image', or 'reset-branding'
 
-    if (action !== 'remove-logo' && action !== 'reset-branding') {
-      return NextResponse.json({ error: 'Valid action required (remove-logo or reset-branding)' }, { status: 400 })
+    if (action !== 'remove-logo' && action !== 'remove-bg-image' && action !== 'reset-branding') {
+      return NextResponse.json(
+        { error: 'Valid action required (remove-logo, remove-bg-image, or reset-branding)' },
+        { status: 400 }
+      )
     }
 
     const { data: branding } = await adminClient
       .from('business_branding')
-      .select('logo_path')
+      .select('logo_path, card_bg_image_path')
       .eq('business_id', bizId)
       .maybeSingle()
 
@@ -289,7 +372,27 @@ export async function DELETE(
       }
 
       return NextResponse.json({ success: true, message: 'Logo removed successfully' })
+    } else if (action === 'remove-bg-image') {
+      if (!branding) {
+        return NextResponse.json({ error: 'Branding not found' }, { status: 404 })
+      }
+
+      const { error: updateError } = await adminClient
+        .from('business_branding')
+        .update({ card_bg_image_path: null, updated_at: new Date().toISOString() })
+        .eq('business_id', bizId)
+
+      if (updateError) {
+        return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
+      }
+
+      if (branding.card_bg_image_path) {
+        await adminClient.storage.from('branding').remove([branding.card_bg_image_path])
+      }
+
+      return NextResponse.json({ success: true, message: 'Card background image removed successfully' })
     } else {
+      // reset-branding
       const { error: deleteError } = await adminClient
         .from('business_branding')
         .delete()
@@ -299,8 +402,12 @@ export async function DELETE(
         return NextResponse.json({ error: 'Database reset failed' }, { status: 500 })
       }
 
-      if (branding?.logo_path) {
-        await adminClient.storage.from('branding').remove([branding.logo_path])
+      const filesToRemove: string[] = []
+      if (branding?.logo_path) filesToRemove.push(branding.logo_path)
+      if (branding?.card_bg_image_path) filesToRemove.push(branding.card_bg_image_path)
+
+      if (filesToRemove.length > 0) {
+        await adminClient.storage.from('branding').remove(filesToRemove)
       }
 
       return NextResponse.json({ success: true, message: 'Branding reset to defaults' })

@@ -271,16 +271,41 @@ export default function StampCard({
       )}
       style={{ background: cardBgColor, borderColor: resolved.empty_stamp_border_color }}
     >
-      {/* ── Milestone celebration banner ── */}
-      {activeMilestoneBanner && (
-        <MilestoneBanner
-          rewardResult={activeMilestoneBanner}
-          onDismiss={() => setBannerDismissed(true)}
+      {/* ── Visual Layer 1: Background Pattern/Image ── */}
+      {resolved.card_background_image_url && (
+        <div
+          className="absolute inset-0 pointer-events-none z-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${resolved.card_background_image_url})`,
+          }}
+          aria-hidden="true"
         />
       )}
 
-      {/* ── Header: Merchant & Reward Dominance ── */}
-      <div className="flex items-start justify-between gap-3 mb-3">
+      {/* ── Visual Layer 2: Surface Tint & Contrast Overlay ── */}
+      {resolved.card_background_image_url && (
+        <div
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            backgroundColor: cardBgColor,
+            opacity: resolved.card_background_overlay,
+          }}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* ── Visual Layer 3: Interactive Content ── */}
+      <div className="relative z-10">
+        {/* ── Milestone celebration banner ── */}
+        {activeMilestoneBanner && (
+          <MilestoneBanner
+            rewardResult={activeMilestoneBanner}
+            onDismiss={() => setBannerDismissed(true)}
+          />
+        )}
+
+        {/* ── Header: Merchant & Reward Dominance ── */}
+        <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-3 min-w-0">
           <BusinessVisual
             logoUrl={activeBranding?.logo_url}
@@ -496,19 +521,20 @@ export default function StampCard({
         </div>
       )}
 
-      {/* ── Subtle Platform Attribution ── */}
-      <div className="mt-4 pt-3 border-t border-zinc-800/60 flex justify-center text-center">
-        <p className="text-[10px] text-zinc-500 font-normal">
-          by{' '}
-          <a
-            href="https://intellicallabs.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-zinc-400 transition-colors font-medium underline decoration-zinc-700"
-          >
-            Intellical Labs
-          </a>
-        </p>
+        {/* ── Subtle Platform Attribution ── */}
+        <div className="mt-4 pt-3 border-t border-zinc-800/60 flex justify-center text-center">
+          <p className="text-[10px] text-zinc-500 font-normal">
+            by{' '}
+            <a
+              href="https://intellicallabs.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zinc-400 transition-colors font-medium underline decoration-zinc-700"
+            >
+              Intellical Labs
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   )
