@@ -62,6 +62,9 @@ export default function RewardsTab({
   const [conflictPriority, setConflictPriority] = useState<ConflictPriority>(
     business.conflict_priority
   )
+  const [hideRewardDetails, setHideRewardDetails] = useState<boolean>(
+    business.hide_reward_details ?? false
+  )
   const [stampsFocused, setStampsFocused] = useState(false)
 
   // ── Milestone state ────────────────────────────────────────────────────────
@@ -240,6 +243,7 @@ export default function RewardsTab({
           stamps_required: Number(stampsRequired),
           reward: reward.trim(),
           conflict_priority: conflictPriority,
+          hide_reward_details: hideRewardDetails,
           milestones: activeMilestones.map(m => ({
             visit_number: m.visit_number,
             badge: m.badge.trim(),
@@ -464,9 +468,28 @@ export default function RewardsTab({
         >
           Milestone Rewards
         </p>
-        <p className="text-xs mb-4" style={{ color: 'var(--color-text-dim)' }}>
+        <p className="text-xs mb-3" style={{ color: 'var(--color-text-dim)' }}>
           One-time rewards based on total lifetime visits
         </p>
+
+        {/* Mystery Rewards toggle */}
+        <div
+          className="rounded-xl border p-3.5 mb-4 space-y-1"
+          style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+        >
+          <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium" style={{ color: 'var(--color-text)' }}>
+            <input
+              type="checkbox"
+              checked={hideRewardDetails}
+              onChange={e => setHideRewardDetails(e.target.checked)}
+              className="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-amber-500 focus:ring-amber-500/20 cursor-pointer"
+            />
+            <span>🎁 Mystery Rewards: Hide locked milestone reward names from customers</span>
+          </label>
+          <p className="text-[11px] ml-6.5" style={{ color: 'var(--color-text-muted)' }}>
+            When enabled, locked milestones display as &ldquo;Surprise reward&rdquo; until unlocked upon reaching the required visits.
+          </p>
+        </div>
 
         {/* Empty state */}
         {activeMilestones.length === 0 && (

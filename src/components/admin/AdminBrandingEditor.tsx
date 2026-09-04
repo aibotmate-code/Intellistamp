@@ -746,6 +746,16 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
               redeemable={previewStamps >= (business.stamps_required || 6)}
               businessBranding={liveBranding}
               totalVisits={previewStamps}
+              hideRewardDetails={business.hide_reward_details}
+              milestones={
+                business.milestones && business.milestones.length > 0
+                  ? business.milestones.map((m) => ({
+                      ...m,
+                      earned: previewStamps >= m.visit_number,
+                      visits_remaining: Math.max(0, m.visit_number - previewStamps),
+                    }))
+                  : undefined
+              }
             />
           </div>
 

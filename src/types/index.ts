@@ -25,6 +25,7 @@ export interface Business {
   created_at: string
   conflict_priority: ConflictPriority
   stamps_required_updated_at?: string
+  hide_reward_details?: boolean
   milestones?: Milestone[]
   branding?: BusinessBranding | null
   social_links?: BusinessSocialLinks | null

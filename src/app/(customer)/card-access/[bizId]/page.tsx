@@ -110,6 +110,7 @@ export default function GuestCardPage({ params }: PageParams) {
               totalVisits={cardState.total_stamps}
               onClaim={() => router.push(`/recover/${bizId}`)}
               businessBranding={business.branding}
+              hideRewardDetails={business.hide_reward_details}
             />
 
             {cardState.cards_redeemed > 0 && (

@@ -56,11 +56,24 @@ export async function GET(
 
     const claimedIds = new Set((claims ?? []).map((c) => c.milestone_id))
 
-    const result: MilestoneWithStatus[] = milestones.map((m) => ({
-      ...m,
-      earned: totalVisits >= m.visit_number && claimedIds.has(m.id),
-      visits_remaining: Math.max(0, m.visit_number - totalVisits),
-    }))
+    // Check if business hides locked reward details
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('hide_reward_details')
+      .eq('id', bizId)
+      .maybeSingle()
+
+    const hideDetails = !!business?.hide_reward_details
+
+    const result: MilestoneWithStatus[] = milestones.map((m) => {
+      const earned = totalVisits >= m.visit_number && claimedIds.has(m.id)
+      return {
+        ...m,
+        reward: hideDetails && !earned ? 'Surprise reward' : m.reward,
+        earned,
+        visits_remaining: Math.max(0, m.visit_number - totalVisits),
+      }
+    })
 
     return NextResponse.json({ milestones: result })
   } catch {

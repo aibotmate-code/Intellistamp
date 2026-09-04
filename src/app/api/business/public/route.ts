@@ -4,7 +4,7 @@ import { adminClient } from '@/lib/auth'
 // Safe subset: never includes staff_pin, staff_pin_hash, owner_id, owner_phone
 const PUBLIC_FIELDS =
   'id, name, slug, emoji, category, stamps_required, reward, gmb_link, ' +
-  'dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, branding:business_branding(*)'
+  'dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, hide_reward_details, branding:business_branding(*)'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)

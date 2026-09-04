@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     const { data: business } = await supabase
       .from('businesses')
-      .select('stamps_required, reward, name, emoji, conflict_priority, branding:business_branding(*), social_links:business_social_links(*)')
+      .select('stamps_required, reward, name, emoji, conflict_priority, hide_reward_details, branding:business_branding(*), social_links:business_social_links(*)')
       .eq('id', bizId)
       .single()
 

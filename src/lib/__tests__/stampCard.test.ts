@@ -334,7 +334,7 @@ describe('StampCard Branding Integration', () => {
     expect(emptyDot.props.style.border).toBe('2px solid #99BFBD')
   })
 
-  test('loyalty card attribution: by Intellical Labs', () => {
+  test('loyalty card footer renders IntelliStamp mark and Intellical Labs attribution', () => {
     const element = StampCard({
       stampsRequired: 5,
       cardStamps: 2,
@@ -343,20 +343,90 @@ describe('StampCard Branding Integration', () => {
       reward: 'Free Cookie',
     })
 
-    const attributionDiv = findDeep(
+    const footerDiv = findDeep(
       element,
       (child: any) => child && child.props && child.props.className && child.props.className.includes('border-t')
     )
-    expect(attributionDiv).toBeDefined()
+    expect(footerDiv).toBeDefined()
+    expect(footerDiv.props.className).toContain('border-zinc-800/60')
 
-    const pText = attributionDiv.props.children
-    expect(pText.props.children[0]).toContain('by')
+    const children = footerDiv.props.children
+    // [IntelliStampMark, span "IntelliStamp", divider, IntellicalLabsAttribution]
+    expect(children[0].type.name || children[0].type).toBeDefined() // IntelliStampMark
+    expect(children[1].props.children).toBe('IntelliStamp')
+    expect(children[3].type.name || children[3].type).toBeDefined() // IntellicalLabsAttribution
+  })
 
-    const link = pText.props.children[2]
-    expect(link.type).toBe('a')
-    expect(link.props.href).toBe('https://intellicallabs.com')
-    expect(link.props.target).toBe('_blank')
-    expect(link.props.rel).toBe('noopener noreferrer')
-    expect(link.props.children).toBe('Intellical Labs')
+  test('8 stamps required produces 4 columns for a clean 4x2 grid', () => {
+    const element = StampCard({
+      stampsRequired: 8,
+      cardStamps: 3,
+      businessName: 'Coffea Cafe',
+      businessEmoji: '☕',
+      reward: 'Free Beverage',
+    })
+
+    const grid = findDeep(
+      element,
+      (child: any) => child && child.props && child.props.style && child.props.style.gridTemplateColumns
+    )
+    expect(grid.props.style.gridTemplateColumns).toBe('repeat(4, minmax(0, 1fr))')
+  })
+
+  test('hideRewardDetails=true renders Surprise reward for locked milestones and actual reward for earned milestones', () => {
+    const milestones = [
+      {
+        id: 'ms-1',
+        business_id: 'biz-1',
+        visit_number: 5,
+        badge: 'Bronze VIP',
+        reward: 'Free Donut',
+        is_active: true,
+        earned: true,
+        visits_remaining: 0,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'ms-2',
+        business_id: 'biz-1',
+        visit_number: 10,
+        badge: 'Gold VIP',
+        reward: 'Free Meal Combo',
+        is_active: true,
+        earned: false,
+        visits_remaining: 5,
+        created_at: new Date().toISOString(),
+      },
+    ]
+
+    const element = StampCard({
+      stampsRequired: 8,
+      cardStamps: 5,
+      totalVisits: 5,
+      businessName: 'Coffea Cafe',
+      businessEmoji: '☕',
+      reward: 'Free Coffee',
+      milestones,
+      hideRewardDetails: true,
+    })
+
+    const earnedMilestone = findDeep(
+      element,
+      (child: any) => child && child.props && child.props.children === 'Free Donut'
+    )
+    expect(earnedMilestone).toBeDefined()
+
+    const lockedMystery = findDeep(
+      element,
+      (child: any) => child && child.props && child.props.children === 'Surprise reward'
+    )
+    expect(lockedMystery).toBeDefined()
+
+    // Ensure the secret reward name "Free Meal Combo" does not appear
+    const secretReward = findDeep(
+      element,
+      (child: any) => child && child.props && child.props.children === 'Free Meal Combo'
+    )
+    expect(secretReward).toBeNull()
   })
 })

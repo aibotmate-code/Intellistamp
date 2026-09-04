@@ -121,6 +121,7 @@ export default function CardPage({ params }: PageParams) {
               totalVisits={cardState.total_stamps}
               onClaim={() => router.push(`/redeem/${bizId}`)}
               businessBranding={business.branding}
+              hideRewardDetails={business.hide_reward_details}
             />
 
             {cardState.cards_redeemed > 0 && (

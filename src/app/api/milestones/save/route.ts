@@ -14,6 +14,7 @@ const saveSchema = z.object({
   conflict_priority: z.enum(['stamp', 'milestone']),
   stamps_required: z.number().int().min(3).max(20).optional(),
   reward: z.string().min(1).optional(),
+  hide_reward_details: z.boolean().optional(),
   milestones: z.array(milestoneSchema),
 })
 
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
     }
 
-    const { business_id, conflict_priority, stamps_required, reward, milestones } = result.data
+    const { business_id, conflict_priority, stamps_required, reward, hide_reward_details, milestones } = result.data
 
     const business = await requireUserAndBusiness(business_id)
     if (business instanceof NextResponse) return business
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
     const bizUpdates: Record<string, unknown> = { conflict_priority }
     if (stamps_required !== undefined) bizUpdates.stamps_required = stamps_required
     if (reward !== undefined) bizUpdates.reward = reward
+    if (hide_reward_details !== undefined) bizUpdates.hide_reward_details = hide_reward_details
 
     const { data: updatedBiz, error: bizError } = await adminClient
       .from('businesses')
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
       .eq('id', business_id)
       .select(
         'id, name, slug, emoji, category, stamps_required, reward, gmb_link, ' +
-        'dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, conflict_priority'
+        'dynamic_qr_enabled, staff_pin_enabled, whatsapp_enabled, plan, conflict_priority, hide_reward_details'
       )
       .single()
 

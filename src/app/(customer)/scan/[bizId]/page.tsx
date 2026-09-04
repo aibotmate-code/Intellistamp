@@ -389,6 +389,7 @@ export default function ScanPage() {
                 }
               }}
               businessBranding={business.branding}
+              hideRewardDetails={business.hide_reward_details}
             />
 
             <Button

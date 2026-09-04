@@ -6,6 +6,8 @@ import type { MilestoneWithStatus, RewardResult } from '@/types'
 import BusinessVisual from '@/components/branding/BusinessVisual'
 import { resolveBrandingColors } from '@/lib/branding/palette'
 import { Trophy, LockKey, Gift, Check, X, Tag } from '@phosphor-icons/react'
+import IntelliStampMark from '@/components/brand/IntelliStampMark'
+import IntellicalLabsAttribution from '@/components/brand/IntellicalLabsAttribution'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +27,7 @@ interface StampCardProps {
   totalVisits?: number
   branding?: import('@/types').BusinessBranding | null
   businessBranding?: import('@/types').BusinessBranding | null
+  hideRewardDetails?: boolean
 }
 
 // ── Milestone progress bar — animates 0→pct on mount ─────────────────────────
@@ -196,6 +199,7 @@ export default function StampCard({
   totalVisits,
   branding,
   businessBranding,
+  hideRewardDetails,
 }: StampCardProps) {
   const [rippleIndex, setRippleIndex] = useState<number | null>(null)
   const [celebrateAll, setCelebrateAll] = useState(false)
@@ -266,7 +270,7 @@ export default function StampCard({
   return (
     <div
       className={cn(
-        'rounded-xl p-4 sm:p-5 border transition-all duration-300 shadow-xs relative overflow-hidden',
+        'rounded-xl p-5 sm:p-6 border transition-all duration-300 shadow-xs relative overflow-hidden',
         redeemable && 'is-reward-glow border-amber-500/40'
       )}
       style={{ background: cardBgColor, borderColor: resolved.empty_stamp_border_color }}
@@ -305,235 +309,232 @@ export default function StampCard({
         )}
 
         {/* ── Header: Merchant & Reward Dominance ── */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <BusinessVisual
-            logoUrl={activeBranding?.logo_url}
-            emoji={businessEmoji}
-            name={businessName}
-            className="text-2xl shrink-0"
-          />
-          <div className="min-w-0">
-            <h3
-              className="font-semibold text-base leading-snug break-words"
-              style={{ color: resolved.card_text_color }}
-            >
-              {businessName}
-            </h3>
-            <p
-              className="text-xs font-medium mt-0.5"
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <BusinessVisual
+              logoUrl={activeBranding?.logo_url}
+              emoji={businessEmoji}
+              name={businessName}
+              className="shrink-0"
+            />
+            <div className="min-w-0">
+              <h3
+                className="font-semibold text-base sm:text-lg leading-snug break-words tracking-tight"
+                style={{ color: resolved.card_text_color }}
+              >
+                {businessName}
+              </h3>
+              <p
+                className="text-xs sm:text-sm font-medium mt-0.5"
+                style={{ color: resolved.card_muted_text_color }}
+              >
+                {reward}
+              </p>
+            </div>
+          </div>
+
+          {totalVisits !== undefined && totalVisits > 0 && (
+            <span
+              className="text-[11px] font-mono shrink-0 px-2 py-0.5 rounded-md bg-zinc-800/40 border border-zinc-700/40 pt-0.5"
               style={{ color: resolved.card_muted_text_color }}
             >
-              {reward}
-            </p>
-          </div>
+              {totalVisits} {totalVisits === 1 ? 'visit' : 'visits'}
+            </span>
+          )}
         </div>
 
-        {totalVisits !== undefined && totalVisits > 0 && (
-          <span
-            className="text-[10px] font-mono shrink-0 pt-0.5"
-            style={{ color: resolved.card_muted_text_color }}
+        {/* ── Progress Hierarchy: Single, Non-Duplicated Readout ── */}
+        <div className="mb-3">
+          <h4
+            className="text-sm font-semibold tracking-tight"
+            style={{ color: resolved.card_text_color }}
           >
-            {totalVisits} {totalVisits === 1 ? 'visit' : 'visits'}
-          </span>
-        )}
-      </div>
-
-      {/* ── Progress Hierarchy: Single, Non-Duplicated Readout ── */}
-      <div className="mb-2">
-        <h4
-          className="text-sm font-semibold tracking-tight"
-          style={{ color: resolved.card_text_color }}
-        >
-          {cardStamps} of {stampsRequired} visits
-        </h4>
-        <p className="text-[11px] mt-0.5" style={{ color: resolved.card_muted_text_color }}>
-          {visitsRemaining === 0
-            ? 'Your reward is ready to redeem!'
-            : `${visitsRemaining} ${visitsRemaining === 1 ? 'visit' : 'visits'} to your reward`}
-        </p>
-      </div>
-
-      {/* ── Stamp Grid: Compact, Tactile Circular Punch Trail ── */}
-      <div
-        className="grid gap-2 my-3 select-none justify-center"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-        aria-label={`${cardStamps} of ${stampsRequired} stamps collected`}
-        role="img"
-      >
-        {Array.from({ length: stampsRequired }).map((_, i) => {
-          const filled = i < cardStamps
-          const isNew = i === newStampIndex
-          const isRippling = i === rippleIndex
-          const isPulsing = celebrateAll && filled
-
-          return (
-            <div key={i} className="relative aspect-square flex items-center justify-center max-w-[44px] max-h-[44px] mx-auto w-full">
-              <div
-                className={cn(
-                  'w-full h-full rounded-full flex items-center justify-center text-xs font-semibold transition-transform duration-200 select-none max-w-[44px] max-h-[44px]',
-                  isNew && 'stamp-dot-fill scale-105',
-                  isPulsing && 'stamp-dot-pulse'
-                )}
-                style={
-                  filled
-                    ? {
-                        background: primaryBrandColor,
-                        color: textOnPrimaryBrandColor,
-                        boxShadow: `0 1px 6px ${isBrandingEnabled ? primaryBrandColor + '30' : 'rgba(245, 158, 11, 0.20)'}`,
-                      }
-                    : {
-                        background: resolved.empty_stamp_color,
-                        border: `2px solid ${resolved.empty_stamp_border_color}`,
-                        color: resolved.card_muted_text_color,
-                      }
-                }
-              >
-                {filled ? (
-                  <Check size={15} weight="bold" />
-                ) : (
-                  <span className="text-[10px] opacity-40 font-mono">{i + 1}</span>
-                )}
-              </div>
-
-              {isRippling && (
-                <div
-                  className="stamp-dot-ripple absolute inset-0 rounded-full pointer-events-none"
-                  style={{ border: `2px solid ${primaryBrandColor}`, opacity: 1 }}
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* ── Claim reward button ── */}
-      {showClaim && onClaim && (
-        <button
-          onClick={onClaim}
-          className="claim-btn-enter glow-pulse mt-3 w-full flex items-center justify-center gap-2 font-semibold py-2.5 px-4 rounded-lg text-sm transition-all hover:brightness-110 active:scale-[0.99] cursor-pointer shadow-sm"
-          style={{ background: primaryBrandColor, color: textOnPrimaryBrandColor, minHeight: 40 }}
-        >
-          <Gift size={16} weight="fill" />
-          <span>Claim {reward}</span>
-        </button>
-      )}
-
-      {/* ── Deferred notification ── */}
-      {showDeferred && (
-        <div className="mt-2.5">
-          <DeferredNotification
-            rewardResult={rewardResult!}
-            onDismiss={() => setDeferredDismissed(true)}
-          />
-        </div>
-      )}
-
-      {/* ── Milestones section ── */}
-      {sortedMilestones.length > 0 && (
-        <div className="mt-4">
-          <div
-            style={{ height: 1, background: resolved.empty_stamp_border_color, marginBottom: 10 }}
-          />
-
-          <p
-            className="text-[10px] font-semibold tracking-wider uppercase mb-2"
-            style={{ color: resolved.card_muted_text_color }}
-          >
-            Milestone Rewards
+            {cardStamps} of {stampsRequired} visits
+          </h4>
+          <p className="text-xs mt-0.5" style={{ color: resolved.card_muted_text_color }}>
+            {visitsRemaining === 0
+              ? 'Your reward is ready to redeem!'
+              : `${visitsRemaining} ${visitsRemaining === 1 ? 'visit' : 'visits'} to your reward`}
           </p>
+        </div>
 
-          <div className="space-y-2">
-            {sortedMilestones.map((m) => {
-              const pct =
-                totalVisits != null
-                  ? Math.min(100, (totalVisits / m.visit_number) * 100)
-                  : 0
-              const visitsAway = Math.max(0, m.visit_number - (totalVisits ?? 0))
+        {/* ── Stamp Grid: Compact, Tactile Circular Punch Trail ── */}
+        <div
+          className="grid gap-2.5 my-4 select-none justify-center"
+          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+          aria-label={`${cardStamps} of ${stampsRequired} stamps collected`}
+          role="img"
+        >
+          {Array.from({ length: stampsRequired }).map((_, i) => {
+            const filled = i < cardStamps
+            const isNew = i === newStampIndex
+            const isRippling = i === rippleIndex
+            const isPulsing = celebrateAll && filled
 
-              return (
-                <div key={m.id}>
-                  <div
-                    className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5"
-                    style={{
-                      background: m.earned 
-                        ? (isBrandingEnabled && resolved.primary_color ? resolved.primary_color + '1A' : 'rgba(245, 158, 11, 0.10)') 
-                        : 'transparent',
-                    }}
-                  >
-                    <div className="shrink-0">
-                      {m.earned ? (
-                        <Trophy size={16} weight="duotone" className="text-amber-400" />
-                      ) : (
-                        <LockKey size={16} className="text-zinc-500" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className="text-xs font-medium truncate"
-                        style={{
-                          color: m.earned ? primaryBrandColor : resolved.card_muted_text_color,
-                        }}
-                      >
-                        {m.badge}
-                      </p>
-                      <p
-                        className="text-[11px] truncate"
-                        style={{ color: resolved.card_muted_text_color + 'bb' }}
-                      >
-                        {m.reward}
-                      </p>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      {m.earned ? (
-                        <span
-                          className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                          style={{
-                            background: isBrandingEnabled && resolved.primary_color ? resolved.primary_color + '26' : 'rgba(245, 158, 11, 0.15)',
-                            color: primaryBrandColor,
-                          }}
-                        >
-                          Earned
-                        </span>
-                      ) : (
-                        <span
-                          className="text-[10px] font-mono"
-                          style={{ color: resolved.card_muted_text_color }}
-                        >
-                          {visitsAway} {visitsAway === 1 ? 'visit' : 'visits'} left
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Progress towards milestone */}
-                  {!m.earned && totalVisits != null && (
-                    <div className="mt-0.5 px-2.5">
-                      <MilestoneProgressBar pct={pct} />
-                    </div>
+            return (
+              <div key={i} className="relative aspect-square flex items-center justify-center max-w-[44px] max-h-[44px] mx-auto w-full">
+                <div
+                  className={cn(
+                    'w-full h-full rounded-full flex items-center justify-center text-xs font-semibold transition-transform duration-200 select-none max-w-[44px] max-h-[44px]',
+                    isNew && 'stamp-dot-fill scale-105',
+                    isPulsing && 'stamp-dot-pulse'
+                  )}
+                  style={
+                    filled
+                      ? {
+                          background: primaryBrandColor,
+                          color: textOnPrimaryBrandColor,
+                          boxShadow: `0 1px 6px ${isBrandingEnabled ? primaryBrandColor + '30' : 'rgba(245, 158, 11, 0.20)'}`,
+                        }
+                      : {
+                          background: resolved.empty_stamp_color,
+                          border: `2px solid ${resolved.empty_stamp_border_color}`,
+                          color: resolved.card_muted_text_color,
+                        }
+                  }
+                >
+                  {filled ? (
+                    <Check size={16} weight="bold" />
+                  ) : (
+                    <span className="text-[11px] opacity-50 font-mono">{i + 1}</span>
                   )}
                 </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
-        {/* ── Subtle Platform Attribution ── */}
-        <div className="mt-4 pt-3 border-t border-zinc-800/60 flex justify-center text-center">
-          <p className="text-[10px] text-zinc-500 font-normal">
-            by{' '}
-            <a
-              href="https://intellicallabs.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-zinc-400 transition-colors font-medium underline decoration-zinc-700"
+                {isRippling && (
+                  <div
+                    className="stamp-dot-ripple absolute inset-0 rounded-full pointer-events-none"
+                    style={{ border: `2px solid ${primaryBrandColor}`, opacity: 1 }}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* ── Claim reward button ── */}
+        {showClaim && onClaim && (
+          <button
+            onClick={onClaim}
+            className="claim-btn-enter glow-pulse mt-3 w-full flex items-center justify-center gap-2 font-semibold py-2.5 px-4 rounded-lg text-sm transition-all hover:brightness-110 active:scale-[0.99] cursor-pointer shadow-sm"
+            style={{ background: primaryBrandColor, color: textOnPrimaryBrandColor, minHeight: 40 }}
+          >
+            <Gift size={16} weight="fill" />
+            <span>Claim {reward}</span>
+          </button>
+        )}
+
+        {/* ── Deferred notification ── */}
+        {showDeferred && (
+          <div className="mt-2.5">
+            <DeferredNotification
+              rewardResult={rewardResult!}
+              onDismiss={() => setDeferredDismissed(true)}
+            />
+          </div>
+        )}
+
+        {/* ── Milestones section ── */}
+        {sortedMilestones.length > 0 && (
+          <div className="mt-4">
+            <div
+              style={{ height: 1, background: resolved.empty_stamp_border_color, marginBottom: 12 }}
+            />
+
+            <p
+              className="text-[10px] font-semibold tracking-wider uppercase mb-2.5"
+              style={{ color: resolved.card_muted_text_color }}
             >
-              Intellical Labs
-            </a>
-          </p>
+              Milestone Rewards
+            </p>
+
+            <div className="space-y-2">
+              {sortedMilestones.map((m) => {
+                const pct =
+                  totalVisits != null
+                    ? Math.min(100, (totalVisits / m.visit_number) * 100)
+                    : 0
+                const visitsAway = Math.max(0, m.visit_number - (totalVisits ?? 0))
+                const isMystery = hideRewardDetails && !m.earned
+                const rewardDisplay = isMystery ? 'Surprise reward' : m.reward
+
+                return (
+                  <div key={m.id}>
+                    <div
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2"
+                      style={{
+                        background: m.earned 
+                          ? (isBrandingEnabled && resolved.primary_color ? resolved.primary_color + '1A' : 'rgba(245, 158, 11, 0.10)') 
+                          : 'transparent',
+                      }}
+                    >
+                      <div className="shrink-0">
+                        {m.earned ? (
+                          <Trophy size={16} weight="duotone" className="text-amber-400" />
+                        ) : isMystery ? (
+                          <Gift size={16} weight="duotone" className="text-amber-400/80" />
+                        ) : (
+                          <LockKey size={16} className="text-zinc-500" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-xs font-medium truncate"
+                          style={{
+                            color: m.earned ? primaryBrandColor : resolved.card_muted_text_color,
+                          }}
+                        >
+                          {m.badge}
+                        </p>
+                        <p
+                          className="text-[11px] truncate"
+                          style={{ color: resolved.card_muted_text_color + 'bb' }}
+                        >
+                          {rewardDisplay}
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        {m.earned ? (
+                          <span
+                            className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                            style={{
+                              background: isBrandingEnabled && resolved.primary_color ? resolved.primary_color + '26' : 'rgba(245, 158, 11, 0.15)',
+                              color: primaryBrandColor,
+                            }}
+                          >
+                            Earned
+                          </span>
+                        ) : (
+                          <span
+                            className="text-[10px] font-mono"
+                            style={{ color: resolved.card_muted_text_color }}
+                          >
+                            {visitsAway} {visitsAway === 1 ? 'visit' : 'visits'} left
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Progress towards milestone */}
+                    {!m.earned && totalVisits != null && (
+                      <div className="mt-1 px-3">
+                        <MilestoneProgressBar pct={pct} />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── IntelliStamp Product Branding Footer ── */}
+        <div className="mt-5 pt-3.5 border-t border-zinc-800/60 flex items-center justify-center gap-2 select-none">
+          <IntelliStampMark size={16} variant="accent" />
+          <span className="text-xs font-semibold text-zinc-200 tracking-tight">IntelliStamp</span>
+          <span className="h-3 w-px bg-zinc-700/80 mx-0.5" />
+          <IntellicalLabsAttribution size="xs" asLink={true} />
         </div>
       </div>
     </div>
