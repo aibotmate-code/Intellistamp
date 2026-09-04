@@ -38,6 +38,8 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
   const [cardMutedTextColor, setCardMutedTextColor] = useState('')
   const [emptyStampColor, setEmptyStampColor] = useState('')
   const [emptyStampBorderColor, setEmptyStampBorderColor] = useState('')
+  const [cardBgImageUrl, setCardBgImageUrl] = useState<string | null>(null)
+  const [cardBgOverlayOpacity, setCardBgOverlayOpacity] = useState<number>(0.6)
 
   const [suggestedPalette, setSuggestedPalette] = useState<ExtractedColors | null>(null)
   
@@ -80,6 +82,10 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
           setCardMutedTextColor(b.card_muted_text_color || '')
           setEmptyStampColor(b.empty_stamp_color || '')
           setEmptyStampBorderColor(b.empty_stamp_border_color || '')
+          setCardBgImageUrl(b.card_background_image_url ?? null)
+          if (typeof b.card_bg_overlay_opacity === 'number') {
+            setCardBgOverlayOpacity(b.card_bg_overlay_opacity)
+          }
         }
       } catch (err) {
         if (active) {
@@ -327,6 +333,9 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
     card_muted_text_color: cardMutedTextColor || null,
     empty_stamp_color: emptyStampColor || null,
     empty_stamp_border_color: emptyStampBorderColor || null,
+    card_background_image_url: cardBgImageUrl,
+    card_bg_overlay_opacity: cardBgOverlayOpacity,
+    card_background_overlay: cardBgOverlayOpacity,
     created_at: '',
     updated_at: '',
   }
@@ -716,6 +725,7 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
               redeemable={false}
               onClaim={() => {}}
               businessBranding={mockBranding}
+              hideRewardDetails={business.hide_reward_details}
             />
           </BrandingWrapper>
         </div>

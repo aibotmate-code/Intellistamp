@@ -66,6 +66,10 @@ export async function GET(req: NextRequest) {
         card_muted_text_color: data.card_muted_text_color,
         empty_stamp_color: data.empty_stamp_color,
         empty_stamp_border_color: data.empty_stamp_border_color,
+        card_background_image_url: getPublicUrl(data.card_bg_image_path),
+        card_bg_overlay_opacity: data.card_bg_overlay_opacity !== null && data.card_bg_overlay_opacity !== undefined
+          ? Number(data.card_bg_overlay_opacity)
+          : 0.6,
       },
     })
   } catch {
@@ -156,7 +160,7 @@ export async function POST(req: NextRequest) {
     // Check existing branding row to determine if we update or insert, and get old logo path
     const { data: existingBranding } = await adminClient
       .from('business_branding')
-      .select('logo_path')
+      .select('logo_path, card_bg_image_path, card_bg_overlay_opacity')
       .eq('business_id', businessId)
       .maybeSingle()
 
@@ -270,6 +274,10 @@ export async function POST(req: NextRequest) {
         card_muted_text_color: cardMutedTextColor,
         empty_stamp_color: emptyStampColor,
         empty_stamp_border_color: emptyStampBorderColor,
+        card_background_image_url: getPublicUrl(existingBranding?.card_bg_image_path || null),
+        card_bg_overlay_opacity: existingBranding?.card_bg_overlay_opacity !== null && existingBranding?.card_bg_overlay_opacity !== undefined
+          ? Number(existingBranding.card_bg_overlay_opacity)
+          : 0.6,
       },
     })
   } catch {

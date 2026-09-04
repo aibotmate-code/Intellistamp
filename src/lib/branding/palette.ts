@@ -344,3 +344,44 @@ export function deriveAutoThemeFromLogo(
   }
 }
 
+/**
+ * Derives contrast-safe theme properties from a single primary hex color.
+ */
+export function deriveThemeFromPrimary(
+  primaryHex: string,
+  currentSurfaceColor: string = '#18181B'
+): {
+  primary_color: string
+  primary_dark_color: string
+  primary_light_color: string
+  text_on_primary: string
+  accent_color: string
+  card_text_color: string
+  card_muted_text_color: string
+} {
+  const { bgHex: primary_color, textHex: text_on_primary } = ensureWcagContrast(primaryHex)
+  const primRgb = hexToRgb(primary_color) || [58, 120, 116]
+  const primary_dark_color = rgbToHex(
+    Math.max(0, Math.floor(primRgb[0] * 0.75)),
+    Math.max(0, Math.floor(primRgb[1] * 0.75)),
+    Math.max(0, Math.floor(primRgb[2] * 0.75))
+  )
+  const primary_light_color = rgbToHex(
+    Math.min(255, Math.floor(primRgb[0] + (255 - primRgb[0]) * 0.85)),
+    Math.min(255, Math.floor(primRgb[1] + (255 - primRgb[1]) * 0.85)),
+    Math.min(255, Math.floor(primRgb[2] + (255 - primRgb[2]) * 0.85))
+  )
+  const isLightSurface = isLightColor(currentSurfaceColor)
+
+  return {
+    primary_color,
+    primary_dark_color,
+    primary_light_color,
+    text_on_primary,
+    accent_color: primary_color,
+    card_text_color: isLightSurface ? '#111827' : '#F5F5F5',
+    card_muted_text_color: isLightSurface ? '#6B7280' : '#A1A1AA',
+  }
+}
+
+
