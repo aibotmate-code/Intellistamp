@@ -8,6 +8,8 @@ import { resolveBrandingColors } from '@/lib/branding/palette'
 import { Trophy, LockKey, Gift, Check, X, Tag } from '@phosphor-icons/react'
 import IntelliStampMark from '@/components/brand/IntelliStampMark'
 import IntellicalLabsAttribution from '@/components/brand/IntellicalLabsAttribution'
+import MilestoneGiftMarker from '@/components/customer/MilestoneGiftMarker'
+import MilestoneUnlockSequence from '@/components/customer/MilestoneUnlockSequence'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,6 +30,8 @@ interface StampCardProps {
   branding?: import('@/types').BusinessBranding | null
   businessBranding?: import('@/types').BusinessBranding | null
   hideRewardDetails?: boolean
+  /** Preview trigger to safely simulate unlock animation without continuous replaying */
+  previewUnlockMilestoneId?: string
 }
 
 // ── Milestone progress bar — animates 0→pct on mount ─────────────────────────
@@ -200,6 +204,7 @@ export default function StampCard({
   branding,
   businessBranding,
   hideRewardDetails,
+  previewUnlockMilestoneId,
 }: StampCardProps) {
   const [rippleIndex, setRippleIndex] = useState<number | null>(null)
   const [celebrateAll, setCelebrateAll] = useState(false)
@@ -207,6 +212,36 @@ export default function StampCard({
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [deferredDismissed, setDeferredDismissed] = useState(false)
   const prevStamps = useRef(cardStamps)
+
+  // Track previously earned milestone IDs so unlock microinteraction ONLY triggers
+  // on a genuine locked -> earned transition
+  const [prevEarnedMilestoneIds, setPrevEarnedMilestoneIds] = useState<Set<string>>(() =>
+    new Set((milestones ?? []).filter((m) => m.earned).map((m) => m.id))
+  )
+  const [prevPreviewUnlockId, setPrevPreviewUnlockId] = useState<string | undefined>(previewUnlockMilestoneId)
+  const [activeUnlockMilestoneIds, setActiveUnlockMilestoneIds] = useState<Set<string>>(new Set())
+
+  // Adjust unlock state during render when milestones transition to earned
+  const currentEarnedMilestoneIds = new Set((milestones ?? []).filter((m) => m.earned).map((m) => m.id))
+  const newlyEarnedIds = new Set<string>()
+
+  for (const id of currentEarnedMilestoneIds) {
+    if (!prevEarnedMilestoneIds.has(id)) {
+      newlyEarnedIds.add(id)
+    }
+  }
+
+  if (previewUnlockMilestoneId && previewUnlockMilestoneId !== prevPreviewUnlockId) {
+    newlyEarnedIds.add(previewUnlockMilestoneId)
+  }
+
+  if (newlyEarnedIds.size > 0) {
+    setPrevEarnedMilestoneIds(currentEarnedMilestoneIds)
+    setPrevPreviewUnlockId(previewUnlockMilestoneId)
+    setActiveUnlockMilestoneIds((prev) => new Set([...prev, ...newlyEarnedIds]))
+  } else if (currentEarnedMilestoneIds.size !== prevEarnedMilestoneIds.size) {
+    setPrevEarnedMilestoneIds(currentEarnedMilestoneIds)
+  }
 
   useEffect(() => {
     const prev = prevStamps.current
@@ -237,6 +272,12 @@ export default function StampCard({
   const sortedMilestones = milestones
     ? [...milestones].sort((a, b) => a.visit_number - b.visit_number)
     : []
+
+  // Create lookup for configured milestones mapped by visit number for circles
+  const milestoneByVisitNumber = new Map<number, MilestoneWithStatus>()
+  for (const m of sortedMilestones) {
+    milestoneByVisitNumber.set(m.visit_number, m)
+  }
 
   const activeMilestoneBanner =
     rewardResult?.type === 'milestone' && !bannerDismissed ? rewardResult : null
@@ -366,10 +407,12 @@ export default function StampCard({
           role="img"
         >
           {Array.from({ length: stampsRequired }).map((_, i) => {
+            const visitNumber = i + 1
             const filled = i < cardStamps
             const isNew = i === newStampIndex
             const isRippling = i === rippleIndex
             const isPulsing = celebrateAll && filled
+            const milestoneForCircle = milestoneByVisitNumber.get(visitNumber)
 
             return (
               <div key={i} className="relative aspect-square flex items-center justify-center max-w-[44px] max-h-[44px] mx-auto w-full">
@@ -396,9 +439,26 @@ export default function StampCard({
                   {filled ? (
                     <Check size={16} weight="bold" />
                   ) : (
-                    <span className="text-[11px] opacity-50 font-mono">{i + 1}</span>
+                    <span className="text-[11px] opacity-50 font-mono">{visitNumber}</span>
                   )}
                 </div>
+
+                {/* Milestone Gift Marker attached to milestone circle */}
+                {milestoneForCircle && (
+                  <div
+                    data-stamp-number={visitNumber}
+                    className="absolute -top-1.5 -right-1.5 z-20 pointer-events-none rounded-full p-0.5 shadow-xs flex items-center justify-center"
+                    style={{
+                      background: isBrandingEnabled && resolved.primary_color ? resolved.primary_color : '#F59E0B',
+                      color: textOnPrimaryBrandColor,
+                    }}
+                  >
+                    <MilestoneGiftMarker
+                      size={11}
+                      isEarned={milestoneForCircle.earned || (totalVisits !== undefined && totalVisits >= visitNumber)}
+                    />
+                  </div>
+                )}
 
                 {isRippling && (
                   <div
@@ -457,64 +517,64 @@ export default function StampCard({
                 const isMystery = hideRewardDetails && !m.earned
                 const rewardDisplay = isMystery ? 'Surprise reward' : m.reward
 
+                const isActivelyUnlocking = activeUnlockMilestoneIds.has(m.id)
+
                 return (
                   <div key={m.id}>
-                    <div
-                      className="flex items-center gap-2.5 rounded-lg px-3 py-2"
-                      style={{
-                        background: m.earned 
-                          ? (isBrandingEnabled && resolved.primary_color ? resolved.primary_color + '1A' : 'rgba(245, 158, 11, 0.10)') 
-                          : 'transparent',
-                      }}
-                    >
-                      <div className="shrink-0">
-                        {m.earned ? (
-                          <Trophy size={16} weight="duotone" className="text-amber-400" />
-                        ) : isMystery ? (
-                          <Gift size={16} weight="duotone" className="text-amber-400/80" />
-                        ) : (
-                          <LockKey size={16} className="text-zinc-500" />
-                        )}
-                      </div>
+                    {m.earned ? (
+                      <MilestoneUnlockSequence
+                        badge={m.badge}
+                        rewardTitle={m.reward}
+                        primaryBrandColor={primaryBrandColor}
+                        cardMutedTextColor={resolved.card_muted_text_color}
+                        isBrandingEnabled={isBrandingEnabled}
+                        triggerUnlock={isActivelyUnlocking}
+                        onUnlockComplete={() => {
+                          setActiveUnlockMilestoneIds((prev) => {
+                            const next = new Set(prev)
+                            next.delete(m.id)
+                            return next
+                          })
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="flex items-center gap-2.5 rounded-lg px-3 py-2"
+                        style={{ background: 'transparent' }}
+                      >
+                        <div className="shrink-0">
+                          {isMystery ? (
+                            <Gift size={16} weight="duotone" className="text-amber-400/80" />
+                          ) : (
+                            <LockKey size={16} className="text-zinc-500" />
+                          )}
+                        </div>
 
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="text-xs font-medium truncate"
-                          style={{
-                            color: m.earned ? primaryBrandColor : resolved.card_muted_text_color,
-                          }}
-                        >
-                          {m.badge}
-                        </p>
-                        <p
-                          className="text-[11px] truncate"
-                          style={{ color: resolved.card_muted_text_color + 'bb' }}
-                        >
-                          {rewardDisplay}
-                        </p>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        {m.earned ? (
-                          <span
-                            className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                            style={{
-                              background: isBrandingEnabled && resolved.primary_color ? resolved.primary_color + '26' : 'rgba(245, 158, 11, 0.15)',
-                              color: primaryBrandColor,
-                            }}
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="text-xs font-medium truncate"
+                            style={{ color: resolved.card_muted_text_color }}
                           >
-                            Earned
-                          </span>
-                        ) : (
+                            {m.badge}
+                          </p>
+                          <p
+                            className="text-[11px] truncate"
+                            style={{ color: resolved.card_muted_text_color + 'bb' }}
+                          >
+                            {rewardDisplay}
+                          </p>
+                        </div>
+
+                        <div className="text-right shrink-0">
                           <span
                             className="text-[10px] font-mono"
                             style={{ color: resolved.card_muted_text_color }}
                           >
                             {visitsAway} {visitsAway === 1 ? 'visit' : 'visits'} left
                           </span>
-                        )}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Progress towards milestone */}
                     {!m.earned && totalVisits != null && (
