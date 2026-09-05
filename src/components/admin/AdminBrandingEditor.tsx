@@ -5,6 +5,7 @@ import type { Business, BusinessBranding } from '@/types'
 import Button from '@/components/ui/Button'
 import Alert from '@/components/ui/Alert'
 import StampCard from '@/components/customer/StampCard'
+import CardPreviewShell from '@/components/branding/CardPreviewShell'
 import {
   Check,
   UploadSimple,
@@ -426,9 +427,9 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Admin Branding Controls (7 cols) */}
-        <div className="lg:col-span-7 bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 space-y-6 shadow-xs">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+        {/* Left Column: Admin Branding Controls (7 cols on XL) */}
+        <div className="col-span-1 xl:col-span-7 bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 space-y-6 shadow-xs">
           <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
             <div>
               <h2 className="text-base font-semibold text-zinc-100">Co-Branding Settings</h2>
@@ -694,8 +695,8 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
           </div>
         </div>
 
-        {/* Right Column: Live Customer Loyalty Card Preview (5 cols) */}
-        <div className="lg:col-span-5 sticky top-6 space-y-4">
+        {/* Right Column: Live Customer Loyalty Card Preview (5 cols on XL) */}
+        <div className="col-span-1 xl:col-span-5 xl:sticky xl:top-6 space-y-4 min-w-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
               <Eye size={15} className="text-amber-500" />
@@ -736,27 +737,29 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
             </div>
           </div>
 
-          <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 shadow-sm is-dot-grid">
-            <StampCard
-              stampsRequired={business.stamps_required || 6}
-              cardStamps={previewStamps}
-              businessName={business.name}
-              businessEmoji={business.emoji}
-              reward={business.reward}
-              redeemable={previewStamps >= (business.stamps_required || 6)}
-              businessBranding={liveBranding}
-              totalVisits={previewStamps}
-              hideRewardDetails={business.hide_reward_details}
-              milestones={
-                business.milestones && business.milestones.length > 0
-                  ? business.milestones.map((m) => ({
-                      ...m,
-                      earned: previewStamps >= m.visit_number,
-                      visits_remaining: Math.max(0, m.visit_number - previewStamps),
-                    }))
-                  : undefined
-              }
-            />
+          <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 shadow-sm is-dot-grid overflow-hidden">
+            <CardPreviewShell designWidth={384}>
+              <StampCard
+                stampsRequired={business.stamps_required || 6}
+                cardStamps={previewStamps}
+                businessName={business.name}
+                businessEmoji={business.emoji}
+                reward={business.reward}
+                redeemable={previewStamps >= (business.stamps_required || 6)}
+                businessBranding={liveBranding}
+                totalVisits={previewStamps}
+                hideRewardDetails={business.hide_reward_details}
+                milestones={
+                  business.milestones && business.milestones.length > 0
+                    ? business.milestones.map((m) => ({
+                        ...m,
+                        earned: previewStamps >= m.visit_number,
+                        visits_remaining: Math.max(0, m.visit_number - previewStamps),
+                      }))
+                    : undefined
+                }
+              />
+            </CardPreviewShell>
           </div>
 
           <p className="text-[11px] text-zinc-500 text-center">

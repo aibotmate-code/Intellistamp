@@ -7,6 +7,7 @@ import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
 import StampCard from '@/components/customer/StampCard'
 import BrandingWrapper from '@/components/branding/BrandingWrapper'
+import CardPreviewShell from '@/components/branding/CardPreviewShell'
 import { extractPaletteFromImage, ensureWcagContrast, ExtractedColors } from '@/lib/branding/palette'
 import { Icons } from '@/config/icons'
 
@@ -344,7 +345,7 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
     <div className="p-6 bg-zinc-950 rounded-2xl border border-zinc-900">
       {/* Two-column layout: controls scroll freely; preview is sticky on desktop.
           On mobile we use flex-col-reverse so preview appears above controls. */}
-      <div className="flex flex-col-reverse lg:flex-row lg:items-start gap-8">
+      <div className="flex flex-col-reverse xl:flex-row xl:items-start gap-8">
 
       {/* Configuration Form – left / bottom on mobile */}
       <form onSubmit={handleSave} className="flex-1 min-w-0 space-y-6" onPaste={handlePaste}>
@@ -701,32 +702,34 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
       {/* sticky: needs the parent to be flex with items-start (not stretch) */}
       <div
         className="
-          w-full lg:w-[38%] lg:flex-shrink-0
+          w-full xl:w-[38%] xl:flex-shrink-0
           flex flex-col items-center space-y-3
-          lg:sticky lg:top-24 lg:self-start
+          xl:sticky xl:top-24 xl:self-start min-w-0
         "
       >
         <h3 className="text-sm font-semibold text-zinc-400 uppercase self-start tracking-wide">Live Card Preview</h3>
         <div
-          className="w-full flex justify-center items-center p-4 rounded-2xl border min-h-[360px]"
+          className="w-full flex justify-center items-center p-4 rounded-2xl border overflow-hidden"
           style={{
             background: isEnabled && backgroundColor ? backgroundColor : 'rgba(24, 24, 27, 0.3)',
             borderColor: isEnabled && surfaceColor ? surfaceColor : '#27272a',
           }}
         >
-          <BrandingWrapper branding={mockBranding} className="w-full max-w-sm">
-            <StampCard
-              stampsRequired={business.stamps_required}
-              cardStamps={Math.min(business.stamps_required - 1, 3)}
-              businessName={business.name}
-              businessEmoji={business.emoji}
-              reward={business.reward}
-              newStampIndex={undefined}
-              redeemable={false}
-              onClaim={() => {}}
-              businessBranding={mockBranding}
-              hideRewardDetails={business.hide_reward_details}
-            />
+          <BrandingWrapper branding={mockBranding} className="w-full flex justify-center">
+            <CardPreviewShell designWidth={384}>
+              <StampCard
+                stampsRequired={business.stamps_required}
+                cardStamps={Math.min(business.stamps_required - 1, 3)}
+                businessName={business.name}
+                businessEmoji={business.emoji}
+                reward={business.reward}
+                newStampIndex={undefined}
+                redeemable={false}
+                onClaim={() => {}}
+                businessBranding={mockBranding}
+                hideRewardDetails={business.hide_reward_details}
+              />
+            </CardPreviewShell>
           </BrandingWrapper>
         </div>
         <p className="text-xs text-zinc-400 text-center flex items-center gap-1.5">
