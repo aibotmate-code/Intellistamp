@@ -187,17 +187,33 @@ export async function POST(req: NextRequest) {
       reward_result = { type: 'milestone', milestone: unclaimed_milestone }
     }
 
+    const cardStatePayload = {
+      total_stamps: total,
+      card_stamps: stampComplete ? business.stamps_required : cardStamps,
+      cards_completed: cardsCompleted,
+      can_stamp: false,
+      cooldown_remaining_hours: 4,
+      redeemable: stampComplete,
+    }
+
+    // Resolve any pending check-in for this customer/phone in Mode C
+    try {
+      const { resolvePendingCheckinByPhone } = await import('@/lib/server/pendingCheckins')
+      resolvePendingCheckinByPhone(business_id, phone, {
+        card_state: cardStatePayload,
+        reward_result,
+        new_stamp_index: cardStatePayload.card_stamps - 1,
+      })
+    } catch {
+      // non-critical
+    }
+
     return NextResponse.json({
       success: true,
       customer_id: customer.id,
       customer_token: customer.customer_token,
       review_claimed: bcRow?.review_claimed ?? false,
-      card_state: {
-        total_stamps: total,
-        card_stamps: stampComplete ? business.stamps_required : cardStamps,
-        cards_completed: cardsCompleted,
-        redeemable: stampComplete,
-      },
+      card_state: cardStatePayload,
       reward_result,
     })
   } catch (err) {

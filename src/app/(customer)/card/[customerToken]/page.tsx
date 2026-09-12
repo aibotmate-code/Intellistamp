@@ -105,8 +105,13 @@ export default function CardPage({ params }: PageParams) {
       {isBrandingEnabled && resolved.card_background_image_url && (
         <>
           <div
-            className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${resolved.card_background_image_url})` }}
+            className="fixed inset-0 pointer-events-none z-0 bg-cover bg-no-repeat"
+            style={{
+              backgroundImage: `url(${resolved.card_background_image_url})`,
+              backgroundPosition: `${activeBranding?.background_position_x ?? 50}% ${activeBranding?.background_position_y ?? 50}%`,
+              transform: activeBranding?.background_scale && activeBranding.background_scale !== 1 ? `scale(${activeBranding.background_scale})` : undefined,
+              transformOrigin: `${activeBranding?.background_position_x ?? 50}% ${activeBranding?.background_position_y ?? 50}%`,
+            }}
             aria-hidden="true"
           />
           <div

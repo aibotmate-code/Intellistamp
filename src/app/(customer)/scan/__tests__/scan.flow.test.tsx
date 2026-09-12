@@ -347,9 +347,9 @@ describe('ScanPage Customer Identify Flow', () => {
     expect(continueBtn.style.backgroundColor).toBe('')
   })
 
-  test('9. When staff_pin_enabled is true, returning customer transitions to pin state and submits staff_pin to issue', async () => {
+  test('9. When staff_pin_enabled is true (Mode C), customer transitions to waiting_approval and never sees staff PIN input', async () => {
     global.fetch = jest.fn()
-      // 1st call: fetch business with staff_pin_enabled: true
+      // 1st call: fetch business with staff_pin_enabled: true, dynamic_qr_enabled: false
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -360,6 +360,7 @@ describe('ScanPage Customer Identify Flow', () => {
             reward: 'Free Coffee',
             stamps_required: 5,
             staff_pin_enabled: true,
+            dynamic_qr_enabled: false,
           },
         }),
       })
@@ -374,11 +375,19 @@ describe('ScanPage Customer Identify Flow', () => {
           name: 'Priya',
         }),
       })
-      // 3rd call: POST /api/stamp/issue with staff_pin
+      // 3rd call: POST /api/customer/checkin -> creates pending check-in
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          success: true,
+          checkin_id: 'chk-123',
+          status: 'pending',
+        }),
+      })
+      // 4th call: GET /api/customer/checkin-status -> returns approved
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          status: 'approved',
           card_state: {
             total_stamps: 1,
             card_stamps: 1,
@@ -386,6 +395,7 @@ describe('ScanPage Customer Identify Flow', () => {
             redeemable: false,
             milestones: [],
           },
+          new_stamp_index: 0,
         }),
       })
 
@@ -398,31 +408,28 @@ describe('ScanPage Customer Identify Flow', () => {
     fireEvent.change(screen.getByLabelText(/Mobile Number/i), { target: { value: '9876543210' } })
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }))
 
-    // Expect transition to PIN screen
+    // Expect transition to waiting_approval screen — CUSTOMER NEVER SEES PIN INPUT
     await waitFor(() => {
-      expect(screen.getByText(/Staff Verification Required/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/Staff PIN/i)).toBeInTheDocument()
+      expect(screen.getByText(/Waiting for Staff Approval/i)).toBeInTheDocument()
+      expect(screen.queryByText(/Staff Verification Required/i)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Staff PIN/i)).not.toBeInTheDocument()
     })
 
-    // Enter staff PIN
-    fireEvent.change(screen.getByLabelText(/Staff PIN/i), { target: { value: '1234' } })
-    fireEvent.click(screen.getByRole('button', { name: /Approve Stamp/i }))
-
-    // Verify /api/stamp/issue was called with staff_pin
+    // Expect check-in creation API was called
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        '/api/stamp/issue',
+        '/api/customer/checkin',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({
-            customer_id: 'cust-123',
-            business_id: mockBizId,
-            token: 'signed_qr_token_123',
-            type: 'regular',
-            staff_pin: '1234',
-          }),
+          body: expect.stringContaining('"customer_id":"cust-123"'),
         })
       )
+    })
+
+    // After approval polling resolves, transitions to success
+    await waitFor(() => {
+      expect(screen.getByText(/Stamp added/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /View My Loyalty Card/i })).toBeInTheDocument()
     })
   })
 })

@@ -78,6 +78,12 @@ export interface BusinessBranding {
   card_background_overlay?: number | null
   hide_reward_details?: boolean
   hidden_reward_text?: string
+  logo_position_x?: number | null
+  logo_position_y?: number | null
+  logo_scale?: number | null
+  background_position_x?: number | null
+  background_position_y?: number | null
+  background_scale?: number | null
   created_at?: string
   updated_at?: string
 }

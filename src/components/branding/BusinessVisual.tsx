@@ -7,6 +7,9 @@ interface BusinessVisualProps {
   emoji?: string
   name: string
   className?: string
+  logoPositionX?: number | null
+  logoPositionY?: number | null
+  logoScale?: number | null
 }
 
 function getInitials(name: string): string {
@@ -24,10 +27,17 @@ export default function BusinessVisual({
   emoji,
   name,
   className = '',
+  logoPositionX,
+  logoPositionY,
+  logoScale,
 }: BusinessVisualProps) {
   const isFeatureEnabled =
     process.env.NEXT_PUBLIC_TENANT_BRANDING_ENABLED !== 'false'
   const [loadError, setLoadError] = useState(false)
+
+  const posX = typeof logoPositionX === 'number' && !isNaN(logoPositionX) ? logoPositionX : 50
+  const posY = typeof logoPositionY === 'number' && !isNaN(logoPositionY) ? logoPositionY : 50
+  const scale = typeof logoScale === 'number' && !isNaN(logoScale) && logoScale > 0 ? logoScale : 1
 
   if (isFeatureEnabled && logoUrl && !loadError) {
     return (
@@ -40,6 +50,11 @@ export default function BusinessVisual({
           alt={`${name} logo`}
           onError={() => setLoadError(true)}
           className="w-full h-full object-cover rounded-full"
+          style={{
+            objectPosition: `${posX}% ${posY}%`,
+            transform: scale !== 1 ? `scale(${scale})` : undefined,
+            transformOrigin: `${posX}% ${posY}%`,
+          }}
         />
       </div>
     )

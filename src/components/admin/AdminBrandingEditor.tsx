@@ -15,7 +15,9 @@ import {
   Eye,
   Sparkle,
   Image as ImageIcon,
+  ArrowsOutCardinal,
 } from '@phosphor-icons/react'
+import ImageAdjustModal from '@/components/admin/ImageAdjustModal'
 import { isValidHexColor, validateHiddenRewardText } from '@/lib/branding/validation'
 import { deriveAutoThemeFromLogo } from '@/lib/branding/palette'
 import { cn } from '@/lib/utils'
@@ -130,6 +132,18 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
   const [hideRewardDetails, setHideRewardDetails] = useState(Boolean(business.hide_reward_details))
   const [hiddenRewardText, setHiddenRewardText] = useState(business.hidden_reward_text || 'Surprise reward')
 
+  // Image positioning & zoom states
+  const [logoPositionX, setLogoPositionX] = useState<number>(50)
+  const [logoPositionY, setLogoPositionY] = useState<number>(50)
+  const [logoScale, setLogoScale] = useState<number>(1)
+
+  const [bgPositionX, setBgPositionX] = useState<number>(50)
+  const [bgPositionY, setBgPositionY] = useState<number>(50)
+  const [bgScale, setBgScale] = useState<number>(1)
+
+  // Adjust Modal state
+  const [adjustModalMode, setAdjustModalMode] = useState<'logo' | 'background' | null>(null)
+
   // Preview interactive controls
   const [previewStamps, setPreviewStamps] = useState(2)
 
@@ -175,6 +189,12 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
           if (b.hidden_reward_text) {
             setHiddenRewardText(b.hidden_reward_text)
           }
+          if (b.logo_position_x != null) setLogoPositionX(Number(b.logo_position_x))
+          if (b.logo_position_y != null) setLogoPositionY(Number(b.logo_position_y))
+          if (b.logo_scale != null) setLogoScale(Number(b.logo_scale))
+          if (b.background_position_x != null) setBgPositionX(Number(b.background_position_x))
+          if (b.background_position_y != null) setBgPositionY(Number(b.background_position_y))
+          if (b.background_scale != null) setBgScale(Number(b.background_scale))
         }
       } catch (err) {
         if (active) {
@@ -387,6 +407,13 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
         fd.append('bg_image', bgImageFile)
       }
 
+      fd.append('logo_position_x', String(logoPositionX))
+      fd.append('logo_position_y', String(logoPositionY))
+      fd.append('logo_scale', String(logoScale))
+      fd.append('background_position_x', String(bgPositionX))
+      fd.append('background_position_y', String(bgPositionY))
+      fd.append('background_scale', String(bgScale))
+
       const res = await fetch(`/api/admin/business/${business.id}/branding`, {
         method: 'POST',
         body: fd,
@@ -436,6 +463,12 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
     empty_stamp_border_color: emptyStampBorderColor || null,
     hide_reward_details: hideRewardDetails,
     hidden_reward_text: hiddenRewardText,
+    logo_position_x: logoPositionX,
+    logo_position_y: logoPositionY,
+    logo_scale: logoScale,
+    background_position_x: bgPositionX,
+    background_position_y: bgPositionY,
+    background_scale: bgScale,
     is_enabled: isEnabled,
   }
 
@@ -513,16 +546,28 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
                   </Button>
 
                   {logoPreview && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={handleRemoveLogo}
-                      className="text-rose-400 hover:text-rose-300 border-zinc-800 flex items-center gap-1.5 text-xs"
-                    >
-                      <Trash size={14} />
-                      <span>Remove</span>
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setAdjustModalMode('logo')}
+                        className="border-zinc-800 text-zinc-300 hover:text-zinc-100 flex items-center gap-1.5 text-xs"
+                      >
+                        <ArrowsOutCardinal size={14} />
+                        <span>Adjust Logo</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRemoveLogo}
+                        className="text-rose-400 hover:text-rose-300 border-zinc-800 flex items-center gap-1.5 text-xs"
+                      >
+                        <Trash size={14} />
+                        <span>Remove</span>
+                      </Button>
+                    </>
                   )}
                 </div>
                 <p className="text-[11px] text-zinc-500">PNG, JPG, WebP up to 2MB. Transparent background recommended.</p>
@@ -572,16 +617,28 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
                   </Button>
 
                   {bgImagePreview && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={handleRemoveBgImage}
-                      className="text-rose-400 hover:text-rose-300 border-zinc-800 flex items-center gap-1.5 text-xs"
-                    >
-                      <Trash size={14} />
-                      <span>Remove</span>
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setAdjustModalMode('background')}
+                        className="border-zinc-800 text-zinc-300 hover:text-zinc-100 flex items-center gap-1.5 text-xs"
+                      >
+                        <ArrowsOutCardinal size={14} />
+                        <span>Adjust Pattern</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRemoveBgImage}
+                        className="text-rose-400 hover:text-rose-300 border-zinc-800 flex items-center gap-1.5 text-xs"
+                      >
+                        <Trash size={14} />
+                        <span>Remove</span>
+                      </Button>
+                    </>
                   )}
                 </div>
                 <p className="text-[11px] text-zinc-500">Subtle background patterns or textures (PNG, JPG, WebP up to 2MB).</p>
@@ -841,6 +898,42 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
           </p>
         </div>
       </div>
+
+      {adjustModalMode === 'logo' && logoPreview && (
+        <ImageAdjustModal
+          isOpen={true}
+          onClose={() => setAdjustModalMode(null)}
+          title="Adjust Merchant Logo"
+          mode="logo"
+          imageUrl={logoPreview}
+          initialX={logoPositionX}
+          initialY={logoPositionY}
+          initialScale={logoScale}
+          onSave={(newX, newY, newScale) => {
+            setLogoPositionX(newX)
+            setLogoPositionY(newY)
+            setLogoScale(newScale)
+          }}
+        />
+      )}
+
+      {adjustModalMode === 'background' && bgImagePreview && (
+        <ImageAdjustModal
+          isOpen={true}
+          onClose={() => setAdjustModalMode(null)}
+          title="Adjust Card Background Pattern"
+          mode="background"
+          imageUrl={bgImagePreview}
+          initialX={bgPositionX}
+          initialY={bgPositionY}
+          initialScale={bgScale}
+          onSave={(newX, newY, newScale) => {
+            setBgPositionX(newX)
+            setBgPositionY(newY)
+            setBgScale(newScale)
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -161,10 +161,9 @@ describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
   })
 
   // ─── Test 2 ─────────────────────────────────────────────────────────────
-  test('2. Mode B: Valid signed QR WITHOUT staff PIN is rejected with 400 (PIN is strictly required)', async () => {
+  test('2. Mode B: Dynamic QR flow is frozen: Valid signed QR WITHOUT staff PIN succeeds with 200', async () => {
     mockQueue.push({ data: PIN_ENABLED_BUSINESS, error: null })
-
-    ;(verifyPin as jest.Mock).mockResolvedValueOnce(false)
+    mockQueue.push({ data: STAMP_RPC_RESULT, error: null })
 
     const token = generateServerToken(BIZ_ID)
     const req = makeReq({
@@ -175,10 +174,14 @@ describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
     })
 
     const res = await POST(req)
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.error).toBe('Invalid staff PIN')
-    expect(mockChain.rpc).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    expect(verifyPin).not.toHaveBeenCalled()
+    expect(mockChain.rpc).toHaveBeenCalledWith('issue_stamp_atomic', {
+      p_customer_id: CUST_ID,
+      p_business_id: BIZ_ID,
+      p_type: 'regular',
+      p_stamp_token: token,
+    })
   })
 
   // ─── Test 3 ─────────────────────────────────────────────────────────────
@@ -279,11 +282,9 @@ describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
   })
 
   // ─── Test 8 ─────────────────────────────────────────────────────────────
-  test('8. Mode B: Valid signed QR + correct staff PIN succeeds', async () => {
+  test('8. Mode B: Valid signed QR with optional staff PIN succeeds', async () => {
     mockQueue.push({ data: PIN_ENABLED_BUSINESS, error: null })
     mockQueue.push({ data: STAMP_RPC_RESULT, error: null })
-
-    ;(verifyPin as jest.Mock).mockResolvedValueOnce(true)
 
     const token = generateServerToken(BIZ_ID)
     const req = makeReq({
@@ -295,7 +296,6 @@ describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
 
     const res = await POST(req)
     expect(res.status).toBe(200)
-    expect(verifyPin).toHaveBeenCalled()
     expect(mockChain.rpc).toHaveBeenCalledWith('issue_stamp_atomic', {
       p_customer_id: CUST_ID,
       p_business_id: BIZ_ID,

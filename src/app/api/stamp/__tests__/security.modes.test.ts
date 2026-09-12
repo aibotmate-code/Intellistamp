@@ -227,7 +227,28 @@ describe('Security Modes (A, B, C, D)', () => {
   // MODE B: Dynamic QR = ON, Staff PIN = ON
   // ───────────────────────────────────────────────────────────────────────────
   describe('MODE B: Dynamic QR = ON, Staff PIN = ON', () => {
-    test('succeeds when both valid QR token AND valid staff PIN are provided', async () => {
+    test('dynamic QR flow remains frozen: valid QR token alone succeeds with 200 without staff PIN', async () => {
+      mockQueue.push({ data: MODE_B_BUSINESS, error: null })
+      mockQueue.push({ data: STAMP_RPC_SUCCESS, error: null })
+
+      const token = generateServerToken(BIZ_ID)
+      const res = await POST(makeReq({
+        customer_id: CUST_ID,
+        business_id: BIZ_ID,
+        token,
+        // No staff_pin provided - dynamic QR is self-authorizing
+      }))
+
+      expect(res.status).toBe(200)
+      expect(mockChain.rpc).toHaveBeenCalledWith('issue_stamp_atomic', {
+        p_customer_id: CUST_ID,
+        p_business_id: BIZ_ID,
+        p_type: 'regular',
+        p_stamp_token: token,
+      })
+    })
+
+    test('valid QR token with optional staff PIN also succeeds with 200', async () => {
       mockQueue.push({ data: MODE_B_BUSINESS, error: null })
       mockQueue.push({ data: STAMP_RPC_SUCCESS, error: null })
 
@@ -240,7 +261,6 @@ describe('Security Modes (A, B, C, D)', () => {
       }))
 
       expect(res.status).toBe(200)
-      expect(verifyPin).toHaveBeenCalled()
       expect(mockChain.rpc).toHaveBeenCalledWith('issue_stamp_atomic', {
         p_customer_id: CUST_ID,
         p_business_id: BIZ_ID,
@@ -249,38 +269,18 @@ describe('Security Modes (A, B, C, D)', () => {
       })
     })
 
-    test('valid QR does NOT bypass PIN: rejects with 400 when PIN is missing', async () => {
+    test('rejects with 401 when token is invalid or expired', async () => {
       mockQueue.push({ data: MODE_B_BUSINESS, error: null })
 
-      const token = generateServerToken(BIZ_ID)
       const res = await POST(makeReq({
         customer_id: CUST_ID,
         business_id: BIZ_ID,
-        token,
-        // No PIN provided
+        token: 'invalid.dynamic.token',
       }))
 
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(401)
       const body = await res.json()
-      expect(body.error).toBe('Invalid staff PIN')
-      expect(mockChain.rpc).not.toHaveBeenCalled()
-    })
-
-    test('rejects with 400 when PIN is invalid', async () => {
-      mockQueue.push({ data: MODE_B_BUSINESS, error: null })
-      ;(verifyPin as jest.Mock).mockResolvedValueOnce(false)
-
-      const token = generateServerToken(BIZ_ID)
-      const res = await POST(makeReq({
-        customer_id: CUST_ID,
-        business_id: BIZ_ID,
-        token,
-        staff_pin: '9999',
-      }))
-
-      expect(res.status).toBe(400)
-      const body = await res.json()
-      expect(body.error).toBe('Invalid staff PIN')
+      expect(body.error).toContain('Invalid or expired token')
       expect(mockChain.rpc).not.toHaveBeenCalled()
     })
 

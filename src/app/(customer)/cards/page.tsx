@@ -248,6 +248,9 @@ export default function CardsPage() {
                       emoji={business.emoji}
                       name={business.name}
                       className="text-2xl shrink-0"
+                      logoPositionX={activeBranding?.logo_position_x}
+                      logoPositionY={activeBranding?.logo_position_y}
+                      logoScale={activeBranding?.logo_scale}
                     />
                     <div className="flex-1 min-w-0">
                       <p

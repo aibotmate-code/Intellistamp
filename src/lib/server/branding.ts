@@ -23,6 +23,12 @@ export interface RawBrandingRow {
   empty_stamp_border_color?: string | null
   hide_reward_details?: boolean
   hidden_reward_text?: string
+  logo_position_x?: number | string | null
+  logo_position_y?: number | string | null
+  logo_scale?: number | string | null
+  background_position_x?: number | string | null
+  background_position_y?: number | string | null
+  background_scale?: number | string | null
   created_at?: string
   updated_at?: string
   [key: string]: unknown
@@ -70,10 +76,22 @@ export function mapServerBranding(
 
   const clampedOverlay = Math.max(0.2, Math.min(0.9, overlay))
 
+  const parseCoord = (val: unknown, fallback: number): number => {
+    if (val === null || val === undefined) return fallback
+    const num = Number(val)
+    return isNaN(num) ? fallback : num
+  }
+
   return {
     ...(row as unknown as BusinessBranding),
     logo_url,
     card_background_image_url,
     card_background_overlay: clampedOverlay,
+    logo_position_x: parseCoord(row.logo_position_x, 50),
+    logo_position_y: parseCoord(row.logo_position_y, 50),
+    logo_scale: parseCoord(row.logo_scale, 1),
+    background_position_x: parseCoord(row.background_position_x, 50),
+    background_position_y: parseCoord(row.background_position_y, 50),
+    background_scale: parseCoord(row.background_scale, 1),
   }
 }

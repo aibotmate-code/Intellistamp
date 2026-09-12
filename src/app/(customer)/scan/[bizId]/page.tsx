@@ -12,7 +12,7 @@ import { resolveBrandingColors } from '@/lib/branding/palette'
 import { CheckCircle } from '@phosphor-icons/react'
 import type { Business, StampCardState } from '@/types'
 
-type FlowState = 'loading' | 'login' | 'name' | 'pin' | 'stamping' | 'success' | 'error' | 'cooldown'
+type FlowState = 'loading' | 'login' | 'name' | 'waiting_approval' | 'approval_timeout' | 'stamping' | 'success' | 'error' | 'cooldown'
 
 export default function ScanPage() {
   const { bizId } = useParams<{ bizId: string }>()
@@ -29,10 +29,9 @@ export default function ScanPage() {
 
   const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
-  const [staffPin, setStaffPin] = useState('')
+  const [checkinId, setCheckinId] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState('')
   const [nameError, setNameError] = useState('')
-  const [pinError, setPinError] = useState('')
   const [loadingIdentify, setLoadingIdentify] = useState(false)
   const [loadingStamp, setLoadingStamp] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -59,8 +58,8 @@ export default function ScanPage() {
           const parsed = JSON.parse(stored)
           if (parsed && parsed.id) {
             setCustomer(parsed)
-            if (business.staff_pin_enabled) {
-              setFlowState('pin')
+            if (!business.dynamic_qr_enabled && business.staff_pin_enabled) {
+              setFlowState('waiting_approval')
             } else {
               setFlowState('stamping')
             }
@@ -81,11 +80,9 @@ export default function ScanPage() {
   const resolved = resolveBrandingColors(activeBranding, isBrandingEnabled)
   const targetBizId = business?.id || bizId
 
-  const doStamp = useCallback(async (pinToUse?: string) => {
+  const doStamp = useCallback(async () => {
     if (!customer || !business) return
     setLoadingStamp(true)
-    setPinError('')
-    const effectivePin = pinToUse ?? (staffPin ? staffPin : undefined)
     try {
       const res = await fetch('/api/stamp/issue', {
         method: 'POST',
@@ -95,7 +92,6 @@ export default function ScanPage() {
           business_id: targetBizId,
           token: qrToken,
           type: 'regular',
-          ...(effectivePin ? { staff_pin: effectivePin } : {}),
         }),
       })
       const data = await res.json()
@@ -103,9 +99,6 @@ export default function ScanPage() {
         if (res.status === 429) {
           setCooldownHours(data.cooldown_hours ?? 4)
           setFlowState('cooldown')
-        } else if (business.staff_pin_enabled && res.status === 400 && data.error?.toLowerCase().includes('pin')) {
-          setPinError(data.error || 'Invalid staff PIN')
-          setFlowState('pin')
         } else {
           setErrorMsg(data.error || 'Failed to issue stamp')
           setFlowState('error')
@@ -131,7 +124,7 @@ export default function ScanPage() {
     } finally {
       setLoadingStamp(false)
     }
-  }, [customer, business, targetBizId, qrToken, staffPin])
+  }, [customer, business, targetBizId, qrToken])
 
   useEffect(() => {
     if (flowState === 'stamping' && customer && business) {
@@ -141,6 +134,80 @@ export default function ScanPage() {
       return () => clearTimeout(timer)
     }
   }, [flowState, customer, business, doStamp])
+
+  // Mode C: Initiate check-in request when in waiting_approval
+  useEffect(() => {
+    if (flowState !== 'waiting_approval' || !customer || !business || checkinId) return
+
+    let cancelled = false
+
+    const initiateCheckin = async () => {
+      try {
+        const res = await fetch('/api/customer/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            business_id: targetBizId,
+            customer_id: customer.id,
+            phone: customer.phone,
+            name: customer.name,
+          }),
+        })
+        const data = await res.json()
+        if (!cancelled && data.checkin_id) {
+          setCheckinId(data.checkin_id)
+        }
+      } catch {
+        // non-critical
+      }
+    }
+
+    initiateCheckin()
+
+    return () => {
+      cancelled = true
+    }
+  }, [flowState, customer, business, targetBizId, checkinId])
+
+  // Mode C: Poll for approval status (stops after 24 attempts / 60 seconds)
+  useEffect(() => {
+    if (flowState !== 'waiting_approval' || !checkinId) return
+
+    const MAX_POLLS = 24 // 24 * 2.5s = 60s
+    let pollCount = 0
+
+    const pollStatus = async () => {
+      try {
+        const res = await fetch(`/api/customer/checkin-status?checkinId=${checkinId}&businessId=${targetBizId}`)
+        const data = await res.json()
+        if (data.status === 'approved') {
+          setCardState(data.card_state)
+          setNewStampIndex(data.new_stamp_index ?? data.card_state.card_stamps - 1)
+          if (data.reward_result) {
+            try {
+              sessionStorage.setItem('intellistamp_pending_reward', JSON.stringify(data.reward_result))
+            } catch {}
+          }
+          if (data.access_grant) {
+            setAccessGrant(data.access_grant)
+          }
+          setFlowState('success')
+          return
+        }
+
+        pollCount += 1
+        if (pollCount >= MAX_POLLS) {
+          setFlowState('approval_timeout')
+        }
+      } catch {
+        // continue polling until timeout
+      }
+    }
+
+    pollStatus()
+    const timer = setInterval(pollStatus, 2500)
+    return () => clearInterval(timer)
+  }, [flowState, checkinId, targetBizId])
 
   const handleContinue = async () => {
     setPhoneError('')
@@ -192,8 +259,8 @@ export default function ScanPage() {
         if (sessionData.id) {
           localStorage.setItem('customer_session', JSON.stringify(sessionData))
           setCustomer(sessionData)
-          if (business?.staff_pin_enabled) {
-            setFlowState('pin')
+          if (!business?.dynamic_qr_enabled && business?.staff_pin_enabled) {
+            setFlowState('waiting_approval')
           } else {
             setFlowState('stamping')
           }
@@ -219,8 +286,8 @@ export default function ScanPage() {
           name: c.name || '',
         }))
         setCustomer(c)
-        if (business?.staff_pin_enabled) {
-          setFlowState('pin')
+        if (!business?.dynamic_qr_enabled && business?.staff_pin_enabled) {
+          setFlowState('waiting_approval')
         } else {
           setFlowState('stamping')
         }
@@ -284,8 +351,8 @@ export default function ScanPage() {
           name: c.name || name.trim(),
         }))
         setCustomer(c)
-        if (business?.staff_pin_enabled) {
-          setFlowState('pin')
+        if (!business?.dynamic_qr_enabled && business?.staff_pin_enabled) {
+          setFlowState('waiting_approval')
         } else {
           setFlowState('stamping')
         }
@@ -321,8 +388,13 @@ export default function ScanPage() {
       {isBrandingEnabled && resolved.card_background_image_url && (
         <>
           <div
-            className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${resolved.card_background_image_url})` }}
+            className="fixed inset-0 pointer-events-none z-0 bg-cover bg-no-repeat"
+            style={{
+              backgroundImage: `url(${resolved.card_background_image_url})`,
+              backgroundPosition: `${activeBranding?.background_position_x ?? 50}% ${activeBranding?.background_position_y ?? 50}%`,
+              transform: activeBranding?.background_scale && activeBranding.background_scale !== 1 ? `scale(${activeBranding.background_scale})` : undefined,
+              transformOrigin: `${activeBranding?.background_position_x ?? 50}% ${activeBranding?.background_position_y ?? 50}%`,
+            }}
             aria-hidden="true"
           />
           <div
@@ -344,7 +416,10 @@ export default function ScanPage() {
               logoUrl={business.branding?.logo_url}
               emoji={business.emoji}
               name={business.name}
-              className="text-3xl mb-2"
+              className="mx-auto"
+              logoPositionX={business.branding?.logo_position_x}
+              logoPositionY={business.branding?.logo_position_y}
+              logoScale={business.branding?.logo_scale}
             />
             <h1 className="text-lg font-semibold tracking-tight text-zinc-100">{business.name}</h1>
             <p className="text-xs text-zinc-400 mt-0.5">Earn: {business.reward}</p>
@@ -459,9 +534,9 @@ export default function ScanPage() {
           </div>
         )}
 
-        {flowState === 'pin' && (
+        {flowState === 'waiting_approval' && (
           <div
-            className="rounded-xl p-6 border space-y-4 shadow-xs backdrop-blur-md transition-colors"
+            className="rounded-xl p-6 border space-y-4 shadow-xs backdrop-blur-md transition-colors text-center"
             style={{
               backgroundColor: isBrandingEnabled ? resolved.surface_color : 'rgba(24, 24, 27, 0.6)',
               borderColor: isBrandingEnabled ? resolved.empty_stamp_border_color : '#27272a',
@@ -469,56 +544,87 @@ export default function ScanPage() {
           >
             <div>
               <h2
-                className="text-sm font-semibold"
+                className="text-base font-semibold"
                 style={{ color: isBrandingEnabled ? resolved.card_text_color : undefined }}
               >
-                Staff Verification Required
+                Waiting for Staff Approval
               </h2>
               <p
-                className="text-xs mt-0.5"
+                className="text-xs mt-1 text-zinc-400"
                 style={{ color: isBrandingEnabled ? resolved.card_muted_text_color : undefined }}
               >
-                Please ask a staff member to enter their 4-digit PIN to approve this stamp.
+                Check-in received for +91 {customer?.phone}. Please let the staff member know at the counter to approve your visit.
               </p>
             </div>
-            <Input
-              label="Staff PIN"
-              type="password"
-              placeholder="••••"
-              value={staffPin}
-              onChange={(e) => {
-                setStaffPin(e.target.value.replace(/\D/g, '').slice(0, 4))
-                setPinError('')
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && staffPin.length === 4 && doStamp(staffPin)}
-              error={pinError}
-              inputMode="numeric"
-              maxLength={4}
-              autoFocus
-            />
-            <Button
-              onClick={() => doStamp(staffPin)}
-              loading={loadingStamp}
-              disabled={staffPin.length !== 4}
-              size="sm"
-              className="w-full transition-opacity hover:opacity-90"
-              style={isBrandingEnabled ? {
-                backgroundColor: resolved.primary_color,
-                color: resolved.text_on_primary,
-                borderColor: 'transparent',
-              } : undefined}
-            >
-              Approve Stamp →
-            </Button>
+
+            <div className="flex items-center justify-center py-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+                <Spinner size="sm" />
+                <span>Waiting for counter approval...</span>
+              </div>
+            </div>
+
             <button
               onClick={() => {
-                setStaffPin('')
-                setPinError('')
+                localStorage.removeItem('customer_session')
+                setCustomer(null)
+                setCheckinId(null)
                 setFlowState('login')
               }}
               className="text-xs text-zinc-500 hover:text-zinc-300 w-full text-center py-1 cursor-pointer"
             >
-              ← Back to phone number
+              ← Change mobile number
+            </button>
+          </div>
+        )}
+
+        {flowState === 'approval_timeout' && (
+          <div
+            className="rounded-xl p-6 border space-y-4 shadow-xs backdrop-blur-md transition-colors text-center"
+            style={{
+              backgroundColor: isBrandingEnabled ? resolved.surface_color : 'rgba(24, 24, 27, 0.6)',
+              borderColor: isBrandingEnabled ? resolved.empty_stamp_border_color : '#27272a',
+            }}
+          >
+            <div>
+              <h2
+                className="text-base font-semibold text-zinc-100"
+                style={{ color: isBrandingEnabled ? resolved.card_text_color : undefined }}
+              >
+                Approval Timed Out
+              </h2>
+              <p
+                className="text-xs mt-1 text-zinc-400"
+                style={{ color: isBrandingEnabled ? resolved.card_muted_text_color : undefined }}
+              >
+                We haven&apos;t received approval yet. If you are still at the counter, tap below to check again or ask staff directly.
+              </p>
+            </div>
+
+            <Button
+              onClick={() => {
+                setFlowState('waiting_approval')
+              }}
+              size="sm"
+              className="w-full"
+              style={isBrandingEnabled ? {
+                backgroundColor: resolved.primary_color,
+                color: resolved.text_on_primary,
+              } : undefined}
+            >
+              Check Again
+            </Button>
+
+            <button
+              onClick={() => {
+                localStorage.removeItem('customer_session')
+                setCustomer(null)
+                setCheckinId(null)
+                setFlowState('login')
+              }}
+              className="text-xs text-zinc-500 hover:text-zinc-300 w-full text-center py-1 cursor-pointer"
+            >
+              ← Change mobile number
             </button>
           </div>
         )}

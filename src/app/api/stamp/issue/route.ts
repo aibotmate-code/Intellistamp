@@ -90,9 +90,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Staff PIN check — required whenever staff_pin_enabled is true on the business.
-    // Valid signed QR does NOT bypass staff PIN when staff_pin_enabled is true.
-    if (business.staff_pin_enabled) {
+    // Staff PIN check — only required when:
+    //   1. staff_pin_enabled is true on the business, AND
+    //   2. The request did NOT arrive with a valid server-signed QR token
+    if (business.staff_pin_enabled && !tokenIsVerified) {
       const pinKey = `pin:stamp:${business_id}:${clientHash}`
       const peekRl = await peekRateLimit(pinKey, 10)
       if (!peekRl.ok) {

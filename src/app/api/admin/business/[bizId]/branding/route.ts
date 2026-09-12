@@ -58,6 +58,12 @@ export async function GET(
         card_bg_overlay_opacity: overlayOpacity,
         hide_reward_details: data.hide_reward_details ?? false,
         hidden_reward_text: data.hidden_reward_text ?? 'Surprise reward',
+        logo_position_x: data.logo_position_x != null ? Number(data.logo_position_x) : 50,
+        logo_position_y: data.logo_position_y != null ? Number(data.logo_position_y) : 50,
+        logo_scale: data.logo_scale != null ? Number(data.logo_scale) : 1,
+        background_position_x: data.background_position_x != null ? Number(data.background_position_x) : 50,
+        background_position_y: data.background_position_y != null ? Number(data.background_position_y) : 50,
+        background_scale: data.background_scale != null ? Number(data.background_scale) : 1,
       },
     })
   } catch {
@@ -158,7 +164,7 @@ export async function POST(
     // Existing branding record check
     const { data: existingBranding } = await adminClient
       .from('business_branding')
-      .select('logo_path, card_bg_image_path, hide_reward_details, hidden_reward_text')
+      .select('logo_path, card_bg_image_path, hide_reward_details, hidden_reward_text, logo_position_x, logo_position_y, logo_scale, background_position_x, background_position_y, background_scale')
       .eq('business_id', bizId)
       .maybeSingle()
 
@@ -263,7 +269,21 @@ export async function POST(
     }
     const hiddenRewardText = hiddenRewardValidation.value
 
-    const brandingData = {
+    const parseCoord = (val: FormDataEntryValue | null, fallback: number, min: number, max: number): number => {
+      if (val === null || val === undefined || String(val).trim() === '') return fallback
+      const num = parseFloat(String(val))
+      if (isNaN(num)) return fallback
+      return Math.max(min, Math.min(max, Math.round(num * 100) / 100))
+    }
+
+    const logoPositionX = parseCoord(formData.get('logo_position_x'), existingBranding?.logo_position_x != null ? Number(existingBranding.logo_position_x) : 50, 0, 100)
+    const logoPositionY = parseCoord(formData.get('logo_position_y'), existingBranding?.logo_position_y != null ? Number(existingBranding.logo_position_y) : 50, 0, 100)
+    const logoScale = parseCoord(formData.get('logo_scale'), existingBranding?.logo_scale != null ? Number(existingBranding.logo_scale) : 1, 1, 3)
+    const backgroundPositionX = parseCoord(formData.get('background_position_x'), existingBranding?.background_position_x != null ? Number(existingBranding.background_position_x) : 50, 0, 100)
+    const backgroundPositionY = parseCoord(formData.get('background_position_y'), existingBranding?.background_position_y != null ? Number(existingBranding.background_position_y) : 50, 0, 100)
+    const backgroundScale = parseCoord(formData.get('background_scale'), existingBranding?.background_scale != null ? Number(existingBranding.background_scale) : 1, 1, 3)
+
+    const brandingData: Record<string, unknown> = {
       business_id: bizId,
       logo_path: newLogoPath,
       card_bg_image_path: newBgImagePath,
@@ -283,6 +303,12 @@ export async function POST(
       empty_stamp_border_color: emptyStampBorderColor,
       hide_reward_details: hideRewardDetails,
       hidden_reward_text: hiddenRewardText,
+      logo_position_x: logoPositionX,
+      logo_position_y: logoPositionY,
+      logo_scale: logoScale,
+      background_position_x: backgroundPositionX,
+      background_position_y: backgroundPositionY,
+      background_scale: backgroundScale,
       updated_at: new Date().toISOString(),
     }
 
@@ -299,6 +325,22 @@ export async function POST(
         .from('business_branding')
         .insert(brandingData)
       saveError = error
+    }
+
+    // Graceful fallback if database migration has not been applied yet
+    if (saveError && saveError.message && saveError.message.includes('column') && saveError.message.includes('does not exist')) {
+      const fallbackData = { ...brandingData }
+      delete fallbackData.logo_position_x
+      delete fallbackData.logo_position_y
+      delete fallbackData.logo_scale
+      delete fallbackData.background_position_x
+      delete fallbackData.background_position_y
+      delete fallbackData.background_scale
+
+      const retry = existingBranding
+        ? await adminClient.from('business_branding').update(fallbackData).eq('business_id', bizId)
+        : await adminClient.from('business_branding').insert(fallbackData)
+      saveError = retry.error
     }
 
     if (saveError) {
@@ -349,6 +391,12 @@ export async function POST(
         empty_stamp_border_color: emptyStampBorderColor,
         hide_reward_details: hideRewardDetails,
         hidden_reward_text: hiddenRewardText,
+        logo_position_x: logoPositionX,
+        logo_position_y: logoPositionY,
+        logo_scale: logoScale,
+        background_position_x: backgroundPositionX,
+        background_position_y: backgroundPositionY,
+        background_scale: backgroundScale,
       },
     })
   } catch {
