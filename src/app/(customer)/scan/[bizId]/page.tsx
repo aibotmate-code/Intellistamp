@@ -12,7 +12,7 @@ import { resolveBrandingColors } from '@/lib/branding/palette'
 import { CheckCircle } from '@phosphor-icons/react'
 import type { Business, StampCardState } from '@/types'
 
-type FlowState = 'loading' | 'login' | 'name' | 'stamping' | 'success' | 'error' | 'cooldown'
+type FlowState = 'loading' | 'login' | 'name' | 'pin' | 'stamping' | 'success' | 'error' | 'cooldown'
 
 export default function ScanPage() {
   const { bizId } = useParams<{ bizId: string }>()
@@ -29,8 +29,10 @@ export default function ScanPage() {
 
   const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
+  const [staffPin, setStaffPin] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [nameError, setNameError] = useState('')
+  const [pinError, setPinError] = useState('')
   const [loadingIdentify, setLoadingIdentify] = useState(false)
   const [loadingStamp, setLoadingStamp] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -57,7 +59,11 @@ export default function ScanPage() {
           const parsed = JSON.parse(stored)
           if (parsed && parsed.id) {
             setCustomer(parsed)
-            setFlowState('stamping')
+            if (business.staff_pin_enabled) {
+              setFlowState('pin')
+            } else {
+              setFlowState('stamping')
+            }
             return
           }
           setFlowState('login')
@@ -75,9 +81,11 @@ export default function ScanPage() {
   const resolved = resolveBrandingColors(activeBranding, isBrandingEnabled)
   const targetBizId = business?.id || bizId
 
-  const doStamp = useCallback(async () => {
+  const doStamp = useCallback(async (pinToUse?: string) => {
     if (!customer || !business) return
     setLoadingStamp(true)
+    setPinError('')
+    const effectivePin = pinToUse ?? (staffPin ? staffPin : undefined)
     try {
       const res = await fetch('/api/stamp/issue', {
         method: 'POST',
@@ -87,6 +95,7 @@ export default function ScanPage() {
           business_id: targetBizId,
           token: qrToken,
           type: 'regular',
+          ...(effectivePin ? { staff_pin: effectivePin } : {}),
         }),
       })
       const data = await res.json()
@@ -94,6 +103,9 @@ export default function ScanPage() {
         if (res.status === 429) {
           setCooldownHours(data.cooldown_hours ?? 4)
           setFlowState('cooldown')
+        } else if (business.staff_pin_enabled && res.status === 400 && data.error?.toLowerCase().includes('pin')) {
+          setPinError(data.error || 'Invalid staff PIN')
+          setFlowState('pin')
         } else {
           setErrorMsg(data.error || 'Failed to issue stamp')
           setFlowState('error')
@@ -119,7 +131,7 @@ export default function ScanPage() {
     } finally {
       setLoadingStamp(false)
     }
-  }, [customer, business, targetBizId, qrToken])
+  }, [customer, business, targetBizId, qrToken, staffPin])
 
   useEffect(() => {
     if (flowState === 'stamping' && customer && business) {
@@ -180,7 +192,11 @@ export default function ScanPage() {
         if (sessionData.id) {
           localStorage.setItem('customer_session', JSON.stringify(sessionData))
           setCustomer(sessionData)
-          setFlowState('stamping')
+          if (business?.staff_pin_enabled) {
+            setFlowState('pin')
+          } else {
+            setFlowState('stamping')
+          }
         } else {
           setPhoneError('Something went wrong. Please try again.')
         }
@@ -203,7 +219,11 @@ export default function ScanPage() {
           name: c.name || '',
         }))
         setCustomer(c)
-        setFlowState('stamping')
+        if (business?.staff_pin_enabled) {
+          setFlowState('pin')
+        } else {
+          setFlowState('stamping')
+        }
         return
       }
 
@@ -264,7 +284,11 @@ export default function ScanPage() {
           name: c.name || name.trim(),
         }))
         setCustomer(c)
-        setFlowState('stamping')
+        if (business?.staff_pin_enabled) {
+          setFlowState('pin')
+        } else {
+          setFlowState('stamping')
+        }
       } else {
         setNameError('Something went wrong. Please try again.')
       }
@@ -431,6 +455,70 @@ export default function ScanPage() {
               className="text-xs text-zinc-500 hover:text-zinc-300 w-full text-center py-1 cursor-pointer"
             >
               ← Change number
+            </button>
+          </div>
+        )}
+
+        {flowState === 'pin' && (
+          <div
+            className="rounded-xl p-6 border space-y-4 shadow-xs backdrop-blur-md transition-colors"
+            style={{
+              backgroundColor: isBrandingEnabled ? resolved.surface_color : 'rgba(24, 24, 27, 0.6)',
+              borderColor: isBrandingEnabled ? resolved.empty_stamp_border_color : '#27272a',
+            }}
+          >
+            <div>
+              <h2
+                className="text-sm font-semibold"
+                style={{ color: isBrandingEnabled ? resolved.card_text_color : undefined }}
+              >
+                Staff Verification Required
+              </h2>
+              <p
+                className="text-xs mt-0.5"
+                style={{ color: isBrandingEnabled ? resolved.card_muted_text_color : undefined }}
+              >
+                Please ask a staff member to enter their 4-digit PIN to approve this stamp.
+              </p>
+            </div>
+            <Input
+              label="Staff PIN"
+              type="password"
+              placeholder="••••"
+              value={staffPin}
+              onChange={(e) => {
+                setStaffPin(e.target.value.replace(/\D/g, '').slice(0, 4))
+                setPinError('')
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && staffPin.length === 4 && doStamp(staffPin)}
+              error={pinError}
+              inputMode="numeric"
+              maxLength={4}
+              autoFocus
+            />
+            <Button
+              onClick={() => doStamp(staffPin)}
+              loading={loadingStamp}
+              disabled={staffPin.length !== 4}
+              size="sm"
+              className="w-full transition-opacity hover:opacity-90"
+              style={isBrandingEnabled ? {
+                backgroundColor: resolved.primary_color,
+                color: resolved.text_on_primary,
+                borderColor: 'transparent',
+              } : undefined}
+            >
+              Approve Stamp →
+            </Button>
+            <button
+              onClick={() => {
+                setStaffPin('')
+                setPinError('')
+                setFlowState('login')
+              }}
+              className="text-xs text-zinc-500 hover:text-zinc-300 w-full text-center py-1 cursor-pointer"
+            >
+              ← Back to phone number
             </button>
           </div>
         )}

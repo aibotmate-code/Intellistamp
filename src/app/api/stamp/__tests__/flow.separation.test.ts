@@ -71,7 +71,31 @@ const PIN_ENABLED_BUSINESS = {
   stamps_required: 6,
   reward: 'Free coffee',
   dynamic_qr_enabled: true,
-  staff_pin_enabled: true,        // ← PIN is ON
+  staff_pin_enabled: true,        // ← Mode B (Dynamic QR + Staff PIN)
+  staff_pin_hash: '$2a$10$mock',
+  conflict_priority: 'stamp',
+  approval_status: 'approved',
+  plan_expires_at: null,
+}
+
+const PIN_DISABLED_BUSINESS = {
+  id: BIZ_ID,
+  stamps_required: 6,
+  reward: 'Free coffee',
+  dynamic_qr_enabled: true,
+  staff_pin_enabled: false,       // ← Mode A (Dynamic QR, No PIN)
+  staff_pin_hash: null,
+  conflict_priority: 'stamp',
+  approval_status: 'approved',
+  plan_expires_at: null,
+}
+
+const STATIC_PIN_BUSINESS = {
+  id: BIZ_ID,
+  stamps_required: 6,
+  reward: 'Free coffee',
+  dynamic_qr_enabled: false,      // ← Mode C (Static QR + Staff PIN)
+  staff_pin_enabled: true,
   staff_pin_hash: '$2a$10$mock',
   conflict_priority: 'stamp',
   approval_status: 'approved',
@@ -95,6 +119,8 @@ function makeReq(body: object) {
 beforeEach(() => {
   mockQueue = []
   jest.clearAllMocks()
+  ;(verifyPin as jest.Mock).mockReset()
+  ;(verifyPin as jest.Mock).mockResolvedValue(true)
   mockChain.from.mockReturnThis()
   mockChain.select.mockReturnThis()
   mockChain.insert.mockReturnThis()
@@ -111,9 +137,9 @@ beforeEach(() => {
 describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
 
   // ─── Test 1 ─────────────────────────────────────────────────────────────
-  test('1. Valid signed QR + any customer issues stamp without staff PIN (new phone)', async () => {
-    // Business has PIN enabled — but QR token should bypass it
-    mockQueue.push({ data: PIN_ENABLED_BUSINESS, error: null })
+  test('1. Valid signed QR + customer issues stamp without staff PIN when PIN is disabled (Mode A)', async () => {
+    // Mode A: dynamic QR enabled, staff PIN disabled
+    mockQueue.push({ data: PIN_DISABLED_BUSINESS, error: null })
     mockQueue.push({ data: STAMP_RPC_RESULT, error: null })
 
     const token = generateServerToken(BIZ_ID)
@@ -121,7 +147,7 @@ describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
       customer_id: CUST_ID,
       business_id: BIZ_ID,
       token,
-      // NO staff_pin — simulates customer QR scan
+      // NO staff_pin — Mode A does not require PIN
     })
 
     const res = await POST(req)
@@ -130,30 +156,34 @@ describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
     expect(body.success).toBe(true)
     expect(body.stamp).toBeDefined()
 
-    // verifyPin must NOT have been called — token was the credential
+    // verifyPin must NOT have been called
     expect(verifyPin).not.toHaveBeenCalled()
   })
 
   // ─── Test 2 ─────────────────────────────────────────────────────────────
-  test('2. Valid signed QR + existing customer issues stamp without staff PIN', async () => {
+  test('2. Mode B: Valid signed QR WITHOUT staff PIN is rejected with 400 (PIN is strictly required)', async () => {
     mockQueue.push({ data: PIN_ENABLED_BUSINESS, error: null })
-    mockQueue.push({ data: { ...STAMP_RPC_RESULT, total_stamps: 5 }, error: null })
+
+    ;(verifyPin as jest.Mock).mockResolvedValueOnce(false)
 
     const token = generateServerToken(BIZ_ID)
     const req = makeReq({
       customer_id: CUST_ID,
       business_id: BIZ_ID,
       token,
+      // NO staff_pin provided
     })
 
     const res = await POST(req)
-    expect(res.status).toBe(200)
-    expect(verifyPin).not.toHaveBeenCalled()
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('Invalid staff PIN')
+    expect(mockChain.rpc).not.toHaveBeenCalled()
   })
 
   // ─── Test 3 ─────────────────────────────────────────────────────────────
   test('3. Expired / invalid QR token is rejected with 401', async () => {
-    mockQueue.push({ data: PIN_ENABLED_BUSINESS, error: null })
+    mockQueue.push({ data: PIN_DISABLED_BUSINESS, error: null })
 
     const req = makeReq({
       customer_id: CUST_ID,
@@ -170,7 +200,7 @@ describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
 
   // ─── Test 4 ─────────────────────────────────────────────────────────────
   test('4. Replayed QR token is rejected with 409', async () => {
-    mockQueue.push({ data: PIN_ENABLED_BUSINESS, error: null })
+    mockQueue.push({ data: PIN_DISABLED_BUSINESS, error: null })
     mockQueue.push({ data: { error: 'token_used' }, error: null })
 
     const token = generateServerToken(BIZ_ID)
@@ -183,15 +213,15 @@ describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
   })
 
   // ─── Test 5 ─────────────────────────────────────────────────────────────
-  test('5. Manual dashboard stamp without valid QR requires correct PIN', async () => {
-    mockQueue.push({ data: PIN_ENABLED_BUSINESS, error: null })
+  test('5. Mode C: Static QR stamp without valid PIN is rejected with 400', async () => {
+    mockQueue.push({ data: STATIC_PIN_BUSINESS, error: null })
 
     ;(verifyPin as jest.Mock).mockResolvedValueOnce(false) // wrong PIN
 
     const req = makeReq({
       customer_id: CUST_ID,
       business_id: BIZ_ID,
-      // No token → falls through to PIN check
+      // Static QR mode: no rotating token
       staff_pin: '9999', // wrong PIN
     })
 
@@ -224,8 +254,8 @@ describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
   })
 
   // ─── Test 7 ─────────────────────────────────────────────────────────────
-  test('7. Manual staff stamp via /api/stamp/issue with correct PIN succeeds', async () => {
-    mockQueue.push({ data: PIN_ENABLED_BUSINESS, error: null })
+  test('7. Mode C: Static QR stamp with correct PIN succeeds', async () => {
+    mockQueue.push({ data: STATIC_PIN_BUSINESS, error: null })
     mockQueue.push({ data: STAMP_RPC_RESULT, error: null })
 
     ;(verifyPin as jest.Mock).mockResolvedValueOnce(true) // correct PIN
@@ -234,63 +264,68 @@ describe('Flow Separation: Customer QR vs Manual Staff PIN', () => {
       customer_id: CUST_ID,
       business_id: BIZ_ID,
       staff_pin: '1234',
-      // No QR token → manual flow
+      // Static QR mode: no rotating token
     })
 
     const res = await POST(req)
     expect(res.status).toBe(200)
     expect(verifyPin).toHaveBeenCalled()
+    expect(mockChain.rpc).toHaveBeenCalledWith('issue_stamp_atomic', {
+      p_customer_id: CUST_ID,
+      p_business_id: BIZ_ID,
+      p_type: 'regular',
+      p_stamp_token: null,
+    })
   })
 
   // ─── Test 8 ─────────────────────────────────────────────────────────────
-  test('8. Empty staff_pin does not affect valid signed QR flow', async () => {
+  test('8. Mode B: Valid signed QR + correct staff PIN succeeds', async () => {
     mockQueue.push({ data: PIN_ENABLED_BUSINESS, error: null })
     mockQueue.push({ data: STAMP_RPC_RESULT, error: null })
+
+    ;(verifyPin as jest.Mock).mockResolvedValueOnce(true)
 
     const token = generateServerToken(BIZ_ID)
     const req = makeReq({
       customer_id: CUST_ID,
       business_id: BIZ_ID,
       token,
-      staff_pin: '', // explicitly empty — should be ignored because token is valid
+      staff_pin: '1234',
     })
 
     const res = await POST(req)
     expect(res.status).toBe(200)
-    // verifyPin must NOT have been called for the QR path
-    expect(verifyPin).not.toHaveBeenCalled()
+    expect(verifyPin).toHaveBeenCalled()
+    expect(mockChain.rpc).toHaveBeenCalledWith('issue_stamp_atomic', {
+      p_customer_id: CUST_ID,
+      p_business_id: BIZ_ID,
+      p_type: 'regular',
+      p_stamp_token: token,
+    })
   })
 
   // ─── Test 9 ─────────────────────────────────────────────────────────────
-  test('9. A forged client flag cannot bypass PIN — server decides solely from token validity', async () => {
-    // This proves the schema has no "skipPin" field the client could set.
-    // Any extra client field is stripped by stampIssueSchema before processing.
+  test('9. Missing token when dynamic QR is enabled is rejected with 401', async () => {
     mockQueue.push({ data: PIN_ENABLED_BUSINESS, error: null })
-
-    ;(verifyPin as jest.Mock).mockResolvedValueOnce(false)
 
     const req = makeReq({
       customer_id: CUST_ID,
       business_id: BIZ_ID,
-      staff_pin: '0000',
-      // Attempt to inject a bypass flag — Zod will strip this unknown key
-      skipPin: true,
-      isCustomerQr: true,
-      bypass: 'please',
-    } as any)
+      staff_pin: '1234',
+      // No token
+    })
 
     const res = await POST(req)
-    // Still gets 400 Invalid PIN because the forged flags were stripped
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(401)
     const body = await res.json()
-    expect(body.error).toBe('Invalid staff PIN')
+    expect(body.error).toContain('Valid QR scan required')
   })
 
   // ─── Test 10 ────────────────────────────────────────────────────────────
   test('10. Cross-business QR scan is denied — token signed for BIZ_A rejected for BIZ_B', async () => {
     // Token generated for BIZ_ID, but request targets OTHER_BIZ_ID
     mockQueue.push({
-      data: { ...PIN_ENABLED_BUSINESS, id: OTHER_BIZ_ID },
+      data: { ...PIN_DISABLED_BUSINESS, id: OTHER_BIZ_ID },
       error: null,
     })
 

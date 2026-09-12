@@ -38,8 +38,31 @@ export async function POST(req: NextRequest) {
 
     const { business_id, phone, name, qr_token } = result.data
 
-    // Verify QR token first — determines what paths are available
-    const qrIsValid = qr_token ? validateServerToken(business_id, qr_token) : false
+    // Fetch business details to determine security mode
+    const { data: business, error: bizError } = await supabase
+      .from('businesses')
+      .select('id, dynamic_qr_enabled, staff_pin_enabled, approval_status, plan_expires_at')
+      .eq('id', business_id)
+      .single()
+
+    if (bizError || !business) {
+      return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+    }
+
+    if (business.approval_status !== 'approved') {
+      return NextResponse.json({ error: `Business is ${business.approval_status}` }, { status: 403 })
+    }
+
+    if (business.plan_expires_at && new Date(business.plan_expires_at).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
+    }
+
+    // Verify QR validity:
+    // When dynamic_qr_enabled is true, an unexpired, signed HMAC token is required.
+    // When dynamic_qr_enabled is false (static QR mode), the static QR check-in is valid.
+    const qrIsValid = business.dynamic_qr_enabled
+      ? (qr_token ? validateServerToken(business_id, qr_token) : false)
+      : true
 
     // Look up existing customer by phone
     const { data: existing } = await supabase

@@ -50,30 +50,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
     }
 
-    // ─── Flow Separation ────────────────────────────────────────────────────────
+    // ─── Flow & Security Verification ───────────────────────────────────────────
     //
-    // SIGNED QR CUSTOMER FLOW:
-    //   The signed HMAC token is the authorization credential. The server
-    //   independently verifies the cryptographic signature and expiry.
-    //   Staff PIN is NOT required — the token's validity proves the customer
-    //   was physically present at the business counter when the QR was shown.
-    //   This path CANNOT be triggered by a client-supplied boolean flag.
+    // MODE A (dynamic_qr_enabled = true, staff_pin_enabled = false):
+    //   Rotating dynamic QR token is required and verified cryptographically.
+    //   No staff PIN required.
     //
-    // MANUAL DASHBOARD / STAFF FLOW:
-    //   No trusted signed token is present. The route falls back to staff PIN
-    //   verification when staff_pin_enabled is true. Rate limiting remains active.
+    // MODE B (dynamic_qr_enabled = true, staff_pin_enabled = true):
+    //   Rotating dynamic QR token is required and verified cryptographically.
+    //   Staff PIN is ALSO required and must be verified against staff_pin_hash.
+    //   Dynamic token does NOT bypass staff PIN.
     //
-    // The decision is made solely by the server based on cryptographic token validity.
+    // MODE C (dynamic_qr_enabled = false, staff_pin_enabled = true):
+    //   Static QR code: no rotating token required.
+    //   Staff PIN is strictly required and must be verified against staff_pin_hash.
+    //
+    // MODE D (dynamic_qr_enabled = false, staff_pin_enabled = false):
+    //   Static QR code: no rotating token required, no staff PIN required.
+    //   Protected by 4-hour cooldown lock and IP rate limits (weakest mode).
     // ────────────────────────────────────────────────────────────────────────────
 
     let tokenIsVerified = false
 
     if (business.dynamic_qr_enabled) {
       if (!token) {
-        // Dynamic QR is enabled but no token supplied → must be a manual flow
-        // Fall through to staff PIN check below
+        return NextResponse.json(
+          { error: 'Valid QR scan required.' },
+          { status: 401 }
+        )
       } else if (!validateServerToken(business_id, token)) {
-        // Token was supplied but is invalid or expired — reject, do not fall back to PIN
+        // Token was supplied but is invalid or expired — reject
         return NextResponse.json(
           { error: 'Invalid or expired token. Please scan the QR again.' },
           { status: 401 }
@@ -84,10 +90,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Staff PIN check — only required when:
-    //   1. staff_pin_enabled is true on the business, AND
-    //   2. The request did NOT arrive with a valid server-signed QR token
-    if (business.staff_pin_enabled && !tokenIsVerified) {
+    // Staff PIN check — required whenever staff_pin_enabled is true on the business.
+    // Valid signed QR does NOT bypass staff PIN when staff_pin_enabled is true.
+    if (business.staff_pin_enabled) {
       const pinKey = `pin:stamp:${business_id}:${clientHash}`
       const peekRl = await peekRateLimit(pinKey, 10)
       if (!peekRl.ok) {

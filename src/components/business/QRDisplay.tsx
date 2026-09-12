@@ -6,18 +6,36 @@ import { cn } from '@/lib/utils'
 
 interface QRDisplayProps {
   bizId: string
+  dynamicQrEnabled?: boolean
   size?: number
   showToken?: boolean
   className?: string
 }
 
-export default function QRDisplay({ bizId, size = 200, showToken = true, className }: QRDisplayProps) {
+export default function QRDisplay({
+  bizId,
+  dynamicQrEnabled = true,
+  size = 200,
+  showToken = true,
+  className,
+}: QRDisplayProps) {
   const [token, setToken] = useState('')
   const [seconds, setSeconds] = useState(30)
-  const [diagnostic, setDiagnostic] = useState({ tokenPresent: false, tokenLength: 0, status: 'loading' })
+  const [diagnostic, setDiagnostic] = useState(() => ({
+    tokenPresent: false,
+    tokenLength: 0,
+    status: dynamicQrEnabled ? 'loading' : 'static',
+  }))
 
   useEffect(() => {
     let mounted = true
+
+    // If dynamic QR is disabled, we do not fetch a rotating token or start the countdown timer
+    if (!dynamicQrEnabled) {
+      return () => {
+        mounted = false
+      }
+    }
 
     const fetchToken = async () => {
       try {
@@ -63,14 +81,19 @@ export default function QRDisplay({ bizId, size = 200, showToken = true, classNa
       mounted = false
       clearInterval(countdownTimer)
     }
-  }, [bizId])
+  }, [bizId, dynamicQrEnabled])
 
-  const qrUrl = token ? `${window.location.origin}/scan/${bizId}?t=${token}` : ''
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const qrUrl = dynamicQrEnabled
+    ? (token ? `${origin}/scan/${bizId}?t=${token}` : '')
+    : `${origin}/scan/${bizId}`
+
+  const hasQrReady = dynamicQrEnabled ? Boolean(token) : Boolean(bizId)
 
   return (
     <div className={cn('flex flex-col items-center gap-3', className)}>
       <div className="bg-white rounded-xl p-3 flex items-center justify-center" style={{ width: size + 24, height: size + 24 }}>
-        {token ? (
+        {hasQrReady ? (
           <QRCodeSVG
             value={qrUrl}
             size={size}
@@ -92,24 +115,34 @@ export default function QRDisplay({ bizId, size = 200, showToken = true, classNa
 
       {showToken && (
         <>
-          <div className="text-center w-full max-w-full px-2 overflow-hidden flex justify-center">
-            <p className="text-xs font-mono text-zinc-500 bg-zinc-900/50 p-2 rounded truncate max-w-[200px]" title={token}>
-              {token ? `${token.substring(0, 16)}...${token.slice(-16)}` : '...'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className={cn(
-              'w-2 h-2 rounded-full animate-pulse-dot',
-              seconds > 10 ? 'bg-green-400' : 'bg-red-400'
-            )} />
-            <span className={seconds > 10 ? 'text-zinc-400' : 'text-red-400'}>
-              Refreshes in {seconds}s
-            </span>
-          </div>
+          {dynamicQrEnabled ? (
+            <>
+              <div className="text-center w-full max-w-full px-2 overflow-hidden flex justify-center">
+                <p className="text-xs font-mono text-zinc-500 bg-zinc-900/50 p-2 rounded truncate max-w-[200px]" title={token}>
+                  {token ? `${token.substring(0, 16)}...${token.slice(-16)}` : '...'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className={cn(
+                  'w-2 h-2 rounded-full animate-pulse-dot',
+                  seconds > 10 ? 'bg-green-400' : 'bg-red-400'
+                )} />
+                <span className={seconds > 10 ? 'text-zinc-400' : 'text-red-400'}>
+                  Refreshes in {seconds}s
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-zinc-400 bg-zinc-900/50 px-2.5 py-1 rounded-md border border-zinc-800">
+              <span className="w-2 h-2 rounded-full bg-zinc-500" />
+              <span>Static QR (Permanent)</span>
+            </div>
+          )}
           
           {process.env.NODE_ENV === 'development' && (
             <div className="mt-2 text-[10px] font-mono text-zinc-500 text-left bg-black/20 p-2 rounded w-full max-w-xs">
               <div>status: {diagnostic.status}</div>
+              <div>dynamicQrEnabled: {String(dynamicQrEnabled)}</div>
               <div>tokenPresent: {String(diagnostic.tokenPresent)}</div>
               <div>tokenLength: {diagnostic.tokenLength}</div>
               <div>canvasWidth: {size}</div>

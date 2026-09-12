@@ -346,5 +346,84 @@ describe('ScanPage Customer Identify Flow', () => {
     const continueBtn = screen.getByRole('button', { name: /Continue/i })
     expect(continueBtn.style.backgroundColor).toBe('')
   })
+
+  test('9. When staff_pin_enabled is true, returning customer transitions to pin state and submits staff_pin to issue', async () => {
+    global.fetch = jest.fn()
+      // 1st call: fetch business with staff_pin_enabled: true
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          business: {
+            id: mockBizId,
+            name: 'PIN Cafe',
+            emoji: '☕',
+            reward: 'Free Coffee',
+            stamps_required: 5,
+            staff_pin_enabled: true,
+          },
+        }),
+      })
+      // 2nd call: POST /api/customer/identify -> returns readyToStamp: true
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          isNew: false,
+          readyToStamp: true,
+          customer_id: 'cust-123',
+          name: 'Priya',
+        }),
+      })
+      // 3rd call: POST /api/stamp/issue with staff_pin
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          card_state: {
+            total_stamps: 1,
+            card_stamps: 1,
+            cards_completed: 0,
+            redeemable: false,
+            milestones: [],
+          },
+        }),
+      })
+
+    render(<ScanPage />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Mobile Number/i)).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByLabelText(/Mobile Number/i), { target: { value: '9876543210' } })
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }))
+
+    // Expect transition to PIN screen
+    await waitFor(() => {
+      expect(screen.getByText(/Staff Verification Required/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Staff PIN/i)).toBeInTheDocument()
+    })
+
+    // Enter staff PIN
+    fireEvent.change(screen.getByLabelText(/Staff PIN/i), { target: { value: '1234' } })
+    fireEvent.click(screen.getByRole('button', { name: /Approve Stamp/i }))
+
+    // Verify /api/stamp/issue was called with staff_pin
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/stamp/issue',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            customer_id: 'cust-123',
+            business_id: mockBizId,
+            token: 'signed_qr_token_123',
+            type: 'regular',
+            staff_pin: '1234',
+          }),
+        })
+      )
+    })
+  })
 })
 

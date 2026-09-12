@@ -26,12 +26,11 @@ export async function GET(req: NextRequest) {
       // Auto-resolve: look up the business owned by this user (no bizId needed)
       const { data: business } = await adminClient
         .from('businesses')
-        .select('id, approval_status, plan_expires_at')
+        .select('id, dynamic_qr_enabled, staff_pin_enabled, approval_status, plan_expires_at')
         .eq('owner_id', user.id)
         .maybeSingle()
 
       businessFound = Boolean(business)
-
 
       if (!business) {
         return NextResponse.json({ error: 'Business not found' }, { status: 404 })
@@ -45,6 +44,11 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
       }
 
+      // If business has dynamic QR disabled, return static indicator with null token
+      if (business.dynamic_qr_enabled === false) {
+        return NextResponse.json({ token: null, dynamic_qr_enabled: false, bizId: business.id })
+      }
+
       if (!qrSecretConfigured) {
         console.error('[qr-token] QR_SECRET_KEY is not configured')
         return NextResponse.json({ error: 'QR token generation unavailable' }, { status: 503 })
@@ -55,19 +59,18 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'QR token generation failed' }, { status: 500 })
       }
 
-      return NextResponse.json({ token, bizId: business.id })
+      return NextResponse.json({ token, dynamic_qr_enabled: true, bizId: business.id })
     }
 
     // bizId supplied: verify ownership before using it
     const { data: business } = await adminClient
       .from('businesses')
-      .select('id, approval_status, plan_expires_at')
+      .select('id, dynamic_qr_enabled, staff_pin_enabled, approval_status, plan_expires_at')
       .eq('id', bizId)
       .eq('owner_id', user.id)
       .maybeSingle()
 
     businessFound = Boolean(business)
-
 
     if (!business) {
       // Return 404 (not 403) to avoid confirming a business exists to non-owners
@@ -82,6 +85,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
     }
 
+    // If business has dynamic QR disabled, return static indicator with null token
+    if (business.dynamic_qr_enabled === false) {
+      return NextResponse.json({ token: null, dynamic_qr_enabled: false, bizId: business.id })
+    }
+
     if (!qrSecretConfigured) {
       console.error('[qr-token] QR_SECRET_KEY is not configured')
       return NextResponse.json({ error: 'QR token generation unavailable' }, { status: 503 })
@@ -92,7 +100,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'QR token generation failed' }, { status: 500 })
     }
 
-    return NextResponse.json({ token })
+    return NextResponse.json({ token, dynamic_qr_enabled: true, bizId })
   } catch (err) {
     console.error('[qr-token] unexpected error:', err)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

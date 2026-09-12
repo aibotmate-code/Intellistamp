@@ -10,15 +10,28 @@ interface KioskModeProps {
   bizId: string
   businessName: string
   businessEmoji: string
+  dynamicQrEnabled?: boolean
+  staffPinEnabled?: boolean
   onExit: () => void
 }
 
-export default function KioskMode({ bizId, businessName, businessEmoji, onExit }: KioskModeProps) {
+export default function KioskMode({
+  bizId,
+  businessName,
+  businessEmoji,
+  dynamicQrEnabled = true,
+  staffPinEnabled = false,
+  onExit,
+}: KioskModeProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [token, setToken] = useState('')
   const [seconds, setSeconds] = useState(30)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
-  const [diagnostic, setDiagnostic] = useState({ tokenPresent: false, tokenLength: 0, status: 'loading' })
+  const [diagnostic, setDiagnostic] = useState(() => ({
+    tokenPresent: false,
+    tokenLength: 0,
+    status: dynamicQrEnabled ? 'loading' : 'static',
+  }))
 
   useEffect(() => {
     // Request fullscreen
@@ -43,6 +56,13 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
 
   useEffect(() => {
     let mounted = true
+
+    // If dynamic QR is disabled, do not start interval timer or refetch dynamic tokens
+    if (!dynamicQrEnabled) {
+      return () => {
+        mounted = false
+      }
+    }
 
     const fetchToken = async () => {
       try {
@@ -88,7 +108,7 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
       mounted = false
       clearInterval(countdownTimer)
     }
-  }, [bizId])
+  }, [bizId, dynamicQrEnabled])
 
   const handleExit = () => {
     if (document.fullscreenElement) {
@@ -98,7 +118,12 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
     onExit()
   }
 
-  const qrUrl = token ? `${window.location.origin}/scan/${bizId}?t=${token}` : ''
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const qrUrl = dynamicQrEnabled
+    ? (token ? `${origin}/scan/${bizId}?t=${token}` : '')
+    : `${origin}/scan/${bizId}`
+
+  const hasQrReady = dynamicQrEnabled ? Boolean(token) : Boolean(bizId)
 
   return (
     <div
@@ -118,13 +143,15 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
       <div className="text-center mt-6">
         <div className="text-4xl mb-2">{businessEmoji}</div>
         <h1 className="text-xl font-semibold tracking-tight text-zinc-100">{businessName}</h1>
-        <p className="text-xs text-zinc-400 mt-0.5">Customer Counter Display</p>
+        <p className="text-xs text-zinc-400 mt-0.5">
+          {dynamicQrEnabled ? 'Customer Counter Display' : 'Customer Counter Display (Static)'}
+        </p>
       </div>
 
       {/* Center: QR */}
       <div className="flex flex-col items-center gap-4 my-auto">
         <div className="bg-white rounded-lg p-3.5 shadow-md flex items-center justify-center" style={{ width: 250, height: 250 }}>
-          {token ? (
+          {hasQrReady ? (
             <QRCodeSVG
               value={qrUrl}
               size={220}
@@ -144,25 +171,40 @@ export default function KioskMode({ bizId, businessName, businessEmoji, onExit }
           )}
         </div>
 
-        <div className="text-center w-full max-w-full px-2 overflow-hidden flex justify-center">
-          <p className="text-[11px] font-mono text-zinc-500 bg-zinc-900/60 border border-zinc-800/80 px-2 py-1 rounded truncate max-w-[260px]" title={token}>
-            {token ? `${token.substring(0, 12)}...${token.slice(-12)}` : '...'}
-          </p>
-        </div>
+        {dynamicQrEnabled && (
+          <div className="text-center w-full max-w-full px-2 overflow-hidden flex justify-center">
+            <p className="text-[11px] font-mono text-zinc-500 bg-zinc-900/60 border border-zinc-800/80 px-2 py-1 rounded truncate max-w-[260px]" title={token}>
+              {token ? `${token.substring(0, 12)}...${token.slice(-12)}` : '...'}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Bottom */}
       <div className="text-center space-y-2 mb-4 flex flex-col items-center">
-        <p className="text-xs font-medium text-zinc-200">Scan with your phone camera to collect your stamp</p>
-        <div className="flex items-center justify-center gap-2 text-xs">
-          <span className={cn(
-            'w-1.5 h-1.5 rounded-full',
-            seconds > 10 ? 'bg-emerald-400' : 'bg-rose-400'
-          )} />
-          <span className={seconds > 10 ? 'text-zinc-400' : 'text-rose-400'}>
-            Refreshes in {seconds}s
-          </span>
-        </div>
+        <p className="text-xs font-medium text-zinc-200">
+          {staffPinEnabled
+            ? 'Scan to check in • Staff verification required to stamp'
+            : 'Scan with your phone camera to collect your stamp'}
+        </p>
+
+        {dynamicQrEnabled ? (
+          <div className="flex items-center justify-center gap-2 text-xs">
+            <span className={cn(
+              'w-1.5 h-1.5 rounded-full',
+              seconds > 10 ? 'bg-emerald-400' : 'bg-rose-400'
+            )} />
+            <span className={seconds > 10 ? 'text-zinc-400' : 'text-rose-400'}>
+              Refreshes in {seconds}s
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-2 text-xs text-zinc-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+            <span>Static Display</span>
+          </div>
+        )}
+
         <div className="pt-2">
           <Logo size="sm" />
         </div>

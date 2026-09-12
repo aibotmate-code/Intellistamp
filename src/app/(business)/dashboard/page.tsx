@@ -277,6 +277,8 @@ export default function DashboardPage() {
           bizId={business.id}
           businessName={business.name}
           businessEmoji={business.emoji}
+          dynamicQrEnabled={business.dynamic_qr_enabled}
+          staffPinEnabled={business.staff_pin_enabled}
           onExit={() => setKioskMode(false)}
         />
       )}
@@ -421,7 +423,12 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex flex-col items-center py-2">
-                <QRDisplay bizId={business.id} size={180} showToken={true} />
+                <QRDisplay
+                  bizId={business.id}
+                  dynamicQrEnabled={business.dynamic_qr_enabled}
+                  size={180}
+                  showToken={true}
+                />
               </div>
 
               <div>

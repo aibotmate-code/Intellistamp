@@ -80,4 +80,35 @@ describe('KioskMode Component', () => {
     // No secret in headers
     expect(options?.headers?.Authorization).toBeUndefined()
   })
+
+  test('KioskMode with dynamicQrEnabled=false renders static display and disables token refresh', async () => {
+    const mockFetch = jest.fn()
+    global.fetch = mockFetch
+
+    render(
+      <KioskMode
+        bizId="kiosk-biz-id"
+        businessName="Test"
+        businessEmoji="☕"
+        dynamicQrEnabled={false}
+        staffPinEnabled={true}
+        onExit={jest.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('qr-svg-kiosk')).toBeInTheDocument()
+    const svg = screen.getByTestId('qr-svg-kiosk')
+    expect(svg).toHaveAttribute('data-value', expect.stringContaining('/scan/kiosk-biz-id'))
+    expect(svg).not.toHaveAttribute('data-value', expect.stringContaining('?t='))
+
+    // Token fetch is not called
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    // Shows static display label
+    expect(screen.getByText('Static Display')).toBeInTheDocument()
+    expect(screen.queryByText(/Refreshes in/)).not.toBeInTheDocument()
+
+    // Shows staff PIN notice
+    expect(screen.getByText(/Staff verification required to stamp/)).toBeInTheDocument()
+  })
 })

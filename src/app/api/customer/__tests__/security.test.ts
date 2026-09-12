@@ -11,11 +11,31 @@ jest.mock('@supabase/supabase-js', () => {
   const mockUpsert = jest.fn()
 
   const mockSupabase = {
-    from: jest.fn(() => ({
-      select: mockSelect,
-      insert: mockInsert,
-      upsert: mockUpsert,
-    })),
+    from: jest.fn((table?: string) => {
+      if (table === 'businesses') {
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: {
+                  id: '550e8400-e29b-41d4-a716-446655440000',
+                  dynamic_qr_enabled: true,
+                  staff_pin_enabled: false,
+                  approval_status: 'approved',
+                  plan_expires_at: null,
+                },
+                error: null,
+              }),
+            }),
+          }),
+        }
+      }
+      return {
+        select: mockSelect,
+        insert: mockInsert,
+        upsert: mockUpsert,
+      }
+    }),
   }
 
   mockSelect.mockReturnValue({ eq: mockEq, single: mockSingle, maybeSingle: mockMaybeSingle })

@@ -106,4 +106,25 @@ describe('QRDisplay Component', () => {
     })
     expect(screen.queryByTestId('qr-svg')).not.toBeInTheDocument()
   })
+
+  test('dynamicQrEnabled=false renders static QR and disables refresh timer', async () => {
+    const mockFetch = jest.fn()
+    global.fetch = mockFetch
+
+    render(<QRDisplay bizId="test-biz" dynamicQrEnabled={false} />)
+
+    // Wait for the SVG to render immediately with static URL
+    expect(screen.getByTestId('qr-svg')).toBeInTheDocument()
+    const svg = screen.getByTestId('qr-svg')
+    expect(svg).toHaveAttribute('data-value', expect.stringContaining('/scan/test-biz'))
+    expect(svg).not.toHaveAttribute('data-value', expect.stringContaining('?t='))
+
+    // Does not fetch rotating token
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    // Shows static indicator
+    expect(screen.getByText('Static QR (Permanent)')).toBeInTheDocument()
+    // Does not show refresh countdown
+    expect(screen.queryByText(/Refreshes in/)).not.toBeInTheDocument()
+  })
 })
