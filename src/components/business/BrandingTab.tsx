@@ -9,6 +9,7 @@ import StampCard from '@/components/customer/StampCard'
 import BrandingWrapper from '@/components/branding/BrandingWrapper'
 import CardPreviewShell from '@/components/branding/CardPreviewShell'
 import { extractPaletteFromImage, ensureWcagContrast, ExtractedColors } from '@/lib/branding/palette'
+import { validateHiddenRewardText } from '@/lib/branding/validation'
 import { Icons } from '@/config/icons'
 
 interface BrandingTabProps {
@@ -41,6 +42,10 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
   const [emptyStampBorderColor, setEmptyStampBorderColor] = useState('')
   const [cardBgImageUrl, setCardBgImageUrl] = useState<string | null>(null)
   const [cardBgOverlayOpacity, setCardBgOverlayOpacity] = useState<number>(0.6)
+
+  // Reward visibility & custom mystery teaser text
+  const [hideRewardDetails, setHideRewardDetails] = useState(Boolean(business.hide_reward_details))
+  const [hiddenRewardText, setHiddenRewardText] = useState(business.hidden_reward_text || 'Surprise reward')
 
   const [suggestedPalette, setSuggestedPalette] = useState<ExtractedColors | null>(null)
   
@@ -86,6 +91,12 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
           setCardBgImageUrl(b.card_background_image_url ?? null)
           if (typeof b.card_bg_overlay_opacity === 'number') {
             setCardBgOverlayOpacity(b.card_bg_overlay_opacity)
+          }
+          if (b.hide_reward_details !== undefined) {
+            setHideRewardDetails(Boolean(b.hide_reward_details))
+          }
+          if (b.hidden_reward_text) {
+            setHiddenRewardText(b.hidden_reward_text)
           }
         }
       } catch (err) {
@@ -256,6 +267,8 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
       setCardMutedTextColor('')
       setEmptyStampColor('')
       setEmptyStampBorderColor('')
+      setHideRewardDetails(false)
+      setHiddenRewardText('Surprise reward')
       setSuggestedPalette(null)
       setSuccessMsg('Branding reset successfully')
       onUpdate()
@@ -271,6 +284,13 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
     e.preventDefault()
     setErrorMsg('')
     setSuccessMsg('')
+
+    const hiddenRewardVal = validateHiddenRewardText(hiddenRewardText, hideRewardDetails)
+    if (!hiddenRewardVal.valid) {
+      setErrorMsg(hiddenRewardVal.error || 'Invalid hidden reward text')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -289,6 +309,8 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
       formData.append('card_muted_text_color', cardMutedTextColor.trim())
       formData.append('empty_stamp_color', emptyStampColor.trim())
       formData.append('empty_stamp_border_color', emptyStampBorderColor.trim())
+      formData.append('hide_reward_details', String(hideRewardDetails))
+      formData.append('hidden_reward_text', hiddenRewardVal.value)
       
       if (logoFile) {
         formData.append('logo', logoFile)
@@ -334,6 +356,8 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
     card_muted_text_color: cardMutedTextColor || null,
     empty_stamp_color: emptyStampColor || null,
     empty_stamp_border_color: emptyStampBorderColor || null,
+    hide_reward_details: hideRewardDetails,
+    hidden_reward_text: hiddenRewardText,
     card_background_image_url: cardBgImageUrl,
     card_bg_overlay_opacity: cardBgOverlayOpacity,
     card_background_overlay: cardBgOverlayOpacity,
@@ -681,6 +705,48 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
           </div>
         </div>
 
+        {/* Reward Details & Mystery Teaser */}
+        <div className="space-y-3 pt-2 pb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-300">Hide Reward Details</h3>
+              <p className="text-xs text-zinc-500">Hide reward descriptions until the customer earns them</p>
+            </div>
+            <input
+              type="checkbox"
+              id="hide_reward_details_biz"
+              checked={hideRewardDetails}
+              onChange={(e) => setHideRewardDetails(e.target.checked)}
+              className="w-4 h-4 text-yellow-400 bg-zinc-800 border-zinc-700 rounded focus:ring-yellow-400/50 cursor-pointer"
+            />
+          </div>
+
+          {hideRewardDetails && (
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between">
+                <label htmlFor="hidden_reward_text_biz" className="text-xs font-medium text-zinc-300">
+                  Hidden reward text
+                </label>
+                <span className="text-[10px] text-zinc-500 font-mono">
+                  {Array.from(hiddenRewardText).length}/60
+                </span>
+              </div>
+              <Input
+                id="hidden_reward_text_biz"
+                type="text"
+                value={hiddenRewardText}
+                placeholder="e.g. Surprise reward, Grab your free gift, Ajao lelo 😄"
+                maxLength={60}
+                onChange={(e) => setHiddenRewardText(e.target.value)}
+                className="text-xs bg-zinc-900 border-zinc-700 text-zinc-100 placeholder-zinc-500"
+              />
+              <p className="text-xs text-zinc-500">
+                Customers will see this placeholder until their reward is earned. Examples: &ldquo;Surprise reward&rdquo;, &ldquo;Grab your free gift&rdquo;, &ldquo;Ajao lelo 😄&rdquo;.
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Buttons */}
         <div className="flex gap-4 pt-4 border-t border-zinc-900">
           <Button type="submit" loading={loading} className="flex-1 flex items-center justify-center gap-1.5">
@@ -727,7 +793,8 @@ export default function BrandingTab({ business, onUpdate }: BrandingTabProps) {
                 redeemable={false}
                 onClaim={() => {}}
                 businessBranding={mockBranding}
-                hideRewardDetails={business.hide_reward_details}
+                hideRewardDetails={hideRewardDetails}
+                hiddenRewardText={hiddenRewardText}
               />
             </CardPreviewShell>
           </BrandingWrapper>

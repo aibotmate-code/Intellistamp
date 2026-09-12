@@ -149,6 +149,31 @@ describe('Milestone Rewards Microinteraction Suite', () => {
     expect(screen.queryByText('Free Lunch')).not.toBeInTheDocument()
   })
 
+  // 3b. Custom hidden reward text is displayed on locked milestones
+  test('3b. Custom hidden reward text is displayed on locked milestones (hiddenRewardText)', () => {
+    render(
+      <StampCard
+        stampsRequired={10}
+        cardStamps={2}
+        totalVisits={2}
+        businessName="Cafe Test"
+        businessEmoji="☕"
+        reward="Reward"
+        milestones={mockMilestones}
+        hideRewardDetails={true}
+        hiddenRewardText="Ajao lelo 😄"
+      />
+    )
+
+    // Custom teaser text should be displayed for locked milestone
+    const customLabels = screen.getAllByText('Ajao lelo 😄')
+    expect(customLabels.length).toBeGreaterThanOrEqual(1)
+
+    // Actual reward names should NOT be present
+    expect(screen.queryByText('Free Coffee')).not.toBeInTheDocument()
+    expect(screen.queryByText('Free Lunch')).not.toBeInTheDocument()
+  })
+
   // 4. Locked -> earned triggers reveal state
   test('4. Locked -> earned transition triggers reveal animation', () => {
     const { rerender } = render(

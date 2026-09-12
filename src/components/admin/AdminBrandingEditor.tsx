@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import type { Business, BusinessBranding } from '@/types'
 import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
 import Alert from '@/components/ui/Alert'
 import StampCard from '@/components/customer/StampCard'
 import CardPreviewShell from '@/components/branding/CardPreviewShell'
@@ -15,7 +16,7 @@ import {
   Sparkle,
   Image as ImageIcon,
 } from '@phosphor-icons/react'
-import { isValidHexColor } from '@/lib/branding/validation'
+import { isValidHexColor, validateHiddenRewardText } from '@/lib/branding/validation'
 import { deriveAutoThemeFromLogo } from '@/lib/branding/palette'
 import { cn } from '@/lib/utils'
 
@@ -125,6 +126,10 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
   const [emptyStampColor, setEmptyStampColor] = useState('#27272A')
   const [emptyStampBorderColor, setEmptyStampBorderColor] = useState('#3F3F46')
 
+  // Reward visibility & custom mystery teaser text
+  const [hideRewardDetails, setHideRewardDetails] = useState(Boolean(business.hide_reward_details))
+  const [hiddenRewardText, setHiddenRewardText] = useState(business.hidden_reward_text || 'Surprise reward')
+
   // Preview interactive controls
   const [previewStamps, setPreviewStamps] = useState(2)
 
@@ -164,6 +169,12 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
           if (b.card_muted_text_color) setCardMutedTextColor(b.card_muted_text_color)
           if (b.empty_stamp_color) setEmptyStampColor(b.empty_stamp_color)
           if (b.empty_stamp_border_color) setEmptyStampBorderColor(b.empty_stamp_border_color)
+          if (b.hide_reward_details !== undefined) {
+            setHideRewardDetails(Boolean(b.hide_reward_details))
+          }
+          if (b.hidden_reward_text) {
+            setHiddenRewardText(b.hidden_reward_text)
+          }
         }
       } catch (err) {
         if (active) {
@@ -322,6 +333,8 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
       setCardMutedTextColor('#A1A1AA')
       setEmptyStampColor('#27272A')
       setEmptyStampBorderColor('#3F3F46')
+      setHideRewardDetails(false)
+      setHiddenRewardText('Surprise reward')
 
       setSuccessMsg('Branding reset to platform defaults')
     } catch {
@@ -339,6 +352,12 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
       return
     }
 
+    const hiddenRewardVal = validateHiddenRewardText(hiddenRewardText, hideRewardDetails)
+    if (!hiddenRewardVal.valid) {
+      setErrorMsg(hiddenRewardVal.error || 'Invalid hidden reward text')
+      return
+    }
+
     setSaving(true)
     try {
       const fd = new FormData()
@@ -349,6 +368,8 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
       fd.append('primary_light_color', primaryLightColor || primaryColor)
       fd.append('text_on_primary', textOnPrimary || '#09090B')
       fd.append('card_bg_overlay_opacity', String(bgOverlayOpacity))
+      fd.append('hide_reward_details', String(hideRewardDetails))
+      fd.append('hidden_reward_text', hiddenRewardVal.value)
 
       if (secondaryColor) fd.append('secondary_color', secondaryColor)
       if (accentColor) fd.append('accent_color', accentColor)
@@ -413,6 +434,8 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
     card_muted_text_color: cardMutedTextColor || null,
     empty_stamp_color: emptyStampColor || null,
     empty_stamp_border_color: emptyStampBorderColor || null,
+    hide_reward_details: hideRewardDetails,
+    hidden_reward_text: hiddenRewardText,
     is_enabled: isEnabled,
   }
 
@@ -668,6 +691,56 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
             />
           </div>
 
+          {/* 5. Reward Details & Mystery Teaser */}
+          <div className="space-y-3 pb-4 border-b border-zinc-800">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              Reward Visibility
+            </h3>
+
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <label htmlFor="hide-reward-toggle-admin" className="block text-xs font-medium text-zinc-200 cursor-pointer">
+                  Hide reward details until unlocked
+                </label>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  Mask rewards with teaser text until the customer earns them
+                </p>
+              </div>
+              <input
+                id="hide-reward-toggle-admin"
+                type="checkbox"
+                checked={hideRewardDetails}
+                onChange={(e) => setHideRewardDetails(e.target.checked)}
+                className="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-amber-500 focus:ring-amber-500/20 cursor-pointer mt-0.5 shrink-0"
+              />
+            </div>
+
+            {hideRewardDetails && (
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="hidden-reward-text-admin" className="text-xs font-medium text-zinc-300">
+                    Hidden reward text
+                  </label>
+                  <span className="text-[10px] text-zinc-500 font-mono">
+                    {Array.from(hiddenRewardText).length}/60
+                  </span>
+                </div>
+                <Input
+                  id="hidden-reward-text-admin"
+                  type="text"
+                  value={hiddenRewardText}
+                  placeholder="e.g. Surprise reward, Grab your free gift, Ajao lelo 😄"
+                  maxLength={60}
+                  onChange={(e) => setHiddenRewardText(e.target.value)}
+                  className="text-xs bg-zinc-900 border-zinc-700 text-zinc-100 placeholder-zinc-500"
+                />
+                <p className="text-[11px] text-zinc-400">
+                  Customers will see this placeholder until their reward is earned. Examples: &ldquo;Surprise reward&rdquo;, &ldquo;Grab your free gift&rdquo;, &ldquo;Ajao lelo 😄&rdquo;.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-2">
             <Button
@@ -748,7 +821,8 @@ export default function AdminBrandingEditor({ business }: AdminBrandingEditorPro
                 redeemable={previewStamps >= (business.stamps_required || 6)}
                 businessBranding={liveBranding}
                 totalVisits={previewStamps}
-                hideRewardDetails={business.hide_reward_details}
+                hideRewardDetails={hideRewardDetails}
+                hiddenRewardText={hiddenRewardText}
                 milestones={
                   business.milestones && business.milestones.length > 0
                     ? business.milestones.map((m) => ({

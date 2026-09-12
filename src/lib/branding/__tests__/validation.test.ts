@@ -1,4 +1,4 @@
-import { isValidHexColor, parseAndValidateImage } from '../validation'
+import { isValidHexColor, parseAndValidateImage, validateHiddenRewardText } from '../validation'
 
 describe('isValidHexColor', () => {
   test('valid 6-character hex colors pass', () => {
@@ -87,5 +87,74 @@ describe('parseAndValidateImage', () => {
       0x08, 0x02, 0x00, 0x00, 0x00
     ])
     expect(() => parseAndValidateImage(badPng)).toThrow('zero dimensions')
+  })
+})
+
+describe('validateHiddenRewardText', () => {
+  test('returns default "Surprise reward" when text is null or undefined and disabled', () => {
+    expect(validateHiddenRewardText(null, false)).toEqual({
+      valid: true,
+      value: 'Surprise reward',
+    })
+    expect(validateHiddenRewardText(undefined, false)).toEqual({
+      valid: true,
+      value: 'Surprise reward',
+    })
+  })
+
+  test('trims whitespace and accepts valid inputs when enabled', () => {
+    const result1 = validateHiddenRewardText('   Surprise reward   ', true)
+    expect(result1).toEqual({
+      valid: true,
+      value: 'Surprise reward',
+    })
+
+    const result2 = validateHiddenRewardText('Grab your free gift', true)
+    expect(result2).toEqual({
+      valid: true,
+      value: 'Grab your free gift',
+    })
+  })
+
+  test('supports Unicode, Hinglish, and emojis safely', () => {
+    const emojiText = 'Ajao lelo 😄'
+    expect(validateHiddenRewardText(emojiText, true)).toEqual({
+      valid: true,
+      value: emojiText,
+    })
+
+    const hindiText = 'सरप्राइज रिवॉर्ड 🎁'
+    expect(validateHiddenRewardText(hindiText, true)).toEqual({
+      valid: true,
+      value: hindiText,
+    })
+  })
+
+  test('strips HTML tags and preserves plain text', () => {
+    expect(validateHiddenRewardText('<b>Mystery Gift</b>', true)).toEqual({
+      valid: true,
+      value: 'Mystery Gift',
+    })
+    expect(validateHiddenRewardText('<script>alert("xss")</script>Surprise', true)).toEqual({
+      valid: true,
+      value: 'alert("xss")Surprise',
+    })
+  })
+
+  test('rejects blank-only strings when enabled', () => {
+    expect(validateHiddenRewardText('', true).valid).toBe(false)
+    expect(validateHiddenRewardText('     ', true).valid).toBe(false)
+    expect(validateHiddenRewardText(null, true).valid).toBe(false)
+    expect(validateHiddenRewardText(undefined, true).valid).toBe(false)
+  })
+
+  test('rejects text exceeding 60 characters when enabled', () => {
+    const longText = 'a'.repeat(61)
+    const res = validateHiddenRewardText(longText, true)
+    expect(res.valid).toBe(false)
+    expect(res.error).toContain('60 characters or less')
+
+    const exact60 = 'a'.repeat(60)
+    expect(validateHiddenRewardText(exact60, true).valid).toBe(true)
   })
 })

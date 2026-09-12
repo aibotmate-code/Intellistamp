@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminClient, requireIntellicalAdmin } from '@/lib/auth'
-import { isValidHexColor, parseAndValidateImage } from '@/lib/branding/validation'
+import { isValidHexColor, parseAndValidateImage, validateHiddenRewardText } from '@/lib/branding/validation'
 import crypto from 'crypto'
 
 // Helper to construct a public URL from a relative storage path
@@ -56,6 +56,8 @@ export async function GET(
         empty_stamp_border_color: data.empty_stamp_border_color,
         card_background_image_url: getPublicUrl(data.card_bg_image_path),
         card_bg_overlay_opacity: overlayOpacity,
+        hide_reward_details: data.hide_reward_details ?? false,
+        hidden_reward_text: data.hidden_reward_text ?? 'Surprise reward',
       },
     })
   } catch {
@@ -156,7 +158,7 @@ export async function POST(
     // Existing branding record check
     const { data: existingBranding } = await adminClient
       .from('business_branding')
-      .select('logo_path, card_bg_image_path')
+      .select('logo_path, card_bg_image_path, hide_reward_details, hidden_reward_text')
       .eq('business_id', bizId)
       .maybeSingle()
 
@@ -247,6 +249,20 @@ export async function POST(
       uploadedBgToStorage = true
     }
 
+    const hideRewardDetails = formData.has('hide_reward_details')
+      ? formData.get('hide_reward_details') === 'true'
+      : (existingBranding?.hide_reward_details ?? false)
+
+    const rawHiddenRewardText = formData.has('hidden_reward_text')
+      ? (formData.get('hidden_reward_text') as string)
+      : (existingBranding?.hidden_reward_text ?? 'Surprise reward')
+
+    const hiddenRewardValidation = validateHiddenRewardText(rawHiddenRewardText, hideRewardDetails)
+    if (!hiddenRewardValidation.valid) {
+      return NextResponse.json({ error: hiddenRewardValidation.error }, { status: 400 })
+    }
+    const hiddenRewardText = hiddenRewardValidation.value
+
     const brandingData = {
       business_id: bizId,
       logo_path: newLogoPath,
@@ -265,6 +281,8 @@ export async function POST(
       card_muted_text_color: cardMutedTextColor,
       empty_stamp_color: emptyStampColor,
       empty_stamp_border_color: emptyStampBorderColor,
+      hide_reward_details: hideRewardDetails,
+      hidden_reward_text: hiddenRewardText,
       updated_at: new Date().toISOString(),
     }
 
@@ -291,6 +309,14 @@ export async function POST(
         await adminClient.storage.from('branding').remove([newBgImagePath])
       }
       return NextResponse.json({ error: 'Database save failed.' }, { status: 500 })
+    }
+
+    // Sync businesses table if hide_reward_details was supplied
+    if (formData.has('hide_reward_details')) {
+      await adminClient
+        .from('businesses')
+        .update({ hide_reward_details: hideRewardDetails })
+        .eq('id', bizId)
     }
 
     // Clean up replaced files from storage
@@ -321,6 +347,8 @@ export async function POST(
         card_muted_text_color: cardMutedTextColor,
         empty_stamp_color: emptyStampColor,
         empty_stamp_border_color: emptyStampBorderColor,
+        hide_reward_details: hideRewardDetails,
+        hidden_reward_text: hiddenRewardText,
       },
     })
   } catch {

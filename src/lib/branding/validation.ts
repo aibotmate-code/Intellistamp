@@ -11,6 +11,79 @@ export function isValidHexColor(color: string | null | undefined): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(color)
 }
 
+export interface HiddenRewardTextValidationResult {
+  valid: boolean
+  error?: string
+  value: string
+}
+
+/**
+ * Validates custom hidden reward text.
+ * - Trims whitespace
+ * - If enabled: must be 1-60 characters, non-blank
+ * - Supports Unicode, Hindi, emojis
+ * - Strips any HTML tags for plain text safety
+ * - Defaults to 'Surprise reward' when empty and not enabled
+ */
+export function validateHiddenRewardText(
+  text: string | null | undefined,
+  isEnabled: boolean
+): HiddenRewardTextValidationResult {
+  if (text === null || text === undefined) {
+    if (isEnabled) {
+      return {
+        valid: false,
+        error: 'Hidden reward text cannot be blank when hidden rewards are enabled',
+        value: 'Surprise reward',
+      }
+    }
+    return {
+      valid: true,
+      value: 'Surprise reward',
+    }
+  }
+
+  // Strip potential HTML tags to ensure plain text rendering
+  const stripped = text.replace(/<[^>]*>?/gm, '').trim()
+
+  if (isEnabled) {
+    if (stripped.length === 0) {
+      return {
+        valid: false,
+        error: 'Hidden reward text cannot be blank when hidden rewards are enabled',
+        value: 'Surprise reward',
+      }
+    }
+
+    // Check character length (Array.from handles multi-byte Unicode / emojis correctly)
+    const charCount = Array.from(stripped).length
+    if (charCount > 60) {
+      return {
+        valid: false,
+        error: 'Hidden reward text must be 60 characters or less',
+        value: stripped,
+      }
+    }
+
+    return {
+      valid: true,
+      value: stripped,
+    }
+  }
+
+  // When not enabled, return trimmed text or fallback if empty
+  const fallback =
+    stripped.length > 0
+      ? Array.from(stripped).length > 60
+        ? Array.from(stripped).slice(0, 60).join('')
+        : stripped
+      : 'Surprise reward'
+  return {
+    valid: true,
+    value: fallback,
+  }
+}
+
 interface ImageHeaderResult {
   mime: 'image/png' | 'image/jpeg' | 'image/webp'
   width: number

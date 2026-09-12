@@ -32,14 +32,14 @@ export default function BusinessVisual({
   if (isFeatureEnabled && logoUrl && !loadError) {
     return (
       <div
-        className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-zinc-900/80 border border-zinc-700/50 flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-xs ${className}`}
+        className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-zinc-900/80 border border-zinc-700/50 flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-xs ${className}`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={logoUrl}
           alt={`${name} logo`}
           onError={() => setLoadError(true)}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover rounded-full"
         />
       </div>
     )
@@ -49,7 +49,7 @@ export default function BusinessVisual({
   if (initials) {
     return (
       <div
-        className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center font-bold text-xs sm:text-sm text-zinc-200 tracking-wider select-none shrink-0 shadow-xs ${className}`}
+        className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center font-bold text-xs sm:text-sm text-zinc-200 tracking-wider select-none shrink-0 overflow-hidden shadow-xs ${className}`}
         aria-label={name}
       >
         {initials}
@@ -57,7 +57,13 @@ export default function BusinessVisual({
     )
   }
 
-  // Fallback to the emoji
-  return <span className={`text-3xl inline-block ${className}`}>{emoji || '🏷️'}</span>
+  // Fallback to the emoji in a matching circular container
+  return (
+    <div
+      className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center text-xl sm:text-2xl select-none shrink-0 overflow-hidden shadow-xs ${className}`}
+    >
+      <span className="leading-none">{emoji || '🏷️'}</span>
+    </div>
+  )
 }
 

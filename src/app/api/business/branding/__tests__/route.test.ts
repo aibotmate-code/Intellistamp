@@ -232,6 +232,60 @@ describe('POST /api/business/branding', () => {
     expect(body.success).toBe(true)
     expect(body.branding.primary_color).toBe('#FFFFFF')
   })
+
+  test('blank hidden_reward_text when hide_reward_details=true → 400 error', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: { user: { id: OWNER_ID } } }, error: null })
+    mockQueue.push({ data: { owner_id: OWNER_ID }, error: null })
+    mockQueue.push({ data: null, error: null })
+
+    const fd = new FormData()
+    fd.append('business_id', BIZ_ID)
+    fd.append('primary_color', '#FFFFFF')
+    fd.append('primary_dark_color', '#000000')
+    fd.append('primary_light_color', '#CCCCCC')
+    fd.append('text_on_primary', '#000000')
+    fd.append('is_enabled', 'true')
+    fd.append('hide_reward_details', 'true')
+    fd.append('hidden_reward_text', '   ')
+
+    const req = new NextRequest('http://localhost/api/business/branding', {
+      method: 'POST',
+      body: fd,
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toContain('cannot be blank')
+  })
+
+  test('valid custom hidden_reward_text with emojis → saves successfully', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: { user: { id: OWNER_ID } } }, error: null })
+    mockQueue.push({ data: { owner_id: OWNER_ID }, error: null })
+    mockQueue.push({ data: null, error: null })
+    mockQueue.push({ data: {}, error: null }) // insert branding
+    mockQueue.push({ data: {}, error: null }) // update businesses sync
+
+    const fd = new FormData()
+    fd.append('business_id', BIZ_ID)
+    fd.append('primary_color', '#FFFFFF')
+    fd.append('primary_dark_color', '#000000')
+    fd.append('primary_light_color', '#CCCCCC')
+    fd.append('text_on_primary', '#000000')
+    fd.append('is_enabled', 'true')
+    fd.append('hide_reward_details', 'true')
+    fd.append('hidden_reward_text', 'Ajao lelo 😄')
+
+    const req = new NextRequest('http://localhost/api/business/branding', {
+      method: 'POST',
+      body: fd,
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.success).toBe(true)
+    expect(body.branding.hide_reward_details).toBe(true)
+    expect(body.branding.hidden_reward_text).toBe('Ajao lelo 😄')
+  })
 })
 
 describe('DELETE /api/business/branding', () => {

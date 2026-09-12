@@ -26,6 +26,7 @@ export interface Business {
   conflict_priority: ConflictPriority
   stamps_required_updated_at?: string
   hide_reward_details?: boolean
+  hidden_reward_text?: string
   milestones?: Milestone[]
   branding?: BusinessBranding | null
   social_links?: BusinessSocialLinks | null
@@ -75,6 +76,8 @@ export interface BusinessBranding {
   card_bg_overlay_opacity?: number | null
   card_background_image_url?: string | null
   card_background_overlay?: number | null
+  hide_reward_details?: boolean
+  hidden_reward_text?: string
   created_at?: string
   updated_at?: string
 }

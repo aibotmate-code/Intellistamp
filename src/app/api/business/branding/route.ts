@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminClient, requireUser, requireBusiness } from '@/lib/auth'
-import { isValidHexColor, parseAndValidateImage } from '@/lib/branding/validation'
+import { isValidHexColor, parseAndValidateImage, validateHiddenRewardText } from '@/lib/branding/validation'
 
 function checkFeatureFlag() {
   return (
@@ -70,6 +70,8 @@ export async function GET(req: NextRequest) {
         card_bg_overlay_opacity: data.card_bg_overlay_opacity !== null && data.card_bg_overlay_opacity !== undefined
           ? Number(data.card_bg_overlay_opacity)
           : 0.6,
+        hide_reward_details: data.hide_reward_details ?? false,
+        hidden_reward_text: data.hidden_reward_text ?? 'Surprise reward',
       },
     })
   } catch {
@@ -160,7 +162,7 @@ export async function POST(req: NextRequest) {
     // Check existing branding row to determine if we update or insert, and get old logo path
     const { data: existingBranding } = await adminClient
       .from('business_branding')
-      .select('logo_path, card_bg_image_path, card_bg_overlay_opacity')
+      .select('logo_path, card_bg_image_path, card_bg_overlay_opacity, hide_reward_details, hidden_reward_text')
       .eq('business_id', businessId)
       .maybeSingle()
 
@@ -208,6 +210,20 @@ export async function POST(req: NextRequest) {
       uploadedToStorage = true
     }
 
+    const hideRewardDetails = formData.has('hide_reward_details')
+      ? formData.get('hide_reward_details') === 'true'
+      : (existingBranding?.hide_reward_details ?? false)
+
+    const rawHiddenRewardText = formData.has('hidden_reward_text')
+      ? (formData.get('hidden_reward_text') as string)
+      : (existingBranding?.hidden_reward_text ?? 'Surprise reward')
+
+    const hiddenRewardValidation = validateHiddenRewardText(rawHiddenRewardText, hideRewardDetails)
+    if (!hiddenRewardValidation.valid) {
+      return NextResponse.json({ error: hiddenRewardValidation.error }, { status: 400 })
+    }
+    const hiddenRewardText = hiddenRewardValidation.value
+
     // Database Save operation
     const brandingData = {
       business_id: businessId,
@@ -225,6 +241,8 @@ export async function POST(req: NextRequest) {
       card_muted_text_color: cardMutedTextColor,
       empty_stamp_color: emptyStampColor,
       empty_stamp_border_color: emptyStampBorderColor,
+      hide_reward_details: hideRewardDetails,
+      hidden_reward_text: hiddenRewardText,
       updated_at: new Date().toISOString(),
     }
 
@@ -249,6 +267,14 @@ export async function POST(req: NextRequest) {
         await adminClient.storage.from('branding').remove([newLogoPath])
       }
       return NextResponse.json({ error: 'Database save failed. File changes rolled back.' }, { status: 500 })
+    }
+
+    // Sync businesses table if hide_reward_details was supplied
+    if (formData.has('hide_reward_details')) {
+      await adminClient
+        .from('businesses')
+        .update({ hide_reward_details: hideRewardDetails })
+        .eq('id', businessId)
     }
 
     // Success Cleanup: If new logo succeeded and old logo existed, delete old logo from storage
@@ -278,6 +304,8 @@ export async function POST(req: NextRequest) {
         card_bg_overlay_opacity: existingBranding?.card_bg_overlay_opacity !== null && existingBranding?.card_bg_overlay_opacity !== undefined
           ? Number(existingBranding.card_bg_overlay_opacity)
           : 0.6,
+        hide_reward_details: hideRewardDetails,
+        hidden_reward_text: hiddenRewardText,
       },
     })
   } catch {

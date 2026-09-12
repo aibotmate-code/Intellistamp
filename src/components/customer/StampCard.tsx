@@ -30,6 +30,7 @@ interface StampCardProps {
   branding?: import('@/types').BusinessBranding | null
   businessBranding?: import('@/types').BusinessBranding | null
   hideRewardDetails?: boolean
+  hiddenRewardText?: string
   /** Preview trigger to safely simulate unlock animation without continuous replaying */
   previewUnlockMilestoneId?: string
 }
@@ -204,6 +205,7 @@ export default function StampCard({
   branding,
   businessBranding,
   hideRewardDetails,
+  hiddenRewardText,
   previewUnlockMilestoneId,
 }: StampCardProps) {
   const [rippleIndex, setRippleIndex] = useState<number | null>(null)
@@ -296,6 +298,12 @@ export default function StampCard({
   const textOnPrimaryBrandColor = resolved.text_on_primary
 
   const visitsRemaining = Math.max(0, stampsRequired - cardStamps)
+  const shouldHide = hideRewardDetails !== undefined ? hideRewardDetails : (activeBranding?.hide_reward_details ?? false)
+  const placeholderText = (
+    hiddenRewardText !== undefined
+      ? hiddenRewardText
+      : (activeBranding?.hidden_reward_text || 'Surprise reward')
+  ).trim() || 'Surprise reward'
   
   // Compact column layout:
   // Thresholds <= 6 fit in a single row on 375px+ screens
@@ -514,8 +522,8 @@ export default function StampCard({
                     ? Math.min(100, (totalVisits / m.visit_number) * 100)
                     : 0
                 const visitsAway = Math.max(0, m.visit_number - (totalVisits ?? 0))
-                const isMystery = hideRewardDetails && !m.earned
-                const rewardDisplay = isMystery ? 'Surprise reward' : m.reward
+                const isMystery = shouldHide && !m.earned
+                const rewardDisplay = isMystery ? placeholderText : m.reward
 
                 const isActivelyUnlocking = activeUnlockMilestoneIds.has(m.id)
 

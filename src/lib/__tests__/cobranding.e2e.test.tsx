@@ -80,8 +80,9 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
 
       const logoImg = screen.getByRole('img', { name: /Coffee Lab logo/i })
       expect(logoImg).toBeInTheDocument()
-      expect(logoImg).toHaveAttribute('src', baseBranding.logo_url)
-      expect(logoImg.className).toContain('object-contain')
+      expect(logoImg.className).toContain('object-cover')
+      expect(logoImg.className).toContain('rounded-full')
+      expect(logoImg.parentElement).toHaveClass('rounded-full', 'overflow-hidden', 'shrink-0')
 
       // Emoji should not be rendered when logo exists
       expect(container.textContent).not.toContain('☕')
@@ -100,8 +101,10 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
       // Simulate image load failure
       fireEvent.error(logoImg)
 
-      // Initials "CL" should appear in a rounded avatar container
-      expect(screen.getByText('CL')).toBeInTheDocument()
+      // Initials "CL" should appear in a circular avatar container
+      const initialsEl = screen.getByText('CL')
+      expect(initialsEl).toBeInTheDocument()
+      expect(initialsEl).toHaveClass('rounded-full', 'overflow-hidden', 'shrink-0')
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
       expect(container.textContent).not.toContain('☕')
     })
@@ -115,7 +118,23 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
         />
       )
 
-      expect(screen.getByText('TA')).toBeInTheDocument()
+      const initialsEl = screen.getByText('TA')
+      expect(initialsEl).toBeInTheDocument()
+      expect(initialsEl).toHaveClass('rounded-full', 'overflow-hidden', 'shrink-0')
+    })
+
+    test('renders emoji fallback inside matching circular container when name is empty', () => {
+      render(
+        <BusinessVisual
+          logoUrl={null}
+          emoji="☕"
+          name=""
+        />
+      )
+
+      const emojiSpan = screen.getByText('☕')
+      expect(emojiSpan).toBeInTheDocument()
+      expect(emojiSpan.parentElement).toHaveClass('rounded-full', 'overflow-hidden', 'shrink-0')
     })
   })
 
@@ -557,4 +576,95 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
       expect(wrapper).toHaveClass('bg-zinc-900/80', 'border', 'border-zinc-700/50')
     })
   })
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // SCENARIO 16 — CUSTOM HIDDEN REWARD TEASER & UNLOCK REVEAL
+  // ═════════════════════════════════════════════════════════════════════════════
+  describe('Scenario 16 — Custom Hidden Reward Teaser & Unlock Reveal', () => {
+    const testMilestones = [
+      {
+        id: 'm-1',
+        business_id: 'biz-1',
+        visit_number: 3,
+        badge: 'Bronze',
+        reward: 'Free Donut',
+        is_active: true,
+        earned: false,
+        visits_remaining: 1,
+        created_at: '',
+      },
+    ]
+
+    test('displays custom hidden reward teaser text on locked milestone', () => {
+      render(
+        <StampCard
+          stampsRequired={6}
+          cardStamps={2}
+          businessName="Sweet Treats"
+          businessEmoji="🍩"
+          reward="Special Cake Box"
+          hideRewardDetails={true}
+          hiddenRewardText="Ajao lelo 😄"
+          milestones={testMilestones}
+        />
+      )
+
+      // Main card header displays merchant reward
+      expect(screen.getByText('Special Cake Box')).toBeInTheDocument()
+
+      // Locked milestone displays the custom teaser
+      expect(screen.getByText('Ajao lelo 😄')).toBeInTheDocument()
+
+      // Actual milestone reward is hidden
+      expect(screen.queryByText('Free Donut')).not.toBeInTheDocument()
+    })
+
+    test('reveals real milestone reward when milestone is earned', () => {
+      const earnedMilestones = [
+        {
+          ...testMilestones[0],
+          earned: true,
+          visits_remaining: 0,
+        },
+      ]
+
+      render(
+        <StampCard
+          stampsRequired={6}
+          cardStamps={3}
+          totalVisits={3}
+          businessName="Sweet Treats"
+          businessEmoji="🍩"
+          reward="Special Cake Box"
+          hideRewardDetails={true}
+          hiddenRewardText="Ajao lelo 😄"
+          milestones={earnedMilestones}
+        />
+      )
+
+      // Earned milestone reward is revealed
+      expect(screen.getByText('Free Donut')).toBeInTheDocument()
+
+      // Custom teaser text is no longer shown
+      expect(screen.queryByText('Ajao lelo 😄')).not.toBeInTheDocument()
+    })
+
+    test('defaults to "Surprise reward" when hiddenRewardText is omitted', () => {
+      render(
+        <StampCard
+          stampsRequired={6}
+          cardStamps={2}
+          businessName="Sweet Treats"
+          businessEmoji="🍩"
+          reward="Special Cake Box"
+          hideRewardDetails={true}
+          milestones={testMilestones}
+        />
+      )
+
+      expect(screen.getByText('Surprise reward')).toBeInTheDocument()
+      expect(screen.queryByText('Free Donut')).not.toBeInTheDocument()
+    })
+  })
 })
+
