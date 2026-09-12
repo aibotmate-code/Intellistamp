@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminClient } from '@/lib/auth'
+import { mapServerBranding, type RawBrandingRow } from '@/lib/server/branding'
+
+export const dynamic = 'force-dynamic'
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Safe subset: never includes staff_pin, staff_pin_hash, owner_id, owner_phone
 const PUBLIC_FIELDS =
@@ -17,8 +22,15 @@ export async function GET(req: NextRequest) {
 
   try {
     let query = adminClient.from('businesses').select(PUBLIC_FIELDS)
-    if (bizId) query = query.eq('id', bizId)
-    else query = query.eq('slug', slug!)
+    if (bizId) {
+      if (UUID_REGEX.test(bizId)) {
+        query = query.eq('id', bizId)
+      } else {
+        query = query.eq('slug', bizId)
+      }
+    } else {
+      query = query.eq('slug', slug!)
+    }
 
     const { data: business, error } = await query.maybeSingle()
 
@@ -29,39 +41,20 @@ export async function GET(req: NextRequest) {
     let businessWithBranding = null
     if (business) {
       const rawBranding = (business as unknown as {
-        branding?: {
-          logo_path?: string | null
-          card_bg_image_path?: string | null
-          card_bg_overlay_opacity?: number | null
-          [key: string]: unknown
-        } | null
+        branding?: RawBrandingRow | RawBrandingRow[] | null
       }).branding
-      let mappedBranding = null
-      if (rawBranding) {
-        let logo_url = null
-        if (rawBranding.logo_path) {
-          const { data } = adminClient.storage.from('branding').getPublicUrl(rawBranding.logo_path)
-          logo_url = data?.publicUrl || null
-        }
-        let card_background_image_url = null
-        if (rawBranding.card_bg_image_path) {
-          const { data } = adminClient.storage.from('branding').getPublicUrl(rawBranding.card_bg_image_path)
-          card_background_image_url = data?.publicUrl || null
-        }
-        mappedBranding = {
-          ...rawBranding,
-          logo_url,
-          card_background_image_url,
-          card_background_overlay: rawBranding.card_bg_overlay_opacity ? Number(rawBranding.card_bg_overlay_opacity) : 0.6,
-        }
-      }
+
+      const mappedBranding = mapServerBranding(rawBranding, adminClient.storage)
+
       businessWithBranding = {
         ...(business as unknown as Record<string, unknown>),
-        branding: mappedBranding
+        branding: mappedBranding,
       }
     }
 
-    return NextResponse.json({ business: businessWithBranding })
+    const res = NextResponse.json({ business: businessWithBranding })
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    return res
   } catch {
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
   }

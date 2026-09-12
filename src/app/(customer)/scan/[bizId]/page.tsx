@@ -8,6 +8,7 @@ import Alert from '@/components/ui/Alert'
 import Spinner from '@/components/ui/Spinner'
 import StampCard from '@/components/customer/StampCard'
 import BusinessVisual from '@/components/branding/BusinessVisual'
+import { resolveBrandingColors } from '@/lib/branding/palette'
 import { CheckCircle } from '@phosphor-icons/react'
 import type { Business, StampCardState } from '@/types'
 
@@ -37,7 +38,7 @@ export default function ScanPage() {
 
   // Load business
   useEffect(() => {
-    fetch(`/api/business/public?bizId=${bizId}`)
+    fetch(`/api/business/public?bizId=${bizId}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (data.business) setBusiness(data.business)
@@ -69,6 +70,11 @@ export default function ScanPage() {
     })
   }, [business])
 
+  const activeBranding = business?.branding
+  const isBrandingEnabled = !!(activeBranding && activeBranding.is_enabled !== false)
+  const resolved = resolveBrandingColors(activeBranding, isBrandingEnabled)
+  const targetBizId = business?.id || bizId
+
   const doStamp = useCallback(async () => {
     if (!customer || !business) return
     setLoadingStamp(true)
@@ -78,7 +84,7 @@ export default function ScanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer_id: customer.id,
-          business_id: bizId,
+          business_id: targetBizId,
           token: qrToken,
           type: 'regular',
         }),
@@ -113,7 +119,7 @@ export default function ScanPage() {
     } finally {
       setLoadingStamp(false)
     }
-  }, [customer, business, bizId, qrToken])
+  }, [customer, business, targetBizId, qrToken])
 
   useEffect(() => {
     if (flowState === 'stamping' && customer && business) {
@@ -140,7 +146,7 @@ export default function ScanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: digits,
-          business_id: bizId,
+          business_id: targetBizId,
           ...(qrToken ? { qr_token: qrToken } : {}),
         }),
       })
@@ -226,7 +232,7 @@ export default function ScanPage() {
         body: JSON.stringify({
           phone: digits,
           name: name.trim(),
-          business_id: bizId,
+          business_id: targetBizId,
           ...(qrToken ? { qr_token: qrToken } : {}),
         }),
       })
@@ -286,8 +292,28 @@ export default function ScanPage() {
     business && cardState ? Math.max(0, business.stamps_required - cardState.card_stamps) : 0
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100 is-dot-grid">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-zinc-950 p-4 flex flex-col items-center justify-center text-zinc-100 is-dot-grid relative overflow-hidden">
+      {/* Subtle ambient merchant background layer if configured */}
+      {isBrandingEnabled && resolved.card_background_image_url && (
+        <>
+          <div
+            className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${resolved.card_background_image_url})` }}
+            aria-hidden="true"
+          />
+          <div
+            className="fixed inset-0 pointer-events-none z-0 bg-zinc-950/85 backdrop-blur-xs"
+            style={{
+              backgroundColor: activeBranding?.background_color
+                ? `${activeBranding.background_color}D9`
+                : 'rgba(9, 9, 11, 0.88)',
+            }}
+            aria-hidden="true"
+          />
+        </>
+      )}
+
+      <div className="w-full max-w-sm relative z-10">
         {business && flowState !== 'success' && (
           <div className="text-center mb-6 flex flex-col items-center">
             <BusinessVisual
@@ -302,10 +328,26 @@ export default function ScanPage() {
         )}
 
         {flowState === 'login' && (
-          <div className="bg-zinc-900/60 rounded-xl p-6 border border-zinc-800 space-y-4 shadow-xs backdrop-blur-xs">
+          <div
+            className="rounded-xl p-6 border space-y-4 shadow-xs backdrop-blur-md transition-colors"
+            style={{
+              backgroundColor: isBrandingEnabled ? resolved.surface_color : 'rgba(24, 24, 27, 0.6)',
+              borderColor: isBrandingEnabled ? resolved.empty_stamp_border_color : '#27272a',
+            }}
+          >
             <div>
-              <h2 className="text-sm font-semibold text-zinc-200">Collect Your Stamp</h2>
-              <p className="text-xs text-zinc-400 mt-0.5">Enter your mobile number to check in.</p>
+              <h2
+                className="text-sm font-semibold"
+                style={{ color: isBrandingEnabled ? resolved.card_text_color : undefined }}
+              >
+                Collect Your Stamp
+              </h2>
+              <p
+                className="text-xs mt-0.5"
+                style={{ color: isBrandingEnabled ? resolved.card_muted_text_color : undefined }}
+              >
+                Enter your mobile number to check in.
+              </p>
             </div>
             <Input
               label="Mobile Number"
@@ -318,11 +360,21 @@ export default function ScanPage() {
               maxLength={10}
               autoFocus
             />
-            <Button onClick={handleContinue} loading={loadingIdentify} size="sm" className="w-full">
+            <Button
+              onClick={handleContinue}
+              loading={loadingIdentify}
+              size="sm"
+              className="w-full transition-opacity hover:opacity-90"
+              style={isBrandingEnabled ? {
+                backgroundColor: resolved.primary_color,
+                color: resolved.text_on_primary,
+                borderColor: 'transparent',
+              } : undefined}
+            >
               Continue →
             </Button>
             <button
-              onClick={() => router.push(`/recover/${bizId}`)}
+              onClick={() => router.push(`/recover/${targetBizId}`)}
               className="text-xs text-zinc-500 hover:text-zinc-300 w-full text-center py-1 cursor-pointer"
             >
               Already enrolled? Recover my card
@@ -331,10 +383,26 @@ export default function ScanPage() {
         )}
 
         {flowState === 'name' && (
-          <div className="bg-zinc-900/60 rounded-xl p-6 border border-zinc-800 space-y-4 shadow-xs backdrop-blur-xs">
+          <div
+            className="rounded-xl p-6 border space-y-4 shadow-xs backdrop-blur-md transition-colors"
+            style={{
+              backgroundColor: isBrandingEnabled ? resolved.surface_color : 'rgba(24, 24, 27, 0.6)',
+              borderColor: isBrandingEnabled ? resolved.empty_stamp_border_color : '#27272a',
+            }}
+          >
             <div>
-              <h2 className="text-sm font-semibold text-zinc-200">Welcome! What is your name?</h2>
-              <p className="text-xs text-zinc-400 mt-0.5">First visit — just your name to get started.</p>
+              <h2
+                className="text-sm font-semibold"
+                style={{ color: isBrandingEnabled ? resolved.card_text_color : undefined }}
+              >
+                Welcome! What is your name?
+              </h2>
+              <p
+                className="text-xs mt-0.5"
+                style={{ color: isBrandingEnabled ? resolved.card_muted_text_color : undefined }}
+              >
+                First visit — just your name to get started.
+              </p>
             </div>
             <Input
               label="Your Name"
@@ -345,7 +413,17 @@ export default function ScanPage() {
               error={nameError}
               autoFocus
             />
-            <Button onClick={handleJoin} loading={loadingIdentify} size="sm" className="w-full">
+            <Button
+              onClick={handleJoin}
+              loading={loadingIdentify}
+              size="sm"
+              className="w-full transition-opacity hover:opacity-90"
+              style={isBrandingEnabled ? {
+                backgroundColor: resolved.primary_color,
+                color: resolved.text_on_primary,
+                borderColor: 'transparent',
+              } : undefined}
+            >
               Join &amp; Collect Stamp →
             </Button>
             <button
@@ -383,31 +461,36 @@ export default function ScanPage() {
               onClaim={() => {
                 const token = customer?.customer_token
                 if (token) {
-                  router.push(`/card/${token}?biz=${bizId}`)
+                  router.push(`/card/${token}?biz=${targetBizId}`)
                 } else if (accessGrant) {
-                  router.push(`/api/customer/grant-exchange?grant=${accessGrant}&bizId=${bizId}`)
+                  router.push(`/api/customer/grant-exchange?grant=${accessGrant}&bizId=${targetBizId}`)
                 }
               }}
               businessBranding={business.branding}
               hideRewardDetails={business.hide_reward_details}
+              hiddenRewardText={business.branding?.hidden_reward_text}
             />
 
             <Button
               onClick={() => {
                 const token = customer?.customer_token
                 if (token) {
-                  router.push(`/card/${token}?biz=${bizId}`)
+                  router.push(`/card/${token}?biz=${targetBizId}`)
                 } else if (accessGrant) {
-                  router.push(`/api/customer/grant-exchange?grant=${accessGrant}&bizId=${bizId}`)
+                  router.push(`/api/customer/grant-exchange?grant=${accessGrant}&bizId=${targetBizId}`)
                 } else {
                   router.push('/cards')
                 }
               }}
-              variant="outline"
               size="sm"
-              className="w-full"
+              className="w-full transition-opacity hover:opacity-90"
+              style={isBrandingEnabled ? {
+                backgroundColor: resolved.primary_color,
+                color: resolved.text_on_primary,
+                borderColor: 'transparent',
+              } : undefined}
             >
-              View My Loyalty Card
+              View My Loyalty Card →
             </Button>
           </div>
         )}
@@ -432,6 +515,13 @@ export default function ScanPage() {
             </Button>
           </div>
         )}
+
+        <div className="mt-8 text-center relative z-10">
+          <p className="text-[11px] text-zinc-500 flex items-center justify-center gap-1.5">
+            <span>Powered by</span>
+            <span className="font-medium text-zinc-400">IntelliStamp</span>
+          </p>
+        </div>
       </div>
     </div>
   )

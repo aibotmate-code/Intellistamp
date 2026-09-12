@@ -8,6 +8,7 @@ import Spinner from '@/components/ui/Spinner'
 import Alert from '@/components/ui/Alert'
 import StampCard from '@/components/customer/StampCard'
 import { SocialLinks } from '@/components/customer/SocialLinks'
+import { resolveBrandingColors } from '@/lib/branding/palette'
 import { ArrowLeft, Trophy, Camera, Gift } from '@phosphor-icons/react'
 import type { Business, MilestoneWithStatus, RewardResult } from '@/types'
 
@@ -58,8 +59,8 @@ export default function CardPage({ params }: PageParams) {
 
     // Parallel: customer+card state  AND  active milestones list
     Promise.all([
-      fetch(`/api/customer/by-token?token=${customerToken}&bizId=${bizId}`).then((r) => r.json()),
-      fetch(`/api/milestones/${bizId}`).then((r) => r.json()),
+      fetch(`/api/customer/by-token?token=${customerToken}&bizId=${bizId}`, { cache: 'no-store' }).then((r) => r.json()),
+      fetch(`/api/milestones/${bizId}`, { cache: 'no-store' }).then((r) => r.json()),
     ])
       .then(([tokenData, milestonesData]) => {
         if (tokenData.error) {
@@ -94,9 +95,33 @@ export default function CardPage({ params }: PageParams) {
     )
   }
 
+  const activeBranding = business?.branding
+  const isBrandingEnabled = !!(activeBranding && activeBranding.is_enabled !== false)
+  const resolved = resolveBrandingColors(activeBranding, isBrandingEnabled)
+
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 text-zinc-100 page-enter">
-      <div className="max-w-md mx-auto py-2">
+    <div className="min-h-screen bg-zinc-950 p-4 text-zinc-100 page-enter relative overflow-hidden">
+      {/* Subtle ambient merchant background layer if configured */}
+      {isBrandingEnabled && resolved.card_background_image_url && (
+        <>
+          <div
+            className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${resolved.card_background_image_url})` }}
+            aria-hidden="true"
+          />
+          <div
+            className="fixed inset-0 pointer-events-none z-0 bg-zinc-950/85 backdrop-blur-xs"
+            style={{
+              backgroundColor: activeBranding?.background_color
+                ? `${activeBranding.background_color}D9`
+                : 'rgba(9, 9, 11, 0.88)',
+            }}
+            aria-hidden="true"
+          />
+        </>
+      )}
+
+      <div className="max-w-md mx-auto py-2 relative z-10">
         <Link
           href="/cards"
           className="inline-flex items-center gap-1.5 text-xs mb-4 text-zinc-400 hover:text-zinc-200 transition-colors"
@@ -122,6 +147,7 @@ export default function CardPage({ params }: PageParams) {
               onClaim={() => router.push(`/redeem/${bizId}`)}
               businessBranding={business.branding}
               hideRewardDetails={business.hide_reward_details}
+              hiddenRewardText={business.branding?.hidden_reward_text}
             />
 
             {cardState.cards_redeemed > 0 && (
@@ -145,7 +171,12 @@ export default function CardPage({ params }: PageParams) {
               <Button
                 onClick={() => router.push(`/redeem/${bizId}`)}
                 size="sm"
-                className="w-full flex items-center justify-center gap-2"
+                className="w-full flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+                style={isBrandingEnabled ? {
+                  backgroundColor: resolved.primary_color,
+                  color: resolved.text_on_primary,
+                  borderColor: 'transparent',
+                } : undefined}
               >
                 <Gift size={16} weight="fill" />
                 <span>Claim Your Reward</span>

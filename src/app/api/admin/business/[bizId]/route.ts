@@ -8,9 +8,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ bi
     if (adminOrError instanceof NextResponse) return adminOrError
 
     const body = await req.json()
-    const { approval_status, plan, plan_expires_at } = body
+    const { approval_status, plan, plan_expires_at, name, category } = body
 
     const updates: Record<string, string | null> = {}
+
+    if (name !== undefined) {
+      const trimmed = typeof name === 'string' ? name.trim() : ''
+      if (!trimmed) {
+        return NextResponse.json({ error: 'Invalid business name' }, { status: 400 })
+      }
+      updates.name = trimmed
+    }
+
+    if (category !== undefined) {
+      const trimmedCat = typeof category === 'string' ? category.trim() : ''
+      if (trimmedCat) updates.category = trimmedCat
+    }
     
     if (approval_status !== undefined) {
       if (!['pending', 'approved', 'suspended', 'rejected'].includes(approval_status)) {

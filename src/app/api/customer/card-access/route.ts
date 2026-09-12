@@ -8,6 +8,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
@@ -76,19 +78,9 @@ export async function GET(req: NextRequest) {
 
     let businessWithBranding = null
     if (business) {
-      const rawBranding = (business as { branding?: { logo_path?: string | null } | null }).branding
-      let mappedBranding = null
-      if (rawBranding) {
-        let logo_url = null
-        if (rawBranding.logo_path) {
-          const { data } = supabase.storage.from('branding').getPublicUrl(rawBranding.logo_path)
-          logo_url = data?.publicUrl || null
-        }
-        mappedBranding = {
-          ...rawBranding,
-          logo_url
-        }
-      }
+      const rawBranding = (business as unknown as { branding?: import('@/lib/server/branding').RawBrandingRow | null }).branding
+      const { mapServerBranding } = await import('@/lib/server/branding')
+      const mappedBranding = mapServerBranding(rawBranding, supabase.storage)
       
       const { mapPublicSocialLinks } = await import('@/lib/server/social')
       const mappedSocialLinks = mapPublicSocialLinks((business as unknown as { social_links?: import('@/types').BusinessSocialLinks }).social_links)

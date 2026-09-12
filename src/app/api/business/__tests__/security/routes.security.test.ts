@@ -265,6 +265,45 @@ describe('PATCH /api/business/update — auth security', () => {
     }))
     expect(res.status).toBe(400)
   })
+
+  test('valid name update updates businesses.name without modifying slug', async () => {
+    mockSession(OWNER_ID)
+    mockQueue.push({ data: mockBusiness, error: null })
+    mockQueue.push({
+      data: {
+        ...mockBusiness,
+        name: 'Updated Cafe Name',
+        slug: 'original-slug',
+      },
+      error: null,
+    })
+    const res = await updateHandler(makePatch('http://localhost/api/business/update', {
+      id: BIZ_ID,
+      name: 'Updated Cafe Name',
+    }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.success).toBe(true)
+    expect(json.business.name).toBe('Updated Cafe Name')
+    expect(json.business.slug).toBe('original-slug')
+    expect(mockChain.update).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Updated Cafe Name',
+    }))
+    expect(mockChain.update).not.toHaveBeenCalledWith(expect.objectContaining({
+      slug: expect.anything(),
+    }))
+  })
+
+  test('empty name is rejected with 400', async () => {
+    mockSession(OWNER_ID)
+    const res = await updateHandler(makePatch('http://localhost/api/business/update', {
+      id: BIZ_ID,
+      name: '',
+    }))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toBe('Business name is required')
+  })
 })
 
 // ---------------------------------------------------------------------------

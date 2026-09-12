@@ -4,6 +4,8 @@ import { z } from 'zod'
 
 const schema = z.object({
   id: z.string().uuid(),
+  name: z.string().trim().min(1, 'Business name is required').max(100).optional(),
+  category: z.string().trim().min(1).max(50).optional(),
   dynamic_qr_enabled: z.boolean().optional(),
   staff_pin_enabled: z.boolean().optional(),
   whatsapp_enabled: z.boolean().optional(),

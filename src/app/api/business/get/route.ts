@@ -32,19 +32,8 @@ export async function GET(req: NextRequest) {
     }
 
     const rawBiz = businesses[0]
-    let mappedBranding = null
-    if (rawBiz.branding) {
-      const rawBranding = rawBiz.branding as unknown as BusinessBranding
-      let logo_url = null
-      if (rawBranding.logo_path) {
-        const { data } = adminClient.storage.from('branding').getPublicUrl(rawBranding.logo_path)
-        logo_url = data?.publicUrl || null
-      }
-      mappedBranding = {
-        ...rawBranding,
-        logo_url
-      }
-    }
+    const { mapServerBranding } = await import('@/lib/server/branding')
+    const mappedBranding = mapServerBranding(rawBiz.branding as unknown as import('@/lib/server/branding').RawBrandingRow, adminClient.storage)
     const business = {
       ...rawBiz,
       branding: mappedBranding,

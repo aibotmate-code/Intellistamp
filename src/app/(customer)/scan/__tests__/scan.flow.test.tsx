@@ -292,4 +292,59 @@ describe('ScanPage Customer Identify Flow', () => {
       expect(screen.getByText(/Network error. Please try again./i)).toBeInTheDocument()
     })
   })
+
+  test('7. Uses merchant primary CTA button styling when branding is enabled', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        business: {
+          id: mockBizId,
+          name: 'Teal Cafe',
+          emoji: '☕',
+          branding: {
+            business_id: mockBizId,
+            primary_color: '#0D9488',
+            text_on_primary: '#FFFFFF',
+            is_enabled: true,
+          },
+        },
+      }),
+    })
+
+    render(<ScanPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Continue/i })).toBeInTheDocument()
+    })
+
+    const continueBtn = screen.getByRole('button', { name: /Continue/i })
+    expect(continueBtn).toHaveStyle({
+      backgroundColor: '#0D9488',
+      color: '#FFFFFF',
+    })
+  })
+
+  test('8. Falls back to default amber CTA button styling when branding is absent or disabled', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        business: {
+          id: mockBizId,
+          name: 'Default Cafe',
+          emoji: '☕',
+          branding: null,
+        },
+      }),
+    })
+
+    render(<ScanPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Continue/i })).toBeInTheDocument()
+    })
+
+    const continueBtn = screen.getByRole('button', { name: /Continue/i })
+    expect(continueBtn.style.backgroundColor).toBe('')
+  })
 })
+

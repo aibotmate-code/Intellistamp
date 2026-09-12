@@ -72,6 +72,13 @@ export default function DashboardPage() {
   const [gmbError, setGmbError] = useState('')
   const [gmbSaved, setGmbSaved] = useState(false)
 
+  // Business Name edit state
+  const [nameModalOpen, setNameModalOpen] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const [nameSaving, setNameSaving] = useState(false)
+  const [nameError, setNameError] = useState('')
+  const [nameSaved, setNameSaved] = useState(false)
+
   // PIN Manager state
   const [pinManagerOpen, setPinManagerOpen] = useState(false)
   const [pinManagerAction, setPinManagerAction] = useState<'set' | 'change'>('set')
@@ -587,9 +594,22 @@ export default function DashboardPage() {
             <div className="bg-zinc-900/50 rounded-lg p-5 border border-zinc-800 shadow-xs">
               <h3 className="font-semibold text-sm text-zinc-100 mb-3">Business Info</h3>
               <div className="space-y-2.5 text-xs">
-                <div className="flex justify-between py-1 border-b border-zinc-800/60">
+                <div className="flex justify-between items-center py-1 border-b border-zinc-800/60">
                   <span className="text-zinc-400">Name</span>
-                  <span className="text-zinc-100 font-medium">{business.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-100 font-medium">{business.name}</span>
+                    <button
+                      onClick={() => {
+                        setNameInput(business.name)
+                        setNameError('')
+                        setNameSaved(false)
+                        setNameModalOpen(true)
+                      }}
+                      className="text-xs text-zinc-300 hover:text-white underline ml-2 cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                  </div>
                 </div>
                 <div className="flex justify-between py-1 border-b border-zinc-800/60">
                   <span className="text-zinc-400">Category</span>
@@ -720,6 +740,73 @@ export default function DashboardPage() {
                     setGmbError('Network error.')
                   } finally {
                     setGmbSaving(false)
+                  }
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Business Name Edit Modal */}
+      {nameModalOpen && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 rounded-lg p-5 border border-zinc-800 w-full max-w-sm space-y-4 shadow-xl">
+            <h3 className="font-semibold text-sm text-zinc-100">Edit Business Name</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Update your business display name. This changes the name shown on customer cards, QR scan pages, and portals. Your QR code URL and customer records remain unchanged.
+            </p>
+            <Input
+              label="Business Name"
+              placeholder="My Business"
+              value={nameInput}
+              onChange={(e) => { setNameInput(e.target.value); setNameError(''); setNameSaved(false) }}
+              maxLength={100}
+              autoFocus
+            />
+            {nameError && <p className="text-xs text-rose-400">{nameError}</p>}
+            {nameSaved && <p className="text-xs text-emerald-400">✓ Name updated successfully</p>}
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex-1"
+                onClick={() => setNameModalOpen(false)}
+              >
+                {nameSaved ? 'Close' : 'Cancel'}
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1"
+                loading={nameSaving}
+                onClick={async () => {
+                  const trimmed = nameInput.trim()
+                  if (!trimmed) {
+                    setNameError('Business name is required')
+                    return
+                  }
+                  setNameSaving(true)
+                  setNameError('')
+                  try {
+                    const res = await fetch('/api/business/update', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: data!.business.id, name: trimmed }),
+                    })
+                    if (res.ok) {
+                      const json = await res.json()
+                      setData((prev) => prev ? { ...prev, business: { ...prev.business, name: json.business.name } } : prev)
+                      setNameSaved(true)
+                    } else {
+                      const json = await res.json()
+                      setNameError(json.error || 'Failed to update name. Try again.')
+                    }
+                  } catch {
+                    setNameError('Network error.')
+                  } finally {
+                    setNameSaving(false)
                   }
                 }}
               >

@@ -62,32 +62,11 @@ export async function GET(req: NextRequest) {
     let businessWithBranding = null
     if (business) {
       const rawBranding = (business as unknown as {
-        branding?: {
-          logo_path?: string | null
-          card_bg_image_path?: string | null
-          card_bg_overlay_opacity?: number | null
-          [key: string]: unknown
-        } | null
+        branding?: import('@/lib/server/branding').RawBrandingRow | null
       }).branding
-      let mappedBranding = null
-      if (rawBranding) {
-        let logo_url = null
-        if (rawBranding.logo_path) {
-          const { data } = supabase.storage.from('branding').getPublicUrl(rawBranding.logo_path)
-          logo_url = data?.publicUrl || null
-        }
-        let card_background_image_url = null
-        if (rawBranding.card_bg_image_path) {
-          const { data } = supabase.storage.from('branding').getPublicUrl(rawBranding.card_bg_image_path)
-          card_background_image_url = data?.publicUrl || null
-        }
-        mappedBranding = {
-          ...rawBranding,
-          logo_url,
-          card_background_image_url,
-          card_background_overlay: rawBranding.card_bg_overlay_opacity ? Number(rawBranding.card_bg_overlay_opacity) : 0.6,
-        }
-      }
+
+      const { mapServerBranding } = await import('@/lib/server/branding')
+      const mappedBranding = mapServerBranding(rawBranding, supabase.storage)
 
       // map social links using the new helper
       const { mapPublicSocialLinks } = await import('@/lib/server/social')
@@ -100,7 +79,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       customer,
       card_state: {
         total_stamps: total,
@@ -111,6 +90,8 @@ export async function GET(req: NextRequest) {
       },
       business: businessWithBranding,
     })
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    return res
   } catch {
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
   }
