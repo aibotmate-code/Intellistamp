@@ -50,18 +50,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business is not active' }, { status: 403 })
     }
 
-    const { checkin, error } = await createPendingCheckin({
+    // Explicit Mode C check: endpoint exists strictly for static QR + staff PIN mode
+    if (business.dynamic_qr_enabled !== false || business.staff_pin_enabled !== true) {
+      return NextResponse.json(
+        { error: 'Check-in is only available in Mode C (static QR with staff verification)' },
+        { status: 400 }
+      )
+    }
+
+    const { checkin, poll_token, error } = await createPendingCheckin({
       business_id,
       customer_id,
     })
 
-    if (error || !checkin) {
+    if (error || !checkin || !poll_token) {
       return NextResponse.json({ error: error || 'Failed to create check-in' }, { status: 500 })
     }
 
     return NextResponse.json({
       success: true,
       checkin_id: checkin.id,
+      poll_token,
       status: checkin.status,
       created_at: checkin.created_at,
       expires_at: checkin.expires_at,

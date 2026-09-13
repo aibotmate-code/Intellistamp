@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPendingCheckinStatus } from '@/lib/server/pendingCheckins'
+import { getPendingCheckinStatus, verifyPollingToken } from '@/lib/server/pendingCheckins'
 import { generateAccessGrant } from '@/lib/server/grant'
 
 export async function GET(req: NextRequest) {
@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const checkinId = searchParams.get('checkinId')
     const businessId = searchParams.get('businessId')
+    const pollToken = searchParams.get('pollToken') || req.headers.get('x-poll-token')
 
     if (!checkinId || !businessId) {
       return NextResponse.json(
@@ -15,11 +16,33 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    if (!pollToken) {
+      return NextResponse.json(
+        { error: 'pollToken required' },
+        { status: 401 }
+      )
+    }
+
     // Query durable pending_checkins table in PostgreSQL with tenant boundary
     const result = await getPendingCheckinStatus(checkinId, businessId)
 
-    if (result.status === 'not_found') {
+    if (result.status === 'not_found' || !result.record) {
       return NextResponse.json({ status: 'not_found' }, { status: 404 })
+    }
+
+    // Cryptographically verify poll token signature and expiry bound to (checkin, business, customer)
+    const isTokenValid = verifyPollingToken(
+      pollToken,
+      checkinId,
+      businessId,
+      result.record.customer_id
+    )
+
+    if (!isTokenValid) {
+      return NextResponse.json(
+        { error: 'Invalid or expired polling token' },
+        { status: 403 }
+      )
     }
 
     if (result.status === 'expired') {

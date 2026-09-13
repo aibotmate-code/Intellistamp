@@ -1,12 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-const BIZ_ID = '11111111-1111-4000-a000-000000000001'
-const OTHER_BIZ_ID = '22222222-2222-4000-a000-000000000002'
+const BIZ_A = '11111111-1111-4000-a000-000000000001'
+const BIZ_B = '22222222-2222-4000-a000-000000000002'
 const CHK_ID = '33333333-3333-4000-a000-000000000003'
 
-const mockBusiness = {
-  id: BIZ_ID,
+const MERCHANT_A_USER = { id: 'user-merchant-a', email: 'merchanta@example.com' }
+
+const mockBusinessA = {
+  id: BIZ_A,
+  owner_id: MERCHANT_A_USER.id,
   staff_pin_hash: '$2b$10$mockhash',
   stamps_required: 6,
   reward: 'Free coffee',
@@ -14,8 +17,26 @@ const mockBusiness = {
   plan_expires_at: null,
 }
 
+let mockAuthUser: any = MERCHANT_A_USER
 let mockRpcResult: any = null
 let mockPendingList: any[] = []
+
+jest.mock('@/lib/auth', () => ({
+  requireUser: jest.fn(async () => {
+    if (!mockAuthUser) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    return mockAuthUser
+  }),
+  requireActiveBusiness: jest.fn(async (userOrError: any, businessId: string) => {
+    if (userOrError instanceof NextResponse) return userOrError
+    if (businessId === BIZ_A && userOrError.id === MERCHANT_A_USER.id) {
+      return mockBusinessA
+    }
+    // Cross-tenant or non-existent business returns 404 to avoid leaking existence
+    return NextResponse.json({ error: 'Business not found' }, { status: 404 })
+  }),
+}))
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
@@ -24,7 +45,7 @@ jest.mock('@supabase/supabase-js', () => ({
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: mockBusiness, error: null }),
+          single: jest.fn().mockResolvedValue({ data: mockBusinessA, error: null }),
         }
       }
       return {
@@ -55,39 +76,66 @@ jest.mock('@/lib/rateLimit', () => ({
 // Import route handlers
 import { GET, POST } from '../checkins/route'
 
-describe('Kiosk Check-ins API (/api/kiosk/checkins)', () => {
+describe('Kiosk Check-ins API (/api/kiosk/checkins) - Security Requirements D-H', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockAuthUser = MERCHANT_A_USER
     mockPendingList = []
-    mockRpcResult = { data: { success: true, stamp_result: { id: 'stamp-123' } }, error: null }
+    mockRpcResult = { data: { success: true, stamp_result: { stamp: { id: 'stamp-123' }, total_stamps: 1 } }, error: null }
   })
 
-  test('GET: returns pending check-ins for the business', async () => {
-    mockPendingList = [
-      {
-        id: CHK_ID,
-        business_id: BIZ_ID,
-        customer_id: 'cust-1',
-        status: 'pending',
-        customers: { phone: '9876543210', name: 'Test User' },
-      },
-    ]
+  // ── D: Unauthenticated GET /api/kiosk/checkins is rejected ─────────────────
+  test('D. unauthenticated GET /api/kiosk/checkins is rejected with 401', async () => {
+    mockAuthUser = null // No authenticated session
 
-    const req = new NextRequest(`http://localhost/api/kiosk/checkins?businessId=${BIZ_ID}`)
+    const req = new NextRequest(`http://localhost/api/kiosk/checkins?businessId=${BIZ_A}`)
     const res = await GET(req)
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(401)
     const data = await res.json()
-    expect(data.checkins).toHaveLength(1)
-    expect(data.checkins[0].id).toBe(CHK_ID)
+    expect(data.error).toBe('Authentication required')
   })
 
-  test('POST: rejects with 400 when staff PIN is incorrect', async () => {
+  // ── E: Merchant A cannot list Merchant B pending requests ─────────────────
+  test('E. merchant A cannot list merchant B pending requests (rejected with 404)', async () => {
+    mockAuthUser = MERCHANT_A_USER
+
+    // Merchant A attempts to query Business B
+    const req = new NextRequest(`http://localhost/api/kiosk/checkins?businessId=${BIZ_B}`)
+    const res = await GET(req)
+    expect(res.status).toBe(404)
+    const data = await res.json()
+    expect(data.error).toBe('Business not found')
+  })
+
+  // ── F: Merchant A cannot approve Merchant B request ────────────────────────
+  test('F. merchant A cannot approve merchant B request (rejected with 404)', async () => {
+    mockAuthUser = MERCHANT_A_USER
+
     const req = new NextRequest('http://localhost/api/kiosk/checkins', {
       method: 'POST',
       body: JSON.stringify({
-        business_id: BIZ_ID,
+        business_id: BIZ_B, // Merchant B's business
         checkin_id: CHK_ID,
-        pin: '0000', // incorrect
+        pin: '1234',
+      }),
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(404)
+    const data = await res.json()
+    expect(data.error).toBe('Business not found')
+  })
+
+  // ── G: Correct merchant + wrong PIN rejected ──────────────────────────────
+  test('G. correct merchant + wrong PIN rejected with 400', async () => {
+    mockAuthUser = MERCHANT_A_USER
+
+    const req = new NextRequest('http://localhost/api/kiosk/checkins', {
+      method: 'POST',
+      body: JSON.stringify({
+        business_id: BIZ_A,
+        checkin_id: CHK_ID,
+        pin: '9999', // wrong PIN
       }),
     })
 
@@ -97,13 +145,16 @@ describe('Kiosk Check-ins API (/api/kiosk/checkins)', () => {
     expect(data.error).toBe('Invalid staff PIN')
   })
 
-  test('POST: succeeds with 200 when staff PIN is correct', async () => {
+  // ── H: Correct merchant + correct PIN succeeds ────────────────────────────
+  test('H. correct merchant + correct PIN succeeds with 200', async () => {
+    mockAuthUser = MERCHANT_A_USER
+
     const req = new NextRequest('http://localhost/api/kiosk/checkins', {
       method: 'POST',
       body: JSON.stringify({
-        business_id: BIZ_ID,
+        business_id: BIZ_A,
         checkin_id: CHK_ID,
-        pin: '1234',
+        pin: '1234', // correct PIN
       }),
     })
 
@@ -111,24 +162,26 @@ describe('Kiosk Check-ins API (/api/kiosk/checkins)', () => {
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.success).toBe(true)
-    expect(data.result.id).toBe('stamp-123')
+    expect(data.result.stamp.id).toBe('stamp-123')
   })
 
-  test('POST: rejects with 404 when check-in belongs to another business', async () => {
-    mockRpcResult = { data: { error: 'not_found' }, error: null }
+  test('GET: returns pending check-ins for authorized merchant', async () => {
+    mockAuthUser = MERCHANT_A_USER
+    mockPendingList = [
+      {
+        id: CHK_ID,
+        business_id: BIZ_A,
+        customer_id: 'cust-1',
+        status: 'pending',
+        customers: { phone: '9876543210', name: 'Test User' },
+      },
+    ]
 
-    const req = new NextRequest('http://localhost/api/kiosk/checkins', {
-      method: 'POST',
-      body: JSON.stringify({
-        business_id: OTHER_BIZ_ID,
-        checkin_id: CHK_ID,
-        pin: '1234',
-      }),
-    })
-
-    const res = await POST(req)
-    expect(res.status).toBe(404)
+    const req = new NextRequest(`http://localhost/api/kiosk/checkins?businessId=${BIZ_A}`)
+    const res = await GET(req)
+    expect(res.status).toBe(200)
     const data = await res.json()
-    expect(data.error).toContain('not found')
+    expect(data.checkins).toHaveLength(1)
+    expect(data.checkins[0].id).toBe(CHK_ID)
   })
 })

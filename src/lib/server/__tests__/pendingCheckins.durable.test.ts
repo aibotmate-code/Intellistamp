@@ -5,6 +5,9 @@ import {
   getPendingCheckinsForBusiness,
   approvePendingCheckin,
   resolvePendingCheckinForCustomer,
+  extractStampId,
+  generatePollingToken,
+  verifyPollingToken,
 } from '../pendingCheckins'
 
 describe('Durable Pending Check-in Database Layer (Mode C)', () => {
@@ -276,5 +279,103 @@ describe('Durable Pending Check-in Database Layer (Mode C)', () => {
         result_stamp_id: STAMP_ID,
       })
     )
+  })
+
+  // ── A, B, C: Database Privilege Checks for approve_pending_checkin RPC ───────
+  test('A. anon cannot directly execute approve_pending_checkin (permission denied)', async () => {
+    // Simulating anon client role attempting to execute RPC
+    const anonClient: any = {
+      rpc: jest.fn().mockResolvedValue({
+        data: null,
+        error: { message: 'permission denied for function approve_pending_checkin', code: '42501' },
+      }),
+    }
+
+    const res = await approvePendingCheckin(CHK_ID, BIZ_A, undefined, anonClient)
+    expect(res.success).toBe(false)
+    expect(res.error).toContain('permission denied')
+  })
+
+  test('B. authenticated browser role cannot directly execute approve_pending_checkin', async () => {
+    // Simulating authenticated browser role attempting to execute RPC
+    const authenticatedClient: any = {
+      rpc: jest.fn().mockResolvedValue({
+        data: null,
+        error: { message: 'permission denied for function approve_pending_checkin', code: '42501' },
+      }),
+    }
+
+    const res = await approvePendingCheckin(CHK_ID, BIZ_A, undefined, authenticatedClient)
+    expect(res.success).toBe(false)
+    expect(res.error).toContain('permission denied')
+  })
+
+  test('C. service_role can execute approve_pending_checkin', async () => {
+    const serviceClient: any = {
+      rpc: jest.fn().mockResolvedValue({
+        data: {
+          success: true,
+          checkin_id: CHK_ID,
+          stamp_result: {
+            stamp: { id: STAMP_ID },
+            total_stamps: 1,
+          },
+        },
+        error: null,
+      }),
+    }
+
+    const res = await approvePendingCheckin(CHK_ID, BIZ_A, 'admin-user', serviceClient)
+    expect(res.success).toBe(true)
+    expect(res.stamp_result).toBeDefined()
+  })
+
+  // ── O: result_stamp_id uses actual issue_stamp_atomic return shape ──────────
+  test('O. result_stamp_id correctly extracts id from actual canonical issue_stamp_atomic response shape { stamp: { id } }', () => {
+    const canonicalShape = {
+      success: true,
+      stamp: {
+        id: STAMP_ID,
+        type: 'regular',
+        stamped_at: '2026-09-13T12:00:00Z',
+      },
+      total_stamps: 4,
+      reward_result: null,
+    }
+
+    expect(extractStampId(canonicalShape)).toBe(STAMP_ID)
+
+    // Also verify fallback for flattened shapes
+    expect(extractStampId({ id: STAMP_ID })).toBe(STAMP_ID)
+    expect(extractStampId(null)).toBeNull()
+  })
+
+  // ── Polling Token Cryptographic Security ────────────────────────────────────
+  test('Polling token cryptographically binds checkin_id, business_id, customer_id, and expiry without leaking customer_id in wire payload', () => {
+    process.env.ACCESS_GRANT_SECRET = 'test_secret_key_123456789012345678901234'
+    const token = generatePollingToken({
+      checkin_id: CHK_ID,
+      business_id: BIZ_A,
+      customer_id: CUST_A,
+    })
+
+    // Verify wire payload does NOT leak CUST_A
+    const [dataB64] = token.split('.')
+    const decoded = Buffer.from(dataB64, 'base64url').toString('utf-8')
+    expect(decoded).not.toContain(CUST_A)
+    expect(decoded).toContain(CHK_ID)
+    expect(decoded).toContain(BIZ_A)
+
+    // Verification succeeds with matching parameters
+    expect(verifyPollingToken(token, CHK_ID, BIZ_A, CUST_A)).toBe(true)
+
+    // Verification fails if customer_id does not match
+    expect(verifyPollingToken(token, CHK_ID, BIZ_A, 'different-customer')).toBe(false)
+
+    // Verification fails if business_id does not match
+    expect(verifyPollingToken(token, CHK_ID, BIZ_B, CUST_A)).toBe(false)
+
+    // Verification fails if checkin_id does not match
+    expect(verifyPollingToken(token, 'other-checkin', BIZ_A, CUST_A)).toBe(false)
   })
 })

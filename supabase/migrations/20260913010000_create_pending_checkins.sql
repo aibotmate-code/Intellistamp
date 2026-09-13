@@ -83,7 +83,7 @@ BEGIN
   SET status = 'approved',
       approved_at = now(),
       approved_by = p_approved_by,
-      result_stamp_id = (v_stamp_res->>'id')::UUID,
+      result_stamp_id = COALESCE((v_stamp_res->'stamp'->>'id')::UUID, (v_stamp_res->>'id')::UUID),
       result_payload = v_stamp_res
   WHERE id = p_checkin_id;
 
@@ -94,3 +94,11 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Explicit permissions lockdown: Only service_role may execute approve_pending_checkin
+REVOKE ALL ON FUNCTION public.approve_pending_checkin(UUID, UUID, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.approve_pending_checkin(UUID, UUID, UUID) FROM anon;
+REVOKE ALL ON FUNCTION public.approve_pending_checkin(UUID, UUID, UUID) FROM authenticated;
+
+GRANT EXECUTE ON FUNCTION public.approve_pending_checkin(UUID, UUID, UUID) TO service_role;
+

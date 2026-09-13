@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 export interface PendingCheckinRecord {
   id: string
@@ -25,9 +26,115 @@ function getSupabaseClient(client?: SupabaseClient): SupabaseClient {
   )
 }
 
+function getPollingTokenSecret(): string {
+  const secret =
+    process.env.ACCESS_GRANT_SECRET ||
+    process.env.QR_SECRET_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!secret) {
+    throw new Error('Server token secret is not configured')
+  }
+  return secret
+}
+
+/**
+ * Extracts canonical stamp ID from issue_stamp_atomic response shape.
+ * Handles both { stamp: { id: "..." } } and fallback { id: "..." }.
+ */
+export function extractStampId(stampResult: Record<string, unknown> | null | undefined): string | null {
+  if (!stampResult) return null
+  if (
+    typeof stampResult.stamp === 'object' &&
+    stampResult.stamp !== null &&
+    'id' in stampResult.stamp
+  ) {
+    return String((stampResult.stamp as { id: unknown }).id)
+  }
+  if ('id' in stampResult && typeof stampResult.id === 'string') {
+    return stampResult.id
+  }
+  return null
+}
+
+/**
+ * Generates a server-signed short-lived polling token bound to:
+ * - checkin_id
+ * - business_id
+ * - customer_id
+ * - expiry (defaults to 5 minutes)
+ * 
+ * Does NOT expose customer_id in the wire payload.
+ */
+export function generatePollingToken(params: {
+  checkin_id: string
+  business_id: string
+  customer_id: string
+  ttlMs?: number
+}): string {
+  const secret = getPollingTokenSecret()
+  const now = Date.now()
+  const expiresAt = now + (params.ttlMs || 5 * 60 * 1000)
+  const nonce = crypto.randomBytes(8).toString('hex')
+
+  // Wire payload: version:poll:checkin_id:business_id:expiresAt:nonce
+  const payload = `1:poll:${params.checkin_id}:${params.business_id}:${expiresAt}:${nonce}`
+
+  // HMAC binds customer_id cryptographically without exposing it over the wire
+  const hmac = crypto.createHmac('sha256', secret)
+  hmac.update(`${payload}:${params.customer_id}`)
+  const signature = hmac.digest('hex').slice(0, 32)
+
+  const dataB64 = Buffer.from(payload).toString('base64url')
+  return `${dataB64}.${signature}`
+}
+
+/**
+ * Cryptographically verifies that the polling token is authentic, unexpired,
+ * and belongs to the specified checkin_id, business_id, and customer_id.
+ */
+export function verifyPollingToken(
+  token: string,
+  checkin_id: string,
+  business_id: string,
+  customer_id: string
+): boolean {
+  try {
+    const secret = getPollingTokenSecret()
+    if (!token || typeof token !== 'string') return false
+
+    const [dataB64, signature] = token.split('.')
+    if (!dataB64 || !signature || signature.length !== 32) return false
+
+    const payload = Buffer.from(dataB64, 'base64url').toString('utf-8')
+    const parts = payload.split(':')
+    if (parts.length !== 6) return false
+
+    const [version, purpose, tokenCheckinId, tokenBizId, expiresAtStr] = parts
+    if (version !== '1' || purpose !== 'poll') return false
+    if (tokenCheckinId !== checkin_id || tokenBizId !== business_id) return false
+
+    const expiresAt = parseInt(expiresAtStr, 10)
+    const now = Date.now()
+    if (isNaN(expiresAt) || expiresAt <= now) return false
+    if (expiresAt > now + 10 * 60 * 1000) return false
+
+    const hmac = crypto.createHmac('sha256', secret)
+    hmac.update(`${payload}:${customer_id}`)
+    const expectedSignature = hmac.digest('hex').slice(0, 32)
+
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'utf-8'),
+      Buffer.from(expectedSignature, 'utf-8')
+    )
+  } catch {
+    return false
+  }
+}
+
 /**
  * Creates a durable pending check-in record in PostgreSQL.
  * Defaults to 5-minute TTL managed by the database.
+ * Also generates and returns a signed short-lived polling token.
  */
 export async function createPendingCheckin(
   params: {
@@ -35,7 +142,7 @@ export async function createPendingCheckin(
     customer_id: string
   },
   client?: SupabaseClient
-): Promise<{ checkin: PendingCheckinRecord | null; error?: string }> {
+): Promise<{ checkin: PendingCheckinRecord | null; poll_token?: string; error?: string }> {
   const supabase = getSupabaseClient(client)
 
   try {
@@ -53,7 +160,14 @@ export async function createPendingCheckin(
       return { checkin: null, error: error.message }
     }
 
-    return { checkin: data as PendingCheckinRecord }
+    const checkin = data as PendingCheckinRecord
+    const poll_token = generatePollingToken({
+      checkin_id: checkin.id,
+      business_id: checkin.business_id,
+      customer_id: checkin.customer_id,
+    })
+
+    return { checkin, poll_token }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Database error creating check-in'
     return { checkin: null, error: message }
@@ -172,6 +286,10 @@ export async function approvePendingCheckin(
       return { success: true, stamp_result: rpcRes.stamp_result }
     }
 
+    if (rpcErr && rpcErr.code !== '42883') {
+      return { success: false, error: rpcErr.message }
+    }
+
     // Fallback if RPC is not yet registered on environment:
     // 1. Verify existence & pending status
     const { data: checkin, error: chkErr } = await supabase
@@ -213,7 +331,7 @@ export async function approvePendingCheckin(
         status: 'approved',
         approved_at: new Date().toISOString(),
         approved_by: approved_by || null,
-        result_stamp_id: stampResult.id || null,
+        result_stamp_id: extractStampId(stampResult),
         result_payload: stampResult,
       })
       .eq('id', checkin_id)
@@ -252,7 +370,7 @@ export async function resolvePendingCheckinForCustomer(
       .update({
         status: 'approved',
         approved_at: nowIso,
-        result_stamp_id: stamp_result?.id || null,
+        result_stamp_id: extractStampId(stamp_result),
         result_payload: stamp_result,
       })
       .eq('business_id', business_id)

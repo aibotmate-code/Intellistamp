@@ -30,6 +30,7 @@ export default function ScanPage() {
   const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
   const [checkinId, setCheckinId] = useState<string | null>(null)
+  const [pollToken, setPollToken] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState('')
   const [nameError, setNameError] = useState('')
   const [loadingIdentify, setLoadingIdentify] = useState(false)
@@ -156,6 +157,9 @@ export default function ScanPage() {
         const data = await res.json()
         if (!cancelled && data.checkin_id) {
           setCheckinId(data.checkin_id)
+          if (data.poll_token) {
+            setPollToken(data.poll_token)
+          }
         }
       } catch {
         // non-critical
@@ -171,14 +175,14 @@ export default function ScanPage() {
 
   // Mode C: Poll for approval status (stops after 24 attempts / 60 seconds)
   useEffect(() => {
-    if (flowState !== 'waiting_approval' || !checkinId) return
+    if (flowState !== 'waiting_approval' || !checkinId || !pollToken) return
 
     const MAX_POLLS = 24 // 24 * 2.5s = 60s
     let pollCount = 0
 
     const pollStatus = async () => {
       try {
-        const res = await fetch(`/api/customer/checkin-status?checkinId=${checkinId}&businessId=${targetBizId}`)
+        const res = await fetch(`/api/customer/checkin-status?checkinId=${checkinId}&businessId=${targetBizId}&pollToken=${encodeURIComponent(pollToken)}`)
         const data = await res.json()
         if (data.status === 'approved') {
           setCardState(data.card_state)
@@ -207,7 +211,7 @@ export default function ScanPage() {
     pollStatus()
     const timer = setInterval(pollStatus, 2500)
     return () => clearInterval(timer)
-  }, [flowState, checkinId, targetBizId])
+  }, [flowState, checkinId, pollToken, targetBizId])
 
   const handleContinue = async () => {
     setPhoneError('')

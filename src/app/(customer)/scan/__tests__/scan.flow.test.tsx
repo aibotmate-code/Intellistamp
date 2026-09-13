@@ -380,6 +380,7 @@ describe('ScanPage Customer Identify Flow', () => {
         ok: true,
         json: async () => ({
           checkin_id: 'chk-123',
+          poll_token: 'mock-poll-token',
           status: 'pending',
         }),
       })

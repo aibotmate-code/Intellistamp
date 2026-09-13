@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { getPendingCheckinsForBusiness, approvePendingCheckin } from '@/lib/server/pendingCheckins'
 import { verifyPin } from '@/lib/pinHash'
 import { checkRateLimit, peekRateLimit, resetRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { requireUser, requireActiveBusiness } from '@/lib/auth'
 
 const approveSchema = z.object({
   business_id: z.string().uuid(),
@@ -18,12 +13,18 @@ const approveSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
+    const userOrError = await requireUser()
+    if (userOrError instanceof NextResponse) return userOrError
+
     const { searchParams } = new URL(req.url)
     const businessId = searchParams.get('businessId')
 
     if (!businessId) {
       return NextResponse.json({ error: 'businessId required' }, { status: 400 })
     }
+
+    const bizOrError = await requireActiveBusiness(userOrError, businessId)
+    if (bizOrError instanceof NextResponse) return bizOrError
 
     const checkins = await getPendingCheckinsForBusiness(businessId)
     return NextResponse.json({ checkins })
@@ -34,6 +35,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const userOrError = await requireUser()
+    if (userOrError instanceof NextResponse) return userOrError
+
     const body = await req.json()
     const parsed = approveSchema.safeParse(body)
     if (!parsed.success) {
@@ -41,27 +45,13 @@ export async function POST(req: NextRequest) {
     }
 
     const { business_id, checkin_id, pin } = parsed.data
+
+    const bizOrError = await requireActiveBusiness(userOrError, business_id)
+    if (bizOrError instanceof NextResponse) return bizOrError
+    const business = bizOrError
+
     const ip = getClientIp(req)
     const clientHash = generateHmacIdentity('ip', ip)
-
-    // Verify staff PIN & business status
-    const { data: business, error: bizError } = await supabase
-      .from('businesses')
-      .select('id, staff_pin_hash, stamps_required, reward, approval_status, plan_expires_at')
-      .eq('id', business_id)
-      .single()
-
-    if (bizError || !business) {
-      return NextResponse.json({ error: 'Business not found' }, { status: 404 })
-    }
-
-    if (business.approval_status !== 'approved') {
-      return NextResponse.json({ error: `Business is ${business.approval_status}` }, { status: 403 })
-    }
-
-    if (business.plan_expires_at && new Date(business.plan_expires_at).getTime() < Date.now()) {
-      return NextResponse.json({ error: 'Plan expired' }, { status: 403 })
-    }
 
     const pinKey = `pin:checkin:${business_id}:${clientHash}`
     const peekRl = await peekRateLimit(pinKey, 10)
@@ -81,7 +71,7 @@ export async function POST(req: NextRequest) {
     await resetRateLimit(pinKey)
 
     // Atomically approve the pending check-in using Postgres row lock + issue_stamp_atomic RPC
-    const approveResult = await approvePendingCheckin(checkin_id, business_id)
+    const approveResult = await approvePendingCheckin(checkin_id, business_id, userOrError.id)
 
     if (!approveResult.success) {
       const errMsg = approveResult.error || 'Failed to approve check-in'
