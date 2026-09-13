@@ -14,6 +14,8 @@ let mockBusiness: any = {
 }
 
 let mockPendingRecord: any = null
+let mockExistingCustomer: any = { id: CUST_ID }
+let mockBusinessCustomerRelationship: any = { customer_id: CUST_ID, business_id: BIZ_ID }
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
@@ -23,6 +25,32 @@ jest.mock('@supabase/supabase-js', () => ({
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({ data: mockBusiness, error: null }),
+        }
+      }
+      if (table === 'customers') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockImplementation(() => Promise.resolve({ data: mockExistingCustomer, error: null })),
+          single: jest.fn().mockImplementation(() => Promise.resolve({ data: mockExistingCustomer, error: null })),
+        }
+      }
+      if (table === 'business_customers') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn((col1: string, val1: string) => ({
+            eq: jest.fn((col2: string, val2: string) => ({
+              maybeSingle: jest.fn().mockImplementation(() => {
+                if (!mockBusinessCustomerRelationship) return Promise.resolve({ data: null, error: null })
+                const bId = col1 === 'business_id' ? val1 : val2
+                const cId = col1 === 'customer_id' ? val1 : val2
+                if (bId === mockBusinessCustomerRelationship.business_id && cId === mockBusinessCustomerRelationship.customer_id) {
+                  return Promise.resolve({ data: mockBusinessCustomerRelationship, error: null })
+                }
+                return Promise.resolve({ data: null, error: null })
+              }),
+            })),
+          })),
         }
       }
       if (table === 'pending_checkins') {
@@ -100,6 +128,8 @@ describe('Mode C Customer Check-in & Status API - Requirements I through N', () 
       result_stamp_id: null,
       result_payload: null,
     }
+    mockExistingCustomer = { id: CUST_ID }
+    mockBusinessCustomerRelationship = { customer_id: CUST_ID, business_id: BIZ_ID }
   })
 
   // ── K: Mode A cannot create pending check-in ────────────────────────────────
@@ -264,5 +294,84 @@ describe('Mode C Customer Check-in & Status API - Requirements I through N', () 
     expect(data.status).toBe('approved')
     expect(data.card_state.total_stamps).toBe(2)
     expect(data.access_grant).toBeDefined()
+  })
+
+  // ── Customer ↔ Business Binding Tests (Requirements A through D) ────────────
+  test('Binding A: customer associated with Business A + Business A -> allowed', async () => {
+    mockExistingCustomer = { id: CUST_ID }
+    mockBusinessCustomerRelationship = { customer_id: CUST_ID, business_id: BIZ_ID }
+
+    const req = new NextRequest('http://localhost/api/customer/checkin', {
+      method: 'POST',
+      body: JSON.stringify({ business_id: BIZ_ID, customer_id: CUST_ID }),
+    })
+
+    const res = await handleCheckin(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.success).toBe(true)
+    expect(data.checkin_id).toBe(CHK_ID)
+  })
+
+  test('Binding B: customer associated with Business A + Business B -> rejected with 403', async () => {
+    const OTHER_BIZ_ID = '99999999-9999-4000-a000-000000000009'
+    mockExistingCustomer = { id: CUST_ID }
+    mockBusinessCustomerRelationship = { customer_id: CUST_ID, business_id: BIZ_ID }
+
+    mockBusiness = {
+      id: OTHER_BIZ_ID,
+      dynamic_qr_enabled: false,
+      staff_pin_enabled: true,
+      approval_status: 'approved',
+    }
+
+    const req = new NextRequest('http://localhost/api/customer/checkin', {
+      method: 'POST',
+      body: JSON.stringify({ business_id: OTHER_BIZ_ID, customer_id: CUST_ID }),
+    })
+
+    const res = await handleCheckin(req)
+    expect(res.status).toBe(403)
+    const data = await res.json()
+    expect(data.error).toBe('Customer is not enrolled with this business')
+  })
+
+  test('Binding C: nonexistent customer -> rejected with 404', async () => {
+    const NON_EXISTENT_ID = '00000000-0000-4000-a000-000000000000'
+    mockExistingCustomer = null
+    mockBusinessCustomerRelationship = null
+
+    const req = new NextRequest('http://localhost/api/customer/checkin', {
+      method: 'POST',
+      body: JSON.stringify({ business_id: BIZ_ID, customer_id: NON_EXISTENT_ID }),
+    })
+
+    const res = await handleCheckin(req)
+    expect(res.status).toBe(404)
+    const data = await res.json()
+    expect(data.error).toBe('Customer not found')
+  })
+
+  test('Binding D: valid Mode C + valid customer/business relationship -> pending check-in created', async () => {
+    mockExistingCustomer = { id: CUST_ID }
+    mockBusinessCustomerRelationship = { customer_id: CUST_ID, business_id: BIZ_ID }
+    mockBusiness = {
+      id: BIZ_ID,
+      dynamic_qr_enabled: false,
+      staff_pin_enabled: true,
+      approval_status: 'approved',
+    }
+
+    const req = new NextRequest('http://localhost/api/customer/checkin', {
+      method: 'POST',
+      body: JSON.stringify({ business_id: BIZ_ID, customer_id: CUST_ID }),
+    })
+
+    const res = await handleCheckin(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.success).toBe(true)
+    expect(data.checkin_id).toBe(CHK_ID)
+    expect(data.poll_token).toBeDefined()
   })
 })

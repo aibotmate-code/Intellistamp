@@ -58,6 +58,31 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Verify customer exists and is enrolled with this business (customer ↔ business binding)
+    const [
+      { data: customer, error: custError },
+      { data: relationship, error: relError },
+    ] = await Promise.all([
+      supabase.from('customers').select('id').eq('id', customer_id).maybeSingle(),
+      supabase
+        .from('business_customers')
+        .select('customer_id')
+        .eq('business_id', business_id)
+        .eq('customer_id', customer_id)
+        .maybeSingle(),
+    ])
+
+    if (custError || !customer) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+    }
+
+    if (relError || !relationship) {
+      return NextResponse.json(
+        { error: 'Customer is not enrolled with this business' },
+        { status: 403 }
+      )
+    }
+
     const { checkin, poll_token, error } = await createPendingCheckin({
       business_id,
       customer_id,

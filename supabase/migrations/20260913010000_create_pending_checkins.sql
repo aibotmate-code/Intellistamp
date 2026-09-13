@@ -102,3 +102,6 @@ REVOKE ALL ON FUNCTION public.approve_pending_checkin(UUID, UUID, UUID) FROM aut
 
 GRANT EXECUTE ON FUNCTION public.approve_pending_checkin(UUID, UUID, UUID) TO service_role;
 
+-- Table permissions: Only service_role may access pending_checkins
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.pending_checkins TO service_role;
+
