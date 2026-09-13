@@ -388,12 +388,9 @@ export default function ScanPage() {
       {isBrandingEnabled && resolved.card_background_image_url && (
         <>
           <div
-            className="fixed inset-0 pointer-events-none z-0 bg-cover bg-no-repeat"
+            className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat"
             style={{
               backgroundImage: `url(${resolved.card_background_image_url})`,
-              backgroundPosition: `${activeBranding?.background_position_x ?? 50}% ${activeBranding?.background_position_y ?? 50}%`,
-              transform: activeBranding?.background_scale && activeBranding.background_scale !== 1 ? `scale(${activeBranding.background_scale})` : undefined,
-              transformOrigin: `${activeBranding?.background_position_x ?? 50}% ${activeBranding?.background_position_y ?? 50}%`,
             }}
             aria-hidden="true"
           />
@@ -417,9 +414,6 @@ export default function ScanPage() {
               emoji={business.emoji}
               name={business.name}
               className="mx-auto"
-              logoPositionX={business.branding?.logo_position_x}
-              logoPositionY={business.branding?.logo_position_y}
-              logoScale={business.branding?.logo_scale}
             />
             <h1 className="text-lg font-semibold tracking-tight text-zinc-100">{business.name}</h1>
             <p className="text-xs text-zinc-400 mt-0.5">Earn: {business.reward}</p>

@@ -1,155 +1,268 @@
-import type { StampCardState, RewardResult } from '@/types'
-import crypto from 'crypto'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-export interface CheckinResult {
-  card_state: StampCardState
-  reward_result?: RewardResult | null
-  access_grant?: unknown
-  stamped_at?: string
-  new_stamp_index?: number
-}
-
-export interface PendingCheckin {
-  checkin_id: string
+export interface PendingCheckinRecord {
+  id: string
   business_id: string
   customer_id: string
-  customer_name?: string
-  phone: string
   status: 'pending' | 'approved' | 'rejected' | 'expired'
-  created_at: number
-  expires_at: number
-  result?: CheckinResult
+  created_at: string
+  expires_at: string
+  approved_at?: string | null
+  approved_by?: string | null
+  result_stamp_id?: string | null
+  result_payload?: Record<string, unknown> | null
+  customers?: {
+    phone: string
+    name?: string | null
+  } | null
 }
 
-// TTL: 5 minutes for pending check-ins
-const CHECKIN_TTL_MS = 5 * 60 * 1000
-
-// In-memory store (keyed by checkin_id)
-const checkinStore = new Map<string, PendingCheckin>()
+function getSupabaseClient(client?: SupabaseClient): SupabaseClient {
+  if (client) return client
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 /**
- * Prunes expired check-in records to prevent memory growth.
+ * Creates a durable pending check-in record in PostgreSQL.
+ * Defaults to 5-minute TTL managed by the database.
  */
-function pruneExpiredCheckins(): void {
-  const now = Date.now()
-  for (const [id, checkin] of checkinStore.entries()) {
-    if (now > checkin.expires_at) {
-      checkinStore.delete(id)
+export async function createPendingCheckin(
+  params: {
+    business_id: string
+    customer_id: string
+  },
+  client?: SupabaseClient
+): Promise<{ checkin: PendingCheckinRecord | null; error?: string }> {
+  const supabase = getSupabaseClient(client)
+
+  try {
+    const { data, error } = await supabase
+      .from('pending_checkins')
+      .insert({
+        business_id: params.business_id,
+        customer_id: params.customer_id,
+        status: 'pending',
+      })
+      .select('id, business_id, customer_id, status, created_at, expires_at')
+      .single()
+
+    if (error) {
+      return { checkin: null, error: error.message }
     }
+
+    return { checkin: data as PendingCheckinRecord }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Database error creating check-in'
+    return { checkin: null, error: message }
   }
 }
 
 /**
- * Creates a new pending check-in for static QR + staff PIN mode.
- * Generates a unique checkin_id and enforces tenant isolation.
+ * Retrieves a pending check-in status for a customer with strict tenant verification.
+ * Automatically marks the check-in as expired if its TTL has elapsed.
  */
-export function createPendingCheckin(params: {
-  business_id: string
-  customer_id: string
-  customer_name?: string
-  phone: string
-}): PendingCheckin {
-  pruneExpiredCheckins()
-
-  const checkin_id = `chk_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`
-  const now = Date.now()
-
-  const checkin: PendingCheckin = {
-    checkin_id,
-    business_id: params.business_id,
-    customer_id: params.customer_id,
-    customer_name: params.customer_name,
-    phone: params.phone,
-    status: 'pending',
-    created_at: now,
-    expires_at: now + CHECKIN_TTL_MS,
-  }
-
-  checkinStore.set(checkin_id, checkin)
-  return checkin
-}
-
-/**
- * Retrieves a pending check-in with strict tenant verification.
- */
-export function getPendingCheckin(checkin_id: string, business_id: string): PendingCheckin | null {
-  pruneExpiredCheckins()
-  const checkin = checkinStore.get(checkin_id)
-  if (!checkin) return null
-
-  // Strict tenant boundary check
-  if (checkin.business_id !== business_id) {
-    return null
-  }
-
-  return checkin
-}
-
-/**
- * Returns all active pending check-ins for a business (for merchant counter UI).
- */
-export function getPendingCheckinsForBusiness(business_id: string): PendingCheckin[] {
-  pruneExpiredCheckins()
-  const list: PendingCheckin[] = []
-  for (const checkin of checkinStore.values()) {
-    if (checkin.business_id === business_id && checkin.status === 'pending') {
-      list.push(checkin)
-    }
-  }
-  return list.sort((a, b) => b.created_at - a.created_at)
-}
-
-/**
- * Resolves pending check-ins for a given customer phone and business.
- * Called when a merchant issues a stamp via kiosk or manual approval.
- */
-export function resolvePendingCheckinByPhone(
-  business_id: string,
-  phone: string,
-  result: CheckinResult
-): boolean {
-  pruneExpiredCheckins()
-  const cleanPhone = phone.replace(/\D/g, '').replace(/^91/, '')
-  let matched = false
-
-  for (const checkin of checkinStore.values()) {
-    const checkinPhone = checkin.phone.replace(/\D/g, '').replace(/^91/, '')
-    if (
-      checkin.business_id === business_id &&
-      checkinPhone === cleanPhone &&
-      checkin.status === 'pending'
-    ) {
-      checkin.status = 'approved'
-      checkin.result = result
-      matched = true
-    }
-  }
-
-  return matched
-}
-
-/**
- * Approves a specific check-in by checkin_id with tenant verification.
- */
-export function approvePendingCheckin(
+export async function getPendingCheckinStatus(
   checkin_id: string,
   business_id: string,
-  result: CheckinResult
-): boolean {
-  pruneExpiredCheckins()
-  const checkin = checkinStore.get(checkin_id)
-  if (!checkin || checkin.business_id !== business_id) {
-    return false
-  }
+  client?: SupabaseClient
+): Promise<{
+  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'not_found'
+  record?: PendingCheckinRecord
+}> {
+  const supabase = getSupabaseClient(client)
 
-  checkin.status = 'approved'
-  checkin.result = result
-  return true
+  try {
+    const { data, error } = await supabase
+      .from('pending_checkins')
+      .select('id, business_id, customer_id, status, created_at, expires_at, approved_at, result_stamp_id, result_payload')
+      .eq('id', checkin_id)
+      .eq('business_id', business_id)
+      .single()
+
+    if (error || !data) {
+      return { status: 'not_found' }
+    }
+
+    const record = data as PendingCheckinRecord
+    const now = Date.now()
+    const expiresAt = new Date(record.expires_at).getTime()
+
+    // Check expiration
+    if (record.status === 'pending' && now >= expiresAt) {
+      await supabase
+        .from('pending_checkins')
+        .update({ status: 'expired' })
+        .eq('id', checkin_id)
+        .eq('status', 'pending')
+
+      record.status = 'expired'
+      return { status: 'expired', record }
+    }
+
+    return { status: record.status, record }
+  } catch {
+    return { status: 'not_found' }
+  }
 }
 
 /**
- * For testing only: clears in-memory check-ins.
+ * Returns all active pending check-ins for a business with customer phone/name joined from customers table.
  */
-export function _resetPendingCheckinsForTesting(): void {
-  checkinStore.clear()
+export async function getPendingCheckinsForBusiness(
+  business_id: string,
+  client?: SupabaseClient
+): Promise<PendingCheckinRecord[]> {
+  const supabase = getSupabaseClient(client)
+  const nowIso = new Date().toISOString()
+
+  try {
+    const { data, error } = await supabase
+      .from('pending_checkins')
+      .select(`
+        id,
+        business_id,
+        customer_id,
+        status,
+        created_at,
+        expires_at,
+        customers (
+          phone,
+          name
+        )
+      `)
+      .eq('business_id', business_id)
+      .eq('status', 'pending')
+      .gt('expires_at', nowIso)
+      .order('created_at', { ascending: false })
+
+    if (error || !data) return []
+    return data as unknown as PendingCheckinRecord[]
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Atomically approves a pending check-in using the approve_pending_checkin RPC function.
+ * Ensures row-locking, single approval, expiration checking, and atomic stamp issuance.
+ */
+export async function approvePendingCheckin(
+  checkin_id: string,
+  business_id: string,
+  approved_by?: string,
+  client?: SupabaseClient
+): Promise<{ success: boolean; error?: string; stamp_result?: Record<string, unknown> | null }> {
+  const supabase = getSupabaseClient(client)
+
+  try {
+    // Attempt database-level atomic RPC
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('approve_pending_checkin', {
+      p_checkin_id: checkin_id,
+      p_business_id: business_id,
+      p_approved_by: approved_by || null,
+    })
+
+    if (!rpcErr && rpcRes) {
+      if (rpcRes.error) {
+        return { success: false, error: rpcRes.error }
+      }
+      return { success: true, stamp_result: rpcRes.stamp_result }
+    }
+
+    // Fallback if RPC is not yet registered on environment:
+    // 1. Verify existence & pending status
+    const { data: checkin, error: chkErr } = await supabase
+      .from('pending_checkins')
+      .select('id, customer_id, business_id, status, expires_at')
+      .eq('id', checkin_id)
+      .eq('business_id', business_id)
+      .single()
+
+    if (chkErr || !checkin) {
+      return { success: false, error: 'Check-in request not found' }
+    }
+
+    if (checkin.status !== 'pending') {
+      return { success: false, error: `Check-in already ${checkin.status}` }
+    }
+
+    if (new Date(checkin.expires_at).getTime() <= Date.now()) {
+      await supabase.from('pending_checkins').update({ status: 'expired' }).eq('id', checkin_id)
+      return { success: false, error: 'Check-in request expired' }
+    }
+
+    // 2. Issue stamp atomically using canonical issue_stamp_atomic RPC
+    const { data: stampResult, error: stampErr } = await supabase.rpc('issue_stamp_atomic', {
+      p_customer_id: checkin.customer_id,
+      p_business_id: business_id,
+      p_type: 'regular',
+      p_stamp_token: null,
+    })
+
+    if (stampErr || !stampResult || stampResult.error) {
+      return { success: false, error: stampResult?.error || stampErr?.message || 'Failed to issue stamp' }
+    }
+
+    // 3. Conditional update to approved (ensures single approval)
+    const { data: updated, error: updErr } = await supabase
+      .from('pending_checkins')
+      .update({
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: approved_by || null,
+        result_stamp_id: stampResult.id || null,
+        result_payload: stampResult,
+      })
+      .eq('id', checkin_id)
+      .eq('business_id', business_id)
+      .eq('status', 'pending')
+      .gt('expires_at', new Date().toISOString())
+      .select('id')
+      .single()
+
+    if (updErr || !updated) {
+      return { success: false, error: 'Check-in already processed or expired' }
+    }
+
+    return { success: true, stamp_result: stampResult }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Server error approving check-in'
+    return { success: false, error: message }
+  }
+}
+
+/**
+ * Resolves any active pending check-in for a customer when a stamp is issued from kiosk.
+ */
+export async function resolvePendingCheckinForCustomer(
+  business_id: string,
+  customer_id: string,
+  stamp_result: Record<string, unknown> | null | undefined,
+  client?: SupabaseClient
+): Promise<boolean> {
+  const supabase = getSupabaseClient(client)
+  const nowIso = new Date().toISOString()
+
+  try {
+    const { data, error } = await supabase
+      .from('pending_checkins')
+      .update({
+        status: 'approved',
+        approved_at: nowIso,
+        result_stamp_id: stamp_result?.id || null,
+        result_payload: stamp_result,
+      })
+      .eq('business_id', business_id)
+      .eq('customer_id', customer_id)
+      .eq('status', 'pending')
+      .gt('expires_at', nowIso)
+      .select('id')
+
+    return !error && Boolean(data && data.length > 0)
+  } catch {
+    return false
+  }
 }

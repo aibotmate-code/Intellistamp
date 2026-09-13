@@ -158,7 +158,7 @@ describe('CardPreviewShell Responsive Scaling & StampCard Parity', () => {
     )
 
     // Milestone 4 is locked
-    expect(screen.getAllByText('Surprise reward').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Surprise reward')).toBeInTheDocument()
 
     // Transition to earned: 3 -> 4 visits
     const updatedMilestones: MilestoneWithStatus[] = [

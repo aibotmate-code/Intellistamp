@@ -7,7 +7,7 @@ import { checkRateLimit, getClientIp, generateHmacIdentity, rateLimitResponse, r
 const checkinSchema = z.object({
   business_id: z.string().uuid(),
   customer_id: z.string().uuid(),
-  phone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid phone number'),
+  phone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid phone number').optional(),
   name: z.string().optional(),
 })
 
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
     }
 
-    const { business_id, customer_id, phone, name } = result.data
+    const { business_id, customer_id } = result.data
 
     // Rate limit checkin submissions per IP
     const ip = getClientIp(req)
@@ -50,18 +50,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business is not active' }, { status: 403 })
     }
 
-    const pending = createPendingCheckin({
+    const { checkin, error } = await createPendingCheckin({
       business_id,
       customer_id,
-      customer_name: name,
-      phone,
     })
+
+    if (error || !checkin) {
+      return NextResponse.json({ error: error || 'Failed to create check-in' }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      checkin_id: pending.checkin_id,
-      status: pending.status,
-      created_at: pending.created_at,
+      checkin_id: checkin.id,
+      status: checkin.status,
+      created_at: checkin.created_at,
+      expires_at: checkin.expires_at,
     })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

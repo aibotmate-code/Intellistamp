@@ -373,8 +373,8 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
 
       // Earned milestone displays real reward "Free Cookie"
       expect(screen.getByText('Free Cookie')).toBeInTheDocument()
-      // Locked milestone and locked header hide real reward and show "Surprise reward"
-      expect(screen.getAllByText('Surprise reward').length).toBeGreaterThanOrEqual(1)
+      // Locked milestone hides "1 Pizza Free" and shows "Surprise reward"
+      expect(screen.getByText('Surprise reward')).toBeInTheDocument()
       expect(screen.queryByText('1 Pizza Free')).not.toBeInTheDocument()
 
       // Visits left indicator remains clearly visible (10 - 3 = 7 visits left)
@@ -402,8 +402,7 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
       render(
         <StampCard
           stampsRequired={8}
-          cardStamps={8}
-          redeemable={true}
+          cardStamps={2}
           totalVisits={10}
           businessName="Pizza Place"
           businessEmoji="🍕"
@@ -416,7 +415,6 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
       // Both rewards are now earned and fully revealed
       expect(screen.getByText('Free Cookie')).toBeInTheDocument()
       expect(screen.getByText('1 Pizza Free')).toBeInTheDocument()
-      expect(screen.getByText('Free Slice')).toBeInTheDocument()
       expect(screen.queryByText('Surprise reward')).not.toBeInTheDocument()
       expect(screen.getAllByText('Earned')).toHaveLength(2)
     })
@@ -611,12 +609,14 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
         />
       )
 
-      // Main card header and locked milestone display the custom teaser
-      expect(screen.getAllByText('Ajao lelo 😄').length).toBeGreaterThanOrEqual(1)
+      // Main card header displays merchant reward
+      expect(screen.getByText('Special Cake Box')).toBeInTheDocument()
 
-      // Actual milestone reward and main reward are hidden
+      // Locked milestone displays the custom teaser
+      expect(screen.getByText('Ajao lelo 😄')).toBeInTheDocument()
+
+      // Actual milestone reward is hidden
       expect(screen.queryByText('Free Donut')).not.toBeInTheDocument()
-      expect(screen.queryByText('Special Cake Box')).not.toBeInTheDocument()
     })
 
     test('reveals real milestone reward when milestone is earned', () => {
@@ -631,8 +631,7 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
       render(
         <StampCard
           stampsRequired={6}
-          cardStamps={6}
-          redeemable={true}
+          cardStamps={3}
           totalVisits={3}
           businessName="Sweet Treats"
           businessEmoji="🍩"
@@ -643,9 +642,8 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
         />
       )
 
-      // Earned milestone reward and unlocked card reward are revealed
+      // Earned milestone reward is revealed
       expect(screen.getByText('Free Donut')).toBeInTheDocument()
-      expect(screen.getByText('Special Cake Box')).toBeInTheDocument()
 
       // Custom teaser text is no longer shown
       expect(screen.queryByText('Ajao lelo 😄')).not.toBeInTheDocument()
@@ -664,7 +662,7 @@ describe('IntelliStamp Co-Branding & Loyalty Card E2E Validation', () => {
         />
       )
 
-      expect(screen.getAllByText('Surprise reward').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByText('Surprise reward')).toBeInTheDocument()
       expect(screen.queryByText('Free Donut')).not.toBeInTheDocument()
     })
   })

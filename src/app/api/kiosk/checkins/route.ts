@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { getPendingCheckinsForBusiness, getPendingCheckin, approvePendingCheckin } from '@/lib/server/pendingCheckins'
+import { getPendingCheckinsForBusiness, approvePendingCheckin } from '@/lib/server/pendingCheckins'
 import { verifyPin } from '@/lib/pinHash'
 import { checkRateLimit, peekRateLimit, resetRateLimit, rateLimitResponse, rateLimitErrorResponse, getClientIp, generateHmacIdentity } from '@/lib/rateLimit'
-import { generateAccessGrant } from '@/lib/server/grant'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,7 +12,7 @@ const supabase = createClient(
 
 const approveSchema = z.object({
   business_id: z.string().uuid(),
-  checkin_id: z.string(),
+  checkin_id: z.string().uuid(),
   pin: z.string().length(4, 'PIN must be 4 digits'),
 })
 
@@ -26,7 +25,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'businessId required' }, { status: 400 })
     }
 
-    const checkins = getPendingCheckinsForBusiness(businessId)
+    const checkins = await getPendingCheckinsForBusiness(businessId)
     return NextResponse.json({ checkins })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -45,13 +44,7 @@ export async function POST(req: NextRequest) {
     const ip = getClientIp(req)
     const clientHash = generateHmacIdentity('ip', ip)
 
-    // Strict tenant check: checkin must belong to business_id
-    const pending = getPendingCheckin(checkin_id, business_id)
-    if (!pending || pending.status !== 'pending') {
-      return NextResponse.json({ error: 'Check-in request not found or expired' }, { status: 404 })
-    }
-
-    // Verify staff PIN
+    // Verify staff PIN & business status
     const { data: business, error: bizError } = await supabase
       .from('businesses')
       .select('id, staff_pin_hash, stamps_required, reward, approval_status, plan_expires_at')
@@ -77,7 +70,7 @@ export async function POST(req: NextRequest) {
       return rateLimitResponse(peekRl.retryAfter || 60)
     }
 
-    const isValid = pin && await verifyPin(pin, business.staff_pin_hash)
+    const isValid = pin && (await verifyPin(pin, business.staff_pin_hash))
     if (!isValid) {
       const failedRl = await checkRateLimit(pinKey, 10, 5 * 60 * 1000)
       if (failedRl.isError) return rateLimitErrorResponse()
@@ -87,59 +80,29 @@ export async function POST(req: NextRequest) {
 
     await resetRateLimit(pinKey)
 
-    // Issue stamp atomically
-    const { data: stampData, error: stampError } = await supabase.rpc('issue_stamp_atomic', {
-      p_customer_id: pending.customer_id,
-      p_business_id: business_id,
-      p_type: 'regular',
-      p_stamp_token: null,
-    })
+    // Atomically approve the pending check-in using Postgres row lock + issue_stamp_atomic RPC
+    const approveResult = await approvePendingCheckin(checkin_id, business_id)
 
-    if (stampError) {
-      return NextResponse.json({ error: 'Database error while issuing stamp' }, { status: 500 })
+    if (!approveResult.success) {
+      const errMsg = approveResult.error || 'Failed to approve check-in'
+      if (errMsg.includes('not_found') || errMsg.includes('not found')) {
+        return NextResponse.json({ error: 'Check-in request not found' }, { status: 404 })
+      }
+      if (errMsg.includes('cooldown') || errMsg.includes('stamped recently')) {
+        return NextResponse.json({ error: errMsg }, { status: 429 })
+      }
+      if (errMsg.includes('expired')) {
+        return NextResponse.json({ error: 'Check-in request expired' }, { status: 400 })
+      }
+      if (errMsg.includes('already')) {
+        return NextResponse.json({ error: 'Check-in already processed' }, { status: 400 })
+      }
+      return NextResponse.json({ error: errMsg }, { status: 400 })
     }
-
-    if (stampData.error === 'cooldown') {
-      return NextResponse.json(
-        { error: `Customer stamped recently. Next stamp available in ${stampData.hours_left}h.` },
-        { status: 429 }
-      )
-    }
-
-    const total = stampData.total_stamps
-    const stampsReq = business.stamps_required
-    const cardStamps = total % stampsReq
-    const cardsCompleted = Math.floor(total / stampsReq)
-    const stampComplete = cardStamps === 0 && total > 0
-
-    const card_state = {
-      total_stamps: total,
-      card_stamps: stampComplete ? stampsReq : cardStamps,
-      cards_completed: cardsCompleted,
-      can_stamp: false,
-      cooldown_remaining_hours: 4,
-      redeemable: stampComplete,
-    }
-
-    let accessGrant = undefined
-    try {
-      accessGrant = generateAccessGrant(pending.customer_id, business_id)
-    } catch {
-      // non-critical
-    }
-
-    const checkinResult = {
-      card_state,
-      reward_result: stampData.reward_result || (stampComplete && business.reward ? { type: 'stamp' as const, reward: business.reward } : null),
-      access_grant: accessGrant,
-      new_stamp_index: card_state.card_stamps - 1,
-    }
-
-    approvePendingCheckin(checkin_id, business_id, checkinResult)
 
     return NextResponse.json({
       success: true,
-      result: checkinResult,
+      result: approveResult.stamp_result,
     })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

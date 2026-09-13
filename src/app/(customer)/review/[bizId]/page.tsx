@@ -90,9 +90,6 @@ export default function ReviewPage() {
                 emoji={business.emoji}
                 name={business.name}
                 className="text-2xl"
-                logoPositionX={business.branding?.logo_position_x}
-                logoPositionY={business.branding?.logo_position_y}
-                logoScale={business.branding?.logo_scale}
               />
               <span className="text-base font-semibold text-zinc-100">{business.name}</span>
             </div>

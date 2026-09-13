@@ -23,8 +23,6 @@ import BusinessVisual from '@/components/branding/BusinessVisual'
 import { PendingView, SuspendedView, RejectedView, ExpiredView } from '@/components/business/LifecycleViews'
 import { getBusinessAccessState } from '@/lib/businessState'
 import type { Business, Customer, BusinessCustomer, Milestone } from '@/types'
-import StampCard from '@/components/customer/StampCard'
-import CardPreviewShell from '@/components/branding/CardPreviewShell'
 
 const QRDisplay = dynamic(() => import('@/components/business/QRDisplay'), { ssr: false })
 const KioskMode = dynamic(() => import('@/components/business/KioskMode'), { ssr: false })
@@ -124,9 +122,9 @@ export default function DashboardPage() {
     startTransition(() => { fetchData() })
   }, [fetchData])
 
-  // Lazy-load milestones when Rewards or Branding tab is first opened
+  // Lazy-load milestones when Rewards tab is first opened
   useEffect(() => {
-    if ((activeTab !== 'rewards' && activeTab !== 'branding') || milestonesLoaded || !data) return
+    if (activeTab !== 'rewards' || milestonesLoaded || !data) return
     fetch(`/api/milestones/${data.business.id}`)
       .then((r) => r.json())
       .then((json) => {
@@ -331,9 +329,6 @@ export default function DashboardPage() {
             logoUrl={business.branding?.logo_url} 
             emoji={business.emoji} 
             name={business.name} 
-            logoPositionX={business.branding?.logo_position_x}
-            logoPositionY={business.branding?.logo_position_y}
-            logoScale={business.branding?.logo_scale}
             className="text-2xl max-h-10 w-auto max-w-[100px]" 
           />
           <div>
@@ -589,40 +584,13 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Tab: Branding (Customer Card Preview - Read Only) */}
+        {/* Tab: Branding (Admin-managed) */}
         {activeTab === 'branding' && (
-          <div className="max-w-md mx-auto space-y-4">
-            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 text-center space-y-1">
-              <h3 className="font-semibold text-sm text-zinc-100">Customer Card Preview</h3>
-              <p className="text-xs text-zinc-400">
-                Branding is managed by Intellical Labs.
-              </p>
-            </div>
-
-            <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 shadow-sm is-dot-grid overflow-hidden">
-              <CardPreviewShell designWidth={384}>
-                <StampCard
-                  stampsRequired={business.stamps_required || 6}
-                  cardStamps={Math.max(1, Math.floor((business.stamps_required || 6) / 2))}
-                  businessName={business.name}
-                  businessEmoji={business.emoji}
-                  reward={business.reward}
-                  redeemable={false}
-                  businessBranding={business.branding}
-                  totalVisits={Math.max(1, Math.floor((business.stamps_required || 6) / 2))}
-                  hideRewardDetails={business.branding?.hide_reward_details}
-                  hiddenRewardText={business.branding?.hidden_reward_text}
-                  milestones={milestones.map((m) => {
-                    const midStamps = Math.max(1, Math.floor((business.stamps_required || 6) / 2))
-                    return {
-                      ...m,
-                      earned: midStamps >= m.visit_number,
-                      visits_remaining: Math.max(0, m.visit_number - midStamps),
-                    }
-                  })}
-                />
-              </CardPreviewShell>
-            </div>
+          <div className="max-w-2xl bg-zinc-900/50 rounded-lg p-6 border border-zinc-800 text-center space-y-2">
+            <h3 className="font-semibold text-sm text-zinc-100">Co-Branding</h3>
+            <p className="text-xs text-zinc-400">
+              Co-branding is managed exclusively by Intellical Labs administrators.
+            </p>
           </div>
         )}
 

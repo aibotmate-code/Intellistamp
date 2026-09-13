@@ -304,12 +304,6 @@ export default function StampCard({
       ? hiddenRewardText
       : (activeBranding?.hidden_reward_text || 'Surprise reward')
   ).trim() || 'Surprise reward'
-  const isRewardUnlocked = Boolean(redeemable || cardStamps >= stampsRequired)
-  const displayedReward = shouldHide && !isRewardUnlocked ? placeholderText : reward
-
-  const bgPosX = typeof activeBranding?.background_position_x === 'number' && !isNaN(activeBranding.background_position_x) ? activeBranding.background_position_x : 50
-  const bgPosY = typeof activeBranding?.background_position_y === 'number' && !isNaN(activeBranding.background_position_y) ? activeBranding.background_position_y : 50
-  const bgScale = typeof activeBranding?.background_scale === 'number' && !isNaN(activeBranding.background_scale) && activeBranding.background_scale > 0 ? activeBranding.background_scale : 1
   
   // Compact column layout:
   // Thresholds <= 6 fit in a single row on 375px+ screens
@@ -333,12 +327,9 @@ export default function StampCard({
       {/* ── Visual Layer 1: Background Pattern/Image ── */}
       {resolved.card_background_image_url && (
         <div
-          className="absolute inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat overflow-hidden"
+          className="absolute inset-0 pointer-events-none z-0 bg-cover bg-center"
           style={{
             backgroundImage: `url(${resolved.card_background_image_url})`,
-            backgroundPosition: `${bgPosX}% ${bgPosY}%`,
-            transform: bgScale !== 1 ? `scale(${bgScale})` : undefined,
-            transformOrigin: `${bgPosX}% ${bgPosY}%`,
           }}
           aria-hidden="true"
         />
@@ -374,9 +365,6 @@ export default function StampCard({
               emoji={businessEmoji}
               name={businessName}
               className="shrink-0"
-              logoPositionX={activeBranding?.logo_position_x}
-              logoPositionY={activeBranding?.logo_position_y}
-              logoScale={activeBranding?.logo_scale}
             />
             <div className="min-w-0">
               <h3
@@ -389,7 +377,7 @@ export default function StampCard({
                 className="text-xs sm:text-sm font-medium mt-0.5"
                 style={{ color: resolved.card_muted_text_color }}
               >
-                {displayedReward}
+                {reward}
               </p>
             </div>
           </div>

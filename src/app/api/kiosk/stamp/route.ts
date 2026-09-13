@@ -196,10 +196,11 @@ export async function POST(req: NextRequest) {
       redeemable: stampComplete,
     }
 
-    // Resolve any pending check-in for this customer/phone in Mode C
+    // Resolve any pending check-in for this customer in Mode C
     try {
-      const { resolvePendingCheckinByPhone } = await import('@/lib/server/pendingCheckins')
-      resolvePendingCheckinByPhone(business_id, phone, {
+      const { resolvePendingCheckinForCustomer } = await import('@/lib/server/pendingCheckins')
+      await resolvePendingCheckinForCustomer(business_id, customer.id, {
+        id: stamp.id,
         card_state: cardStatePayload,
         reward_result,
         new_stamp_index: cardStatePayload.card_stamps - 1,
